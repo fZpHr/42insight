@@ -1,6 +1,8 @@
 {
-  "crons": [{
-    "path": "/api/cron",
-    "schedule": "*/5 * * * *"
-  }]
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "*/5 * * * *"  // Toutes les 5 minutes
+    }
+  ]
 }
