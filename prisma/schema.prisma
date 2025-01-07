@@ -1,0 +1,24 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Student {
+  id                   Int      @id
+  name                 String
+  level                Float
+  photoUrl             String
+  correctionTotal      Int      @default(0)
+  correctionPositive   Int      @default(0)
+  correctionNegative   Int      @default(0)
+  correctionPercentage Float    @default(0)
+  correctionPoints     Int
+  year                 Int
+  wallet               Int
+  activityData         Json     @default("{\"activities\":[]}")
+  blackholeTimer       Int
+}
