@@ -17,10 +17,15 @@ jobs:
         run: |
           echo " " >> ./tmp.txt
 
-      - name: Commit changes
+      - name: Set up Git config
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
+
+      - name: Commit changes
+        run: |
           git add .
           git commit -m "Auto commit to trigger Vercel rebuild"
-          git push
+          git push https://github.com/${{ github.repository }}.git HEAD:main --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.AUTO_COMMIT }}
