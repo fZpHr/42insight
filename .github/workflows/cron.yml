@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.AUTO_COMMIT }}
 
       - name: Modify a file to trigger a commit
         run: |
@@ -27,5 +29,3 @@ jobs:
           git add .
           git commit -m "Auto commit to trigger Vercel rebuild"
           git push https://x-access-token:${{ secrets.AUTO_COMMIT }}@github.com/fZpHr/42insight.git HEAD:main --force
-        env:
-          GITHUB_TOKEN: ${{ secrets.AUTO_COMMIT }}
