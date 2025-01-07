@@ -1,6 +1,10 @@
 import { exec } from 'child_process';
 
 export default function handler(req, res) {
+  if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).end('Unauthorized');
+  }
+
   exec('npx prisma db pull', (error, stdout, stderr) => {
     if (error) {
       console.error(`Erreur: ${error.message}`);
