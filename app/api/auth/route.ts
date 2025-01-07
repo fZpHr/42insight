@@ -9,11 +9,15 @@ export async function GET(request: Request) {
     }
 
     try {
+        const url = process.env.NEXT_PUBLIC_REDIRECT_URI;
+        if (!url) {
+            throw new Error('NEXT_PUBLIC_REDIRECT_URI is not defined')
+        }
         const response = await axios.post('https://api.intra.42.fr/oauth/token', {
             grant_type: 'authorization_code',
-            client_id: process.env.CLIENT_ID1,
-            client_secret: process.env.CLIENT_SECRET1,
-            redirect_uri: 'https://www.42insight.tech/api/auth',
+            client_id: process.env.NEXT_PUBLIC_CLIENT_ID,
+            client_secret: process.env.CLIENT_SECRET6,
+            redirect_uri: url + '/api/auth',
             code: code,
         })
 
@@ -33,7 +37,7 @@ export async function GET(request: Request) {
             localStorage.setItem('token', accessToken)
             localStorage.setItem('photo', me.data.image_url)
         }
-        return NextResponse.redirect('https://www.42insight.tech', { headers: { 'Set-Cookie': `token=${accessToken}; Path=/` } })
+        return NextResponse.redirect(url, { headers: { 'Set-Cookie': `token=${accessToken}; Path=/` } })
     } catch (error) {
         console.error('Authentication Error:', error)
         return NextResponse.json({ error: 'Failed to authenticate' }, { status: 500 })
