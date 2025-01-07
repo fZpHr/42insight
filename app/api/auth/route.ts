@@ -33,13 +33,9 @@ export async function GET(request: Request) {
         if (me.status !== 200) {
             throw new Error('Invalid token')
         }
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('token', accessToken)
-            localStorage.setItem('photo', me.data.image_url)
-        }
         return NextResponse.redirect(url, { headers: { 'Set-Cookie': `token=${accessToken}; Path=/` } })
     } catch (error) {
-        console.error('Authentication Error:', error)
+        //console.error('Authentication Error:', error)
         return NextResponse.json({ error: 'Failed to authenticate' }, { status: 500 })
     }
 }

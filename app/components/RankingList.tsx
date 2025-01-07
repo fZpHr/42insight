@@ -161,6 +161,7 @@ const fetchStudents = async (): Promise<Student[]> => {
     .split('; ')
     .find(row => row.startsWith('token='))
     ?.split('=')[1];
+    await new Promise(resolve => setTimeout(resolve, 3000));
     const response = await fetch('/api/students', {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -305,14 +306,13 @@ export default function RankingList() {
         <>
           <div className="space-y-4">
             <p className="text-sm text-gray-500">
-              Your position : <strong>{filteredStudents.findIndex(student => student.name === 'bapasqui') + 1 || 'N/A'}</strong> / {filteredStudents.length}
+                  Your position : <strong>{filteredStudents.findIndex(student => student.name === localStorage.getItem('login')) + 1 || 'N/A'}</strong> / {filteredStudents.length}
               <a
                 href="#"
                 className="ml-2 text-purple-600 underline"
                 onClick={(e) => {
                   e.preventDefault();
-                  // add a cookie with the user login to get the current user position like i did
-                  const login = 'bapasqui';
+                  const login = localStorage.getItem('login') || '';
                   const position = filteredStudents.findIndex(student => student.name === login) + 1;
                   if (position === 0) return;
                   const pageToGo = Math.ceil(position / ITEMS_PER_PAGE);
@@ -327,7 +327,7 @@ export default function RankingList() {
                   }, 0);
                 }}
               >
-                (page {Math.ceil((filteredStudents.findIndex(student => student.name === 'bapasqui') + 1) / ITEMS_PER_PAGE) || 'N/A'})
+                (page {Math.ceil((filteredStudents.findIndex(student => student.name === localStorage.getItem('login')) + 1) / ITEMS_PER_PAGE) || 'N/A'})
               </a>
             </p>
             {paginatedStudents.map((student) => (

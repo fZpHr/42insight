@@ -11,6 +11,9 @@ import Sidebar from "./components/Sidebar"
 import { DarkModeToggle } from "./components/DarkModeToggle"
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Login }  from './components/Login'
+import { Loader } from 'lucide-react'
+
 
 export default function Home() {
 
@@ -30,7 +33,7 @@ export default function Home() {
     }
   }
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -52,29 +55,23 @@ export default function Home() {
       } catch (error) {
         console.error('Authentication Error:', error);
         setIsLoggedIn(false);
+        return <Login />
       }
     };
 
     checkAuth();
   }, []);
 
-  if (!isLoggedIn) {
-    const loginUrl = new URL('https://api.intra.42.fr/oauth/authorize');
-    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
-    if (!clientId) {
-      throw new Error('NEXT_PUBLIC_CLIENT_ID6 is not defined');
-    }
-    loginUrl.searchParams.set('client_id', clientId);
-    loginUrl.searchParams.set('redirect_uri', process.env.NEXT_PUBLIC_REDIRECT_URI + '/api/auth');
-    loginUrl.searchParams.set('response_type', 'code');
-
+  if (isLoggedIn === null) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <Button onClick={() => window.location.href = loginUrl.toString()}>
-          Login with 42
-        </Button>
-      </div>
-    );
+    <div className="flex justify-center items-center h-screen">
+      <Loader className="animate-spin h-8 w-8 text-gray-500" />
+    </div>
+    )
+  }
+
+  if (!isLoggedIn ) {
+    return <Login />
   }
 
   return (
