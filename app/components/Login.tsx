@@ -8,9 +8,9 @@ export function Login() {
 
   const [isLoading, setIsLoading] = useState(false)
 
-    const setStayConnected = (checked: boolean) => {
-        localStorage.setItem('stayConnected', checked.toString());
-    }
+    // const setStayConnected = (checked: boolean) => {
+    //     localStorage.setItem('stayConnected', checked.toString());
+    // }
   const handleLogin = async () => {
     const loginUrl = new URL('https://api.intra.42.fr/oauth/authorize');
     const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
