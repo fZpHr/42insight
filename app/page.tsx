@@ -60,8 +60,12 @@ export default function Home() {
 
   if (!isLoggedIn) {
     const loginUrl = new URL('https://api.intra.42.fr/oauth/authorize');
-    loginUrl.searchParams.set('client_id', 'u-s4t2ud-6cf93f0bacf090dfccb351d901386674dc6e094bd477b991c7ff8a65dd8e338f');
-    loginUrl.searchParams.set('redirect_uri', 'https://www.42insight.tech/api/auth');
+    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
+    if (!clientId) {
+      throw new Error('NEXT_PUBLIC_CLIENT_ID6 is not defined');
+    }
+    loginUrl.searchParams.set('client_id', clientId);
+    loginUrl.searchParams.set('redirect_uri', process.env.NEXT_PUBLIC_REDIRECT_URI + '/api/auth');
     loginUrl.searchParams.set('response_type', 'code');
 
     return (

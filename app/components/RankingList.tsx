@@ -157,7 +157,13 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
 
 const fetchStudents = async (): Promise<Student[]> => {
   try {
-    const response = await fetch('/api/students')
+    const token = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('token='))
+    ?.split('=')[1];
+    const response = await fetch('/api/students', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch students')
     }
