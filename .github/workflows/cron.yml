@@ -1,0 +1,19 @@
+name: Vercel Cron Job
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  call-vercel-cron:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Vérifier le dépôt
+        uses: actions/checkout@v2
+
+      - name: Appeler l'API Cron de Vercel
+        run: |
+          curl -X GET "https://www.42insight.tech/api/cron" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
