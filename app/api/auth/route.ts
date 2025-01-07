@@ -16,7 +16,7 @@ export async function GET(request: Request) {
         const response = await axios.post('https://api.intra.42.fr/oauth/token', {
             grant_type: 'authorization_code',
             client_id: process.env.NEXT_PUBLIC_CLIENT_ID,
-            client_secret: process.env.CLIENT_SECRET1,
+            client_secret: process.env.CLIENT_SECRET_NEXT1,
             redirect_uri: url + '/api/auth',
             code: code,
         })
