@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json(me.data)
     } catch (error) {
-        //console.error('Authentication Error:', error)
+        console.error('Authentication Error:', error)
         return NextResponse.json({ error: 'Failed to authenticate' }, { status: 500 })
     }
 }

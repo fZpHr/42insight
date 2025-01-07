@@ -5,11 +5,38 @@ import { User, LogOut } from 'lucide-react'
 
 export function ProfilePicture() {
 
-  const photo = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('photo='))
-    ?.split('=')[1];
+  const removeTokenCookie = () => {
+    document.cookie = 'token=; Max-Age=0; path=/';
+    localStorage.removeItem('stayConnected');
+    window.location.reload();
+  };
 
+
+  const [login, setLogin] = React.useState<string | null>(null);
+  const [ProfilePicture, setProfilePicture] = React.useState<string | null>(null);
+    
+
+  React.useEffect(() => {
+    const fetchLogin = async () => {
+      try {
+        const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+        if (!token) {
+          throw new Error('Token not found');
+        }
+        const response = await fetch('/api/getter' , {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setLogin(data.login);
+        localStorage.setItem('login', data.login);
+        setProfilePicture(data.image.versions.small);
+      } catch (error) {
+        console.error('Error fetching login:', error);
+      }
+    };
+
+    fetchLogin();
+  }, []);
 
   return (
     <DropdownMenu.Root>
@@ -21,14 +48,14 @@ export function ProfilePicture() {
           <Avatar.Root className="inline-flex h-9 w-9 select-none items-center justify-center overflow-hidden rounded-full bg-muted">
             <Avatar.Image
               className="h-full w-full object-cover"
-              src="/placeholder.svg?height=36&width=36"
-              alt="John Doe"
+              src={ProfilePicture || undefined}
+              alt={login || undefined}
             />
             <Avatar.Fallback
               className="text-primary-foreground leading-1 flex h-full w-full items-center justify-center bg-primary text-[15px] font-medium bg-gradient-to-br from-purple-500 to-pink-500"
               delayMs={600}
             >
-              JD
+              {login ? login[0].toUpperCase() : <User />}
             </Avatar.Fallback>
           </Avatar.Root>
         </button>
@@ -40,8 +67,8 @@ export function ProfilePicture() {
           sideOffset={5}
           align="end"
         >
-          <DropdownMenu.Item className="flex items-center px-2 py-2 text-sm outline-none cursor-default focus:bg-accent focus:text-accent-foreground">
-            <LogOut className="mr-2 h-4 w-4" />
+          <DropdownMenu.Item className="flex items-center px-2 py-2 text-sm outline-none cursor-default focus:bg-accent focus:text-accent-foreground" onClick={removeTokenCookie}>
+            <LogOut className="mr-2 h-4 w-4"/>
             <span>Log out</span>
           </DropdownMenu.Item>
         </DropdownMenu.Content>
