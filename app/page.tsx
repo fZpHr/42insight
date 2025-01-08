@@ -65,17 +65,17 @@ export default function Home() {
     checkAuth();
   }, []);
 
-  // if (isLoggedIn === null) {
-  //   return (
-  //   <div className="flex justify-center items-center h-screen">
-  //     <Loader className="animate-spin h-8 w-8 text-gray-500" />
-  //   </div>
-  //   )
-  // }
+  if (isLoggedIn === null) {
+    return (
+    <div className="flex justify-center items-center h-screen">
+      <Loader className="animate-spin h-8 w-8 text-gray-500" />
+    </div>
+    )
+  }
 
-  // if (!isLoggedIn ) {
-  //   return <Login />
-  // }
+  if (!isLoggedIn ) {
+    return <Login />
+  }
 
   return (
     <div className="flex h-screen bg-background">
