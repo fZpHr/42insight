@@ -5,6 +5,7 @@ import { Github } from 'lucide-react'
 
 export default function Contribute() {
   const roadmapItems = [
+    { title: "Resolve all skill issues", "status": "∞" },
     { title: "Export All Old Features", status: "In Progress" },
     { title: "More stats(activity,..)", status: "In Progress" },
     { title: "Our Find peers", status: "Planned" },
@@ -16,7 +17,7 @@ export default function Contribute() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-3xl font-semibold mb-6">Contribute to 42 Insights</h2>
+      <h2 className="text-3xl font-semibold mb-6">Contribute to 42 Insight</h2>
       
       <Card className="shadow-lg">
         <CardHeader>
@@ -54,7 +55,7 @@ export default function Contribute() {
                 <span>{item.title}</span>
                 <Badge 
                   variant={item.status === "Completed" ? "default" : 
-                           item.status === "In Progress" ? "secondary" : "outline"}
+                           item.status === "In Progress" || item.status === "∞" ? "secondary" : "outline"}
                 >
                   {item.status}
                 </Badge>
