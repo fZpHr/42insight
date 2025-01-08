@@ -1,4 +1,4 @@
-import { BarChart3, Users, Grid, X } from 'lucide-react'
+import { BarChart3, Users, Grid, X, GitPullRequest } from 'lucide-react'
 import { Button } from "./ui/button"
 
 interface SidebarProps {
@@ -12,7 +12,8 @@ export default function Sidebar({ isOpen, setIsOpen, activeView, setActiveView }
   const navItems = [
     { name: 'Rankings', icon: Grid, value: 'rankings' },
     { name: 'Trombinoscope', icon: Users, value: 'trombinoscope' },
-    { name: 'Stats', icon: BarChart3, value: 'charts' },
+    // { name: 'Stats', icon: BarChart3, value: 'charts' },
+    { name: 'Contribute', icon: GitPullRequest, value: 'contribute' },
   ]
 
   return (
