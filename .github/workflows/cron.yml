@@ -1,8 +1,9 @@
-name: Auto Commit every 5 minutes
+name: Auto Commit every 30 minutes
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/30 * * * *'
+    
   workflow_dispatch:
 
 jobs:
