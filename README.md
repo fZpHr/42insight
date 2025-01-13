@@ -4,6 +4,8 @@ Welcome to ```42Insights```, the ultimate all-in-one solution for students of 42
 
 This website aims to centralize all the essential tools and resources students need, making your journey at 42 easier and more efficient. From rankings to trombinoscope and much more to come, we’ve got you covered.
 
+=> Access the website here : [42Insight](https://www.42insight.tech/)
+
 ## Features
 
 All of the Old Features from our existing website have been moved to one website such as :
