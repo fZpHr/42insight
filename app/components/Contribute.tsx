@@ -10,6 +10,7 @@ export default function Contribute() {
     { title: "More stats(activity,..)", status: "In Progress" },
     { title: "Our Find peers", status: "Planned" },
     { title: "Exam tracker", status: "Planned" },
+    { title: "RGPD Compliance", status: "Planned" },
     { title: "Mobile app", status: "In Discussion" },
     { title: "Tree-Graph Relation", "status": "In Discussion" },
     { title: "Extension for Search Engine/Overlay intra", status: "In Discussion" },

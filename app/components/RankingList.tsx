@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from "./ui/card"
 import { Badge } from "./ui/badge"
 import { Button } from "./ui/button"
-import { Trophy, Medal, Award, ChevronRight, Wallet, Activity, Clock, AlertCircle } from 'lucide-react'
+import { Trophy, Medal, Award, ChevronRight, Wallet, Activity, Clock, AlertCircle, ArrowUpDown } from 'lucide-react'
 import Image from 'next/image'
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
 import SearchBar from './SearchBar'
@@ -135,8 +135,9 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
                 variant="outline"
                 size="sm"
                 onClick={() => onActivityClick(student)}
+                disabled={true}
               >
-                <Activity className="mr-2 h-4 w-4" />
+                <Activity className="mr-2 h-4 w-4"  />
                 Activity
               </Button>
               <Button
@@ -161,7 +162,7 @@ const fetchStudents = async (): Promise<Student[]> => {
     .split('; ')
     .find(row => row.startsWith('token='))
     ?.split('=')[1];
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     const response = await fetch('/api/students', {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -185,6 +186,7 @@ export default function RankingList() {
   const [page, setPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState('asc')
 
   useEffect(() => {
     const loadStudents = async () => {
@@ -206,7 +208,6 @@ export default function RankingList() {
   const filteredStudents = useMemo(() => {
     let result = [...students]
 
-
     if (filter !== 'all') {
       result = result.filter(student => student.level === parseInt(filter))
     }
@@ -215,25 +216,26 @@ export default function RankingList() {
       result = result.filter(student => student.year === parseInt(year))
     }
 
+    const sortMultiplier = sortDirection === 'desc' ? -1 : 1
 
     switch (sort) {
       case 'level':
-        result.sort((a, b) => b.level - a.level)
+        result.sort((a, b) => sortMultiplier * (b.level - a.level))
         break
       case 'correction':
-        result.sort((a, b) => b.correctionPercentage - a.correctionPercentage).reverse()
+        result.sort((a, b) => sortMultiplier * (a.correctionPercentage - b.correctionPercentage))
         break
       case 'correctionPoints':
-        result.sort((a, b) => b.correctionPoints - a.correctionPoints)
+        result.sort((a, b) => sortMultiplier * (b.correctionPoints - a.correctionPoints))
         break
       case 'wallet':
-        result.sort((a, b) => b.wallet - a.wallet)
+        result.sort((a, b) => sortMultiplier * (b.wallet - a.wallet))
         break
       case 'blackhole':
-        result.sort((a, b) => a.blackholeTimer - b.blackholeTimer)
+        result.sort((a, b) => sortMultiplier * (a.blackholeTimer - b.blackholeTimer))
         break
       default:
-        result.sort((a, b) => b.level - a.level)
+        result.sort((a, b) => sortMultiplier * (b.level - a.level))
     }
 
     result = result.map((student, index) => ({
@@ -247,7 +249,7 @@ export default function RankingList() {
       )
     }
     return result
-  }, [students, searchQuery, filter, sort, year])
+  }, [students, searchQuery, filter, sort, year, sortDirection])
 
   const paginatedStudents = useMemo(() => {
     const startIndex = (page - 1) * ITEMS_PER_PAGE
@@ -273,6 +275,12 @@ export default function RankingList() {
     setActiveStudent(student)
   }, [])
 
+  const toggleSortDirection = useCallback(() => {
+    setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')
+    setPage(1)
+  }, [])
+
+
   if (error) {
     return (
       <div className="flex items-center justify-center p-8 text-red-500">
@@ -287,10 +295,20 @@ export default function RankingList() {
       <h2 className="text-3xl font-semibold mb-6">Student Rankings</h2>
       <div id="top" className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
         <SearchBar onSearch={handleSearch} />
-        <FilterSort
-          onSortChange={handleSortChange}
-          onYearChange={handleYearChange}
-        />
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleSortDirection}
+            className="flex items-center space-x-2"
+          >
+            <ArrowUpDown className="h-4 w-4" />
+          </Button>
+          <FilterSort
+            onSortChange={handleSortChange}
+            onYearChange={handleYearChange}
+          />
+        </div>
       </div>
 
 

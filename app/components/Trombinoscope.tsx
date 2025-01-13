@@ -53,24 +53,28 @@ export default function Trombinoscope() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
             >
-                <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 transform hover:scale-105">
-                <CardContent className="p-0">
+                <Card 
+                  className="overflow-hidden hover:shadow-lg transition-shadow duration-300 transform hover:scale-105 cursor-pointer"
+                  onClick={() => window.open(`https://profile.intra.42.fr/users/${student.name}`, '_blank')}
+                >
+                  <CardContent className="p-0">
                   <div className="relative aspect-square">
-                  <Image
+                    <Image
                     src={student.photoUrl}
                     alt={`${student.name}'s photo`}
                     layout="fill"
                     objectFit="cover"
-                  />
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
                   </div>
                   <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-1">{student.name}</h3>
-                  <div className="flex justify-between items-center">
+                    <h3 className="font-semibold text-lg mb-1">{student.name}</h3>
+                    <div className="flex justify-between items-center">
                     <Badge variant="secondary">Level {student.level}</Badge>
                     <span className="text-sm text-muted-foreground">Year {student.year}</span>
+                    </div>
                   </div>
-                  </div>
-                </CardContent>
+                  </CardContent>
                 </Card>
             </motion.div>
           ))}

@@ -26,6 +26,7 @@ export async function GET(request: Request) {
             throw new Error('No access token')
         }
 
+        await new Promise((resolve) => setTimeout(resolve, 500))
         const me = await axios.get('https://api.intra.42.fr/v2/me', {
             headers: { Authorization: `Bearer ${accessToken}` },
         })
@@ -33,9 +34,9 @@ export async function GET(request: Request) {
         if (me.status !== 200) {
             throw new Error('Invalid token')
         }
+
         return NextResponse.redirect(url, { headers: { 'Set-Cookie': `token=${accessToken}; Path=/` } })
     } catch (error) {
-        //console.error('Authentication Error:', error)
         return NextResponse.json({ error: 'Failed to authenticate' }, { status: 500 })
     }
 }

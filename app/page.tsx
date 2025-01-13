@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import * as React from 'react'
 import { Menu, BarChart3, Users, Grid } from 'lucide-react'
 import { ProfilePicture } from './components/ui/ProfilePicture'
 import { Button } from "./components/ui/button"
@@ -29,8 +30,6 @@ export default function Home() {
         return <Trombinoscope />
       case 'contribute':
         return <Contribute />
-      // case 'charts':
-      //   return <Charts />
       default:
         return <RankingList />
     }
@@ -49,21 +48,22 @@ export default function Home() {
         setIsLoggedIn(false);
         return;
       }
-
-      try {
-        const response = await fetch('/api/check', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setIsLoggedIn(response.ok);
-      } catch (error) {
-        console.error('Authentication Error:', error);
-        setIsLoggedIn(false);
-        return <Login />
-      }
-    };
-
-    checkAuth();
-  }, []);
+        try {
+          const response = await fetch('/api/getter', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json();
+          localStorage.setItem('login', data.login);
+          localStorage.setItem('profilePicture', data.image.versions.small);
+          setIsLoggedIn(response.ok);
+        } catch (error) {
+          console.error('Authentication Error:', error);
+          setIsLoggedIn(false);
+        }
+      };
+  
+      checkAuth();
+    }, []);
 
   if (isLoggedIn === null) {
     return (

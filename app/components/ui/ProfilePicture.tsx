@@ -10,33 +10,8 @@ export function ProfilePicture() {
     localStorage.removeItem('stayConnected');
     window.location.reload();
   };
-
-
-  const [login, setLogin] = React.useState<string | null>(null);
-  const [ProfilePicture, setProfilePicture] = React.useState<string | null>(null);
-    
-
-  React.useEffect(() => {
-    const fetchLogin = async () => {
-      try {
-        const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-        if (!token) {
-          throw new Error('Token not found');
-        }
-        const response = await fetch('/api/getter' , {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await response.json();
-        setLogin(data.login);
-        localStorage.setItem('login', data.login);
-        setProfilePicture(data.image.versions.small);
-      } catch (error) {
-        console.error('Error fetching login:', error);
-      }
-    };
-
-    fetchLogin();
-  }, []);
+  const login = localStorage.getItem('login');
+  const ProfilePicture = localStorage.getItem('profilePicture');
 
   return (
     <DropdownMenu.Root>
