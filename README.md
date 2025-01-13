@@ -42,3 +42,14 @@ git commit -m "Add your message here"
 git push origin feature/your-feature-name
 ```
 5. Open a pull request
+
+## Creators
+
+- [fZpHr](https://github.com/fZpHr)
+- [Haletran](https://github.com/Haletran)
+
+Feel free to reach out to us for any questions or suggestions!
+
+## License
+
+This project is licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute it as needed.
