@@ -292,7 +292,7 @@ export default function RankingList() {
   }
 
   const time = localStorage.getItem("time")
-  const updatedAt = time ? format(new Date(new Date(JSON.parse(time)[0].updatedAt).getTime() - 3600000), 'dd-MM-yyyy HH:mm:ss') : 'N/A'
+  const updatedAt = time ? format(new Date(JSON.parse(time)[0].updatedAt), 'dd-MM-yyyy HH:mm:ss') : 'N/A'
 
   return (
     <div className="max-w-7xl mx-auto px-4">
