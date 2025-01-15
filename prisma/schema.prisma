@@ -22,3 +22,8 @@ model Student {
   activityData         Json     @default("{\"activities\":[]}")
   blackholeTimer       Int
 }
+
+model UpdateTimestamp {
+  id        Int      @id @default(autoincrement())
+  updatedAt DateTime @updatedAt
+}

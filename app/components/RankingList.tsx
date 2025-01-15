@@ -12,6 +12,7 @@ import SearchBar from './SearchBar'
 import FilterSort from './FilterSort'
 import ActivityOverlay from './ActivityOverlay'
 import { useInView } from 'react-intersection-observer'
+import { format } from 'date-fns';
 
 interface Student {
   id: number
@@ -137,7 +138,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
                 onClick={() => onActivityClick(student)}
                 disabled={true}
               >
-                <Activity className="mr-2 h-4 w-4"  />
+                <Activity className="mr-2 h-4 w-4" />
                 Activity
               </Button>
               <Button
@@ -159,9 +160,9 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
 const fetchStudents = async (): Promise<Student[]> => {
   try {
     const token = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('token='))
-    ?.split('=')[1];
+      .split('; ')
+      .find(row => row.startsWith('token='))
+      ?.split('=')[1];
     await new Promise(resolve => setTimeout(resolve, 1000));
     const response = await fetch('/api/students', {
       headers: { Authorization: `Bearer ${token}` }
@@ -290,10 +291,14 @@ export default function RankingList() {
     )
   }
 
+  const time = localStorage.getItem("time")
+  const updatedAt = time ? format(new Date(new Date(JSON.parse(time)[0].updatedAt).getTime() - 3600000), 'dd-MM-yyyy HH:mm:ss') : 'N/A'
+
   return (
     <div className="max-w-7xl mx-auto px-4">
       <h2 className="text-3xl font-semibold mb-6">Student Rankings</h2>
-      <div id="top" className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
+      <p className="text-sm text-muted-foreground mb-6"> Last updated: {updatedAt}</p >
+      < div id="top" className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 md:space-x-4" >
         <SearchBar onSearch={handleSearch} />
         <div className="flex items-center space-x-4">
           <Button
@@ -312,83 +317,87 @@ export default function RankingList() {
       </div>
 
 
-      {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="h-32" />
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <>
+      {
+        isLoading ? (
           <div className="space-y-4">
-            <p className="text-sm text-gray-500">
-                  Your position : <strong>{filteredStudents.findIndex(student => student.name === localStorage.getItem('login')) + 1 || 'N/A'}</strong> / {filteredStudents.length}
-              <a
-                href="#"
-                className="ml-2 text-purple-600 underline"
-                onClick={(e) => {
-                  e.preventDefault();
-                  const login = localStorage.getItem('login') || '';
-                  const position = filteredStudents.findIndex(student => student.name === login) + 1;
-                  if (position === 0) return;
-                  const pageToGo = Math.ceil(position / ITEMS_PER_PAGE);
-                  if (pageToGo === page) return;
-                  setPage(pageToGo);
-                  setTimeout(() => {
-                    const top = document.getElementById(login);
-                    top?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    if (top) {
-                      top.style.border = '2px solid rgb(147 51 234)';
-                    }
-                  }, 0);
-                }}
-              >
-                (page {Math.ceil((filteredStudents.findIndex(student => student.name === localStorage.getItem('login')) + 1) / ITEMS_PER_PAGE) || 'N/A'})
-              </a>
-            </p>
-            {paginatedStudents.map((student) => (
-              <StudentCard
-                key={student.id}
-                student={student}
-                index={student.rank - 1}
-                onActivityClick={handleActivityClick}
-              />
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="h-32" />
+              </Card>
             ))}
           </div>
-
-          {filteredStudents.length > ITEMS_PER_PAGE && (
-            <div className="flex justify-center mt-8 space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setPage(p => p + 1);
-                  const top = document.getElementById('top');
-                  top?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                disabled={page * ITEMS_PER_PAGE >= filteredStudents.length}
-              >
-                Next
-              </Button>
+        ) : (
+          <>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">
+                Your position : <strong>{filteredStudents.findIndex(student => student.name === localStorage.getItem('login')) + 1 || 'N/A'}</strong> / {filteredStudents.length}
+                <a
+                  href="#"
+                  className="ml-2 text-purple-600 underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const login = localStorage.getItem('login') || '';
+                    const position = filteredStudents.findIndex(student => student.name === login) + 1;
+                    if (position === 0) return;
+                    const pageToGo = Math.ceil(position / ITEMS_PER_PAGE);
+                    if (pageToGo === page) return;
+                    setPage(pageToGo);
+                    setTimeout(() => {
+                      const top = document.getElementById(login);
+                      top?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      if (top) {
+                        top.style.border = '2px solid rgb(147 51 234)';
+                      }
+                    }, 0);
+                  }}
+                >
+                  (page {Math.ceil((filteredStudents.findIndex(student => student.name === localStorage.getItem('login')) + 1) / ITEMS_PER_PAGE) || 'N/A'})
+                </a>
+              </p>
+              {paginatedStudents.map((student) => (
+                <StudentCard
+                  key={student.id}
+                  student={student}
+                  index={student.rank - 1}
+                  onActivityClick={handleActivityClick}
+                />
+              ))}
             </div>
-          )}
-        </>
-      )}
 
-      {activeStudent && (
-        <ActivityOverlay
-          student={activeStudent}
-          onClose={() => setActiveStudent(null)}
-        />
-      )}
-    </div>
+            {filteredStudents.length > ITEMS_PER_PAGE && (
+              <div className="flex justify-center mt-8 space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPage(p => p + 1);
+                    const top = document.getElementById('top');
+                    top?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  disabled={page * ITEMS_PER_PAGE >= filteredStudents.length}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </>
+        )
+      }
+
+      {
+        activeStudent && (
+          <ActivityOverlay
+            student={activeStudent}
+            onClose={() => setActiveStudent(null)}
+          />
+        )
+      }
+    </div >
   )
 }
