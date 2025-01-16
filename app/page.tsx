@@ -12,7 +12,7 @@ import Sidebar from "./components/Sidebar"
 import { DarkModeToggle } from "./components/DarkModeToggle"
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Login }  from './components/Login'
+import { Login } from './components/Login'
 import { Loader } from 'lucide-react'
 import Contribute from './components/Contribute'
 
@@ -48,32 +48,34 @@ export default function Home() {
         setIsLoggedIn(false);
         return;
       }
-        try {
-          const response = await fetch('/api/getter', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const data = await response.json();
-          localStorage.setItem('login', data.login);
-          localStorage.setItem('profilePicture', data.image.versions.small);
-          setIsLoggedIn(response.ok);
-        } catch (error) {
-          console.error('Authentication Error:', error);
-          setIsLoggedIn(false);
-        }
-      };
-  
-      checkAuth();
-    }, []);
+      try {
+        const response = await fetch('/api/getter', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        localStorage.setItem('login', data.login);
+        localStorage.setItem('profilePicture', data.image.versions.small);
+        const time = await fetch('/api/time');
+        localStorage.setItem('time', JSON.stringify(await time.json()));
+        setIsLoggedIn(response.ok);
+      } catch (error) {
+        console.error('Authentication Error:', error);
+        setIsLoggedIn(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   if (isLoggedIn === null) {
     return (
-    <div className="flex justify-center items-center h-screen">
-      <Loader className="animate-spin h-8 w-8 text-gray-500" />
-    </div>
+      <div className="flex justify-center items-center h-screen">
+        <Loader className="animate-spin h-8 w-8 text-gray-500" />
+      </div>
     )
   }
 
-  if (!isLoggedIn ) {
+  if (!isLoggedIn) {
     return <Login />
   }
 
