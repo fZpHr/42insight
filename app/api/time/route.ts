@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 
 export async function GET(req: Request) {
     try {
-        const time = await prisma.UpdateTimestamp.findMany({
+        const time = await prisma.updateTimestamp.findMany({
             orderBy: {
                 updatedAt: 'desc'
             },
