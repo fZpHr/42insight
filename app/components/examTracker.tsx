@@ -246,15 +246,42 @@ export default function ExamTracker() {
                     <AlertTitle>Note</AlertTitle>
                     <AlertDescription className="text-muted-foreground" >The fetch will only display students whose exams are today.</AlertDescription>
                 </Alert>
-                {isUpdating && (
-                    <div className="flex justify-center items-center mb-6">
-                        <div className="animate-spin h-10 w-10 text-gray-600">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </div>
-                    </div>
+
+                {isUpdating && students.length === 0 && (
+                    <Table className="mt-5">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Student</TableHead>
+                                <TableHead>Grade</TableHead>
+                                <TableHead>Exam</TableHead>
+                                <TableHead>Last Update</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {[...Array(5)].map((_, index) => (
+                                <TableRow key={index}>
+                                    <TableCell>
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-10 h-10 bg-gray-500 rounded-full animate-pulse"></div>
+                                            <div className="h-4 bg-gray-500 rounded w-24 animate-pulse"></div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="h-4 bg-gray-500 rounded w-12 animate-pulse"></div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="h-4 bg-gray-500 rounded w-20 animate-pulse"></div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 )}
 
                 {students.length > 0 && (
