@@ -261,8 +261,8 @@ export default function ExamTracker() {
                     <>
                         <p><strong>Total Students:</strong> {students.length}</p>
                         <p><strong>Average Grade:</strong> {averageGrade.toFixed(2)}%</p>
-                    </>
-                )}
+                    
+                
                 <Table className="mt-5">
                   <TableHeader>
                     <TableRow>
@@ -290,7 +290,7 @@ export default function ExamTracker() {
                           </Badge>
                         </TableCell>
                         <TableCell>{getExamName(student.examId)}</TableCell>
-                        <TableCell>{student.lastUpdate.toLocaleTimeString()}</TableCell>
+                        <TableCell>{student.lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
                         <TableCell>
                         <Link href={`https://profile.intra.42.fr/users/${student.id}`} target="_blank" className="flex items-center text-blue-500 hover:underline">
                             View Profile
@@ -301,6 +301,8 @@ export default function ExamTracker() {
                     ))}
                   </TableBody>
                 </Table>
+                </>
+                )}
             </CardContent>
         </Card >
         </div>
