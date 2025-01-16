@@ -55,7 +55,7 @@ export function Login() {
       <Card className="w-[350px]">
         <CardHeader>
           <CardTitle>Welcome Back</CardTitle>
-          <CardDescription>Login to access 42Insights</CardDescription>
+          <CardDescription>Login to access 42Insight</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <LoginButton onLogin={handleLogin} isLoading={isLoading}/>
