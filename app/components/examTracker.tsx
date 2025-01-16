@@ -28,37 +28,25 @@ interface Student {
 }
 
 async function getRequestsLeft(CLIENT_ID: string, CLIENT_SECRET: string) {
-    const accessToken = await getToken(CLIENT_ID, CLIENT_SECRET)
     const response = await axios.post('/api/proxy', {
         endpoint: '/users/norminet',
-        token: accessToken
+        CLIENT_ID,
+        CLIENT_SECRET
     })
 
     return response.data.headers['x-hourly-ratelimit-remaining']
 }
 
-async function getToken(CLIENT_ID: string, CLIENT_SECRET: string) {
-    const response = await axios.post('https://api.intra.42.fr/oauth/token', {
-        grant_type: 'client_credentials',
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-    })
-
-    return response.data.access_token
-}
-
-
 async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string) {
     let initialStudents: Student[] = []
     const exam_id = ["1324", "1323", "1322", "1321", "1320"]
-
-    const accessToken = await getToken(CLIENT_ID, CLIENT_SECRET)
     
     for (let i = 0; i < exam_id.length; i++) {
         try {
             const response = await axios.post('/api/proxy', {
                 endpoint: `/projects/${exam_id[i]}/users?filter[primary_campus_id]=31&per_page=100`,
-                token: accessToken
+                CLIENT_ID,
+                CLIENT_SECRET
             })
             
             const studentsData = response.data.data.map((student: { id: number; login: string; image: { versions: { small: string } } }) => ({
@@ -80,8 +68,6 @@ async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string
 }
 
 async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Student[]) {
-    const accessToken = await getToken(CLIENT_ID, CLIENT_SECRET)
-
     for (let i = 0; i < students.length; i += 20) {
         const batch = students.slice(i, i + 20)
         const userIds = batch.map(student => student.id).join(',')
@@ -89,7 +75,8 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
         try {
             const response = await axios.post('/api/proxy', {
                 endpoint: `/projects_users?filter[project_id]=${batch.map(student => student.examId).join(',')}&per_page=100&filter[user_id]=${userIds}`,
-                token: accessToken
+                CLIENT_ID,
+                CLIENT_SECRET
             })
             
             const projectUsers = response.data.data
@@ -111,6 +98,8 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
     students = students.filter(student => student.isToday)
     return students
 }
+
+// You can remove the getToken function from the frontend since it's now handled by the backend
 
 
 function getExamName(examId: string) {
