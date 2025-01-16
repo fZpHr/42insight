@@ -3,6 +3,15 @@ import { LoginButton } from "./LoginButton"
 import { Checkbox } from "./ui/checkbox"
 import { useState } from 'react'
 
+function reset() {
+  document.cookie.split(";").forEach((c) => {
+    document.cookie = c
+.replace(/^ +/, "")
+.replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+  });
+  localStorage.clear();
+  sessionStorage.clear();
+}
 
 export function Login() {
 
@@ -12,6 +21,7 @@ export function Login() {
     //     localStorage.setItem('stayConnected', checked.toString());
     // }
   const handleLogin = async () => {
+    reset();
     const loginUrl = new URL('https://api.intra.42.fr/oauth/authorize');
     const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
     if (!clientId) {

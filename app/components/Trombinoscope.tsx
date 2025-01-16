@@ -14,7 +14,6 @@ interface Student {
   year: number
 }
 
-
 const fetchStudents = async (): Promise<Student[]> => {
   try {
     const token = document.cookie
@@ -34,11 +33,22 @@ const fetchStudents = async (): Promise<Student[]> => {
   }
 }
 
+const fetchStudentsOnce = async (): Promise<Student[]> => {
+  const cachedStudents = sessionStorage.getItem('students');
+  if (cachedStudents) {
+    return JSON.parse(cachedStudents);
+  }
+
+  const students = await fetchStudents();
+  sessionStorage.setItem('students', JSON.stringify(students));
+  return students;
+};
+
 export default function Trombinoscope() {
   const [students, setStudents] = useState<Student[]>([])
 
   useEffect(() => {
-    fetchStudents().then(setStudents)
+    fetchStudentsOnce().then(setStudents)
   }, [])
 
   return (
@@ -47,38 +57,37 @@ export default function Trombinoscope() {
       <p className="text-sm text-muted-foreground mb-4">Number of students: {students.length}</p>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {students.map((student, index) => (
-            <motion.div
-              key={student.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
+        <motion.div
+          key={student.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.05 }}
+        >
+            <Card 
+          className="overflow-hidden hover:shadow-lg transition-shadow duration-300 transform hover:scale-105 cursor-pointer"
+          onClick={() => window.open(`https://profile.intra.42.fr/users/${student.name}`, '_blank')}
             >
-                <Card 
-                  className="overflow-hidden hover:shadow-lg transition-shadow duration-300 transform hover:scale-105 cursor-pointer"
-                  onClick={() => window.open(`https://profile.intra.42.fr/users/${student.name}`, '_blank')}
-                >
-                  <CardContent className="p-0">
-                  <div className="relative aspect-square">
-                    <Image
-                    src={student.photoUrl}
-                    alt={`${student.name}'s photo`}
-                    layout="fill"
-                    objectFit="cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg mb-1">{student.name}</h3>
-                    <div className="flex justify-between items-center">
-                    <Badge variant="secondary">Level {student.level}</Badge>
-                    <span className="text-sm text-muted-foreground">Year {student.year}</span>
-                    </div>
-                  </div>
-                  </CardContent>
-                </Card>
-            </motion.div>
+          <CardContent className="p-0">
+          <div className="relative aspect-square">
+            <Image
+            src={student.photoUrl}
+            alt={`${student.name}'s photo`}
+            layout="fill"
+            objectFit="cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          </div>
+          <div className="p-4">
+            <h3 className="font-semibold text-lg mb-1">{student.name}</h3>
+            <div className="flex justify-between items-center">
+            <Badge variant="secondary">Level {student.level}</Badge>
+            <span className="text-sm text-muted-foreground">Year {student.year}</span>
+            </div>
+          </div>
+          </CardContent>
+            </Card>
+        </motion.div>
           ))}
-    </div>
+        </div>
   </div>
 )}
-

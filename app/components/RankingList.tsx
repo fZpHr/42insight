@@ -176,6 +176,16 @@ const fetchStudents = async (): Promise<Student[]> => {
     return []
   }
 }
+const fetchStudentsOnce = async (): Promise<Student[]> => {
+  const cachedStudents = sessionStorage.getItem('students');
+  if (cachedStudents) {
+    return JSON.parse(cachedStudents);
+  }
+
+  const students = await fetchStudents();
+  sessionStorage.setItem('students', JSON.stringify(students));
+  return students;
+};
 
 export default function RankingList() {
   const [students, setStudents] = useState<Student[]>([])
@@ -194,7 +204,7 @@ export default function RankingList() {
       try {
         setIsLoading(true)
         setError(null)
-        const data = await fetchStudents()
+        const data = await fetchStudentsOnce()
         setStudents(data)
       } catch (err) {
         setError('Failed to load students. Please try again later.')

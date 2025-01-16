@@ -3,6 +3,17 @@ import * as Avatar from "@radix-ui/react-avatar"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 import { User, LogOut } from 'lucide-react'
 
+function reset() {
+  document.cookie.split(";").forEach((c) => {
+    document.cookie = c
+.replace(/^ +/, "")
+.replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+  });
+  localStorage.clear();
+  sessionStorage.clear();
+  window.location.reload();
+}
+
 export function ProfilePicture() {
 
   const removeTokenCookie = () => {
@@ -42,7 +53,7 @@ export function ProfilePicture() {
           sideOffset={5}
           align="end"
         >
-          <DropdownMenu.Item className="flex items-center px-2 py-2 text-sm outline-none cursor-default focus:bg-accent focus:text-accent-foreground text-red-500" onClick={removeTokenCookie}>
+          <DropdownMenu.Item className="flex items-center px-2 py-2 text-sm outline-none cursor-default focus:bg-accent focus:text-accent-foreground text-red-500" onClick={reset}>
             <LogOut className="mr-2 h-4 w-4 " />
             <span>Log out</span>
           </DropdownMenu.Item>

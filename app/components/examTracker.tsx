@@ -9,12 +9,13 @@ import { Badge } from "./ui/badge"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
 import { Label } from "./ui/label"
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Car } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
 import { isToday } from "date-fns"
-import { Avatar, AvatarImage, AvatarFallback } from "@radix-ui/react-avatar"
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar"
 import { Checkbox } from "./ui/checkbox"
-
+import Link from 'next/link'
+import { ExternalLink } from 'lucide-react'
 
 interface Student {
     id: number
@@ -121,7 +122,6 @@ function getExamName(examId: string) {
     }
 }
 
-
 export default function ExamTracker() {
     const [students, setStudents] = useState<Student[]>([])
     const [apiKey1, setApiKey1] = useState('')
@@ -167,10 +167,22 @@ export default function ExamTracker() {
         return 'bg-red-500'
     }
 
+    const COLORS = ['#4CAF50', '#F44336']
+
+    useEffect(() => {
+        const storedApiKey1 = localStorage.getItem('apiKey1');
+        const storedApiKey2 = localStorage.getItem('apiKey2');
+        if (storedApiKey1) setApiKey1(storedApiKey1);
+        if (storedApiKey2) setApiKey2(storedApiKey2);
+    }, []);
+    const averageGrade = students.reduce((sum, student) => sum + (student.grade || 0), 0) / students.length
+
     return (
+        <div>
         <Card>
             <CardHeader>
                 <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
+                <p className="text-muted-foreground">Data is updated every 30min</p>
             </CardHeader>
             <CardContent>
                 <div className="mb-6 space-y-4">
@@ -183,7 +195,6 @@ export default function ExamTracker() {
                                 placeholder="Enter API Key 1"
                                 value={apiKey1}
                                 onChange={(e) => setApiKey1(e.target.value)}
-                                autoComplete="username"
                             />
                         </div>
                         <div className="space-y-2">
@@ -194,7 +205,6 @@ export default function ExamTracker() {
                                 placeholder="Enter API Key 2"
                                 value={apiKey2}
                                 onChange={(e) => setApiKey2(e.target.value)}
-                                autoComplete="current-password"
                             />
                         </div>
                         <div className="flex items-end">
@@ -203,8 +213,19 @@ export default function ExamTracker() {
                             </Button>
                         </div>
                     </div>
-                    {/* <div className="items-top flex space-x-2">
-                        <Checkbox id="save-keys" />
+                    <div className="items-top flex space-x-2">
+                        <Checkbox 
+                            id="save-keys"
+                            onCheckedChange={(checked) => {
+                                if (checked) {
+                                    localStorage.setItem('apiKey1', apiKey1);
+                                    localStorage.setItem('apiKey2', apiKey2);
+                                } else {
+                                    localStorage.removeItem('apiKey1');
+                                    localStorage.removeItem('apiKey2');
+                                }
+                            }} 
+                        />
                         <div className="grid gap-1.5 leading-none">
                             <label
                                 htmlFor="save-keys"
@@ -213,10 +234,10 @@ export default function ExamTracker() {
                                 Save API keys for future use
                             </label>
                             <p className="text-sm text-muted-foreground">
-                                By checking this box, you agree to our Terms of Service and Privacy Policy.
+                                Store your API keys in your local storage
                             </p>
                         </div>
-                    </div> */}
+                    </div>
                 </div>
                 {requestsLeft && (
                     <Alert variant="default" className="mb-6">
@@ -231,35 +252,57 @@ export default function ExamTracker() {
                         <AlertDescription>{error}</AlertDescription>
                     </Alert>
                 )}
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>#</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Grade</TableHead>
-                            <TableHead>Exam</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {students.map((student) => (
-                            <TableRow key={student.id}>
-                                <TableCell></TableCell>
-                                <Avatar className="rounded-full w-8 h-8">
-                                    <AvatarImage src={student.photo} alt={student.name} />
-                                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <TableCell className="font-medium">{student.name}</TableCell>
-                                <TableCell>
-                                    <Badge className={getGradeBadgeColor(student.grade)}>
-                                        {student.grade}%
-                                    </Badge>
-                                </TableCell>
-                                <TableCell>{getExamName(student.examId)}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
+                <Alert variant="default" className="mb-6">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Note</AlertTitle>
+                    <AlertDescription className="text-muted-foreground" >The fetch will only display students whose exams are today.</AlertDescription>
+                </Alert>
+                {students.length > 0 && (
+                    <>
+                        <p><strong>Total Students:</strong> {students.length}</p>
+                        <p><strong>Average Grade:</strong> {averageGrade.toFixed(2)}%</p>
+                    </>
+                )}
+                <Table className="mt-5">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Exam</TableHead>
+                      <TableHead>Last Update</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {students.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="w-10 h-10">
+                              <AvatarImage src={student.photo} alt={student.name} style={{ objectFit: 'cover' }} />
+                              <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            </Avatar>
+                            <span>{student.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getGradeBadgeColor(student.grade || 0)}>
+                            {student.grade !== undefined ? `${student.grade}%` : 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{getExamName(student.examId)}</TableCell>
+                        <TableCell>{student.lastUpdate.toLocaleTimeString()}</TableCell>
+                        <TableCell>
+                        <Link href={`https://profile.intra.42.fr/users/${student.id}`} target="_blank" className="flex items-center text-blue-500 hover:underline">
+                            View Profile
+                            <ExternalLink className="ml-1 h-4 w-4" />
+                        </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
                 </Table>
             </CardContent>
         </Card >
+        </div>
     )
 }
