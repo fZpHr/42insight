@@ -29,14 +29,13 @@ interface Student {
 
 async function getRequestsLeft(CLIENT_ID: string, CLIENT_SECRET: string) {
     const accessToken = await getToken(CLIENT_ID, CLIENT_SECRET)
-    const response = await axios.get('https://api.intra.42.fr/v2/users/norminet', {
-        headers: { Authorization: `Bearer ${accessToken}` },
+    const response = await axios.post('/api/proxy', {
+        endpoint: '/users/norminet',
+        token: accessToken
     })
 
-    const requestsLeft = response.headers['x-hourly-ratelimit-remaining'];
-    return requestsLeft;
+    return response.data.headers['x-hourly-ratelimit-remaining']
 }
-
 
 async function getToken(CLIENT_ID: string, CLIENT_SECRET: string) {
     const response = await axios.post('https://api.intra.42.fr/oauth/token', {
@@ -48,17 +47,21 @@ async function getToken(CLIENT_ID: string, CLIENT_SECRET: string) {
     return response.data.access_token
 }
 
+
 async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string) {
     let initialStudents: Student[] = []
     const exam_id = ["1324", "1323", "1322", "1321", "1320"]
 
     const accessToken = await getToken(CLIENT_ID, CLIENT_SECRET)
+    
     for (let i = 0; i < exam_id.length; i++) {
         try {
-            const response = await axios.get(`https://api.intra.42.fr/v2/projects/${exam_id[i]}/users?filter[primary_campus_id]=31&per_page=100`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
+            const response = await axios.post('/api/proxy', {
+                endpoint: `/projects/${exam_id[i]}/users?filter[primary_campus_id]=31&per_page=100`,
+                token: accessToken
             })
-            const studentsData = response.data.map((student: { id: number; login: string; image: { versions: { small: string } } }) => ({
+            
+            const studentsData = response.data.data.map((student: { id: number; login: string; image: { versions: { small: string } } }) => ({
                 id: student.id,
                 name: student.login,
                 photo: student.image.versions.small,
@@ -69,6 +72,7 @@ async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string
             }))
             initialStudents = [...initialStudents, ...studentsData.filter((student: Student) => !initialStudents.some(s => s.id === student.id))]
         } catch (error) {
+            console.error('Error fetching students:', error)
         }
         await new Promise(resolve => setTimeout(resolve, 1000))
     }
@@ -83,10 +87,12 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
         const userIds = batch.map(student => student.id).join(',')
 
         try {
-            const response = await axios.get(`https://api.intra.42.fr/v2/projects_users?filter[project_id]=${batch.map(student => student.examId).join(',')}&per_page=100&filter[user_id]=${userIds}`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
+            const response = await axios.post('/api/proxy', {
+                endpoint: `/projects_users?filter[project_id]=${batch.map(student => student.examId).join(',')}&per_page=100&filter[user_id]=${userIds}`,
+                token: accessToken
             })
-            const projectUsers = response.data
+            
+            const projectUsers = response.data.data
 
             for (const projectUser of projectUsers) {
                 const student = batch.find(s => s.id === projectUser.user.id)
