@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from "./ui/card"
 import { Badge } from "./ui/badge"
 import { Button } from "./ui/button"
-import { Trophy, Medal, Award, ChevronRight, Wallet, Activity, Clock, AlertCircle, ArrowUpDown } from 'lucide-react'
+import { Trophy, Medal, Award, ChevronRight, Wallet, Activity, Clock, AlertCircle, ArrowUpDown, ChevronsRight, ChevronLeft } from 'lucide-react'
 import Image from 'next/image'
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
 import SearchBar from './SearchBar'
@@ -368,21 +368,49 @@ export default function RankingList() {
               <div className="flex justify-center mt-8 space-x-2">
                 <Button
                   variant="outline"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  onClick={() => {
+                    if (page > 1) {
+                      setPage(page - 1);
+                      document.getElementById('top')?.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
                   disabled={page === 1}
                 >
-                  Previous
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
+                {Array.from({ length: Math.ceil(filteredStudents.length / ITEMS_PER_PAGE) }, (_, i) => {
+                  const pageNumber = i + 1;
+                  const isCurrentPage = pageNumber === page;
+                  const isNearCurrentPage = pageNumber >= page - 2 && pageNumber <= page + 2;
+
+                  if (isCurrentPage || isNearCurrentPage) {
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={isCurrentPage ? 'default' : 'outline'}
+                        onClick={() => {
+                          setPage(pageNumber);
+                          document.getElementById('top')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  }
+
+                  return null;
+                })}
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setPage(p => p + 1);
-                    const top = document.getElementById('top');
-                    top?.scrollIntoView({ behavior: 'smooth' });
+                    if (page < Math.ceil(filteredStudents.length / ITEMS_PER_PAGE)) {
+                      setPage(page + 1);
+                      document.getElementById('top')?.scrollIntoView({ behavior: 'smooth' });
+                    }
                   }}
-                  disabled={page * ITEMS_PER_PAGE >= filteredStudents.length}
+                  disabled={page === Math.ceil(filteredStudents.length / ITEMS_PER_PAGE)}
                 >
-                  Next
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}

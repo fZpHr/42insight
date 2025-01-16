@@ -1,4 +1,4 @@
-import { BarChart3, Users, Grid, X, GitPullRequest } from 'lucide-react'
+import { BarChart3, Users, Grid, X, GitPullRequest, LinkIcon } from 'lucide-react'
 import { Button } from "./ui/button"
 
 interface SidebarProps {
@@ -12,7 +12,8 @@ export default function Sidebar({ isOpen, setIsOpen, activeView, setActiveView }
   const navItems = [
     { name: 'Rankings', icon: Grid, value: 'rankings' },
     { name: 'Trombinoscope', icon: Users, value: 'trombinoscope' },
-    // { name: 'Stats', icon: BarChart3, value: 'charts' },
+    { name: 'Exam Tracker', icon: BarChart3, value: 'exam-tracker' },
+    { name: 'Useful Links', icon: LinkIcon, value: 'useful-links' },
     { name: 'Contribute', icon: GitPullRequest, value: 'contribute' },
   ]
 
@@ -24,8 +25,8 @@ export default function Sidebar({ isOpen, setIsOpen, activeView, setActiveView }
     `}>
       <div className="flex items-center justify-between p-4 border-b border-border">
         <h2 className="text-xl font-semibold text-foreground">42 Insight</h2>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
           className="md:hidden"
           onClick={() => setIsOpen(false)}

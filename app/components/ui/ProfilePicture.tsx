@@ -42,8 +42,8 @@ export function ProfilePicture() {
           sideOffset={5}
           align="end"
         >
-          <DropdownMenu.Item className="flex items-center px-2 py-2 text-sm outline-none cursor-default focus:bg-accent focus:text-accent-foreground" onClick={removeTokenCookie}>
-            <LogOut className="mr-2 h-4 w-4"/>
+          <DropdownMenu.Item className="flex items-center px-2 py-2 text-sm outline-none cursor-default focus:bg-accent focus:text-accent-foreground text-red-500" onClick={removeTokenCookie}>
+            <LogOut className="mr-2 h-4 w-4 " />
             <span>Log out</span>
           </DropdownMenu.Item>
         </DropdownMenu.Content>

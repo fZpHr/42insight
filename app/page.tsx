@@ -2,20 +2,19 @@
 
 import { useState } from 'react'
 import * as React from 'react'
-import { Menu, BarChart3, Users, Grid } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { ProfilePicture } from './components/ui/ProfilePicture'
 import { Button } from "./components/ui/button"
 import RankingList from "./components/RankingList"
 import Trombinoscope from "./components/Trombinoscope"
-import Charts from "./components/Charts"
 import Sidebar from "./components/Sidebar"
 import { DarkModeToggle } from "./components/DarkModeToggle"
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Login } from './components/Login'
 import { Loader } from 'lucide-react'
 import Contribute from './components/Contribute'
-
+import UsefulLinks from './components/UsefulLinks'
+import ExamTracker from './components/examTracker'
 
 export default function Home() {
 
@@ -30,6 +29,10 @@ export default function Home() {
         return <Trombinoscope />
       case 'contribute':
         return <Contribute />
+      case 'useful-links':
+        return <UsefulLinks />
+      case 'exam-tracker':
+        return <ExamTracker />
       default:
         return <RankingList />
     }
