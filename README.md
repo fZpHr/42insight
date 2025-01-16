@@ -12,11 +12,11 @@ All of the Old Features from our existing website have been moved to one website
 
 - 🏆 Rankings (Level, Correcteur, ...)
 - 👥 Trombinoscope
+- 📈 Exam tracker
 
 ### 🚀 Upcoming Features : 
 
 - Our own ``find-peers`` since the current one is not regurlarly updated
-- An ``Exam tracker``, to track the current students doing their exams
 - A ```Tree-Graph Relation```
 
 ## Stack
