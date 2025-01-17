@@ -101,7 +101,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
             <Badge variant="secondary" className="mt-1">Level {student.level}</Badge>
             {student.correctionPercentage !== 420 && student.correctionTotal >= 10 && (
               <>
-                <p className="text-sm text-gray-500 mt-1">Correction: {student.correctionPercentage}% | KDA {student.correctionTotal - student.correctionPositive}/{student.correctionPositive}</p>
+                <p className="text-sm text-gray-500 mt-1">Correction: {student.correctionPercentage}% ({student.correctionTotal - student.correctionPositive}/{student.correctionPositive})</p>
               </>
               )}
                 <p className="text-sm text-gray-500">Correction Points: {student.correctionPoints}</p>
