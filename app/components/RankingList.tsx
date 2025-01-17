@@ -85,7 +85,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
         <CardContent className="flex items-center p-4">
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mr-4 overflow-hidden">
             <Image
-              src={student.photoUrl}
+              src={student.photoUrl || "/placeholder.svg"}
               alt={`${student.name}'s photo`}
               width={128}
               height={128}
@@ -99,20 +99,26 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
               {getRankIcon(index + 1)}
             </div>
             <Badge variant="secondary" className="mt-1">Level {student.level}</Badge>
-            <p className="text-sm text-gray-500 mt-1">Correction: {student.correctionPercentage}%</p>
-            <p className="text-sm text-gray-500">Correction Points: {student.correctionPoints}</p>
+            {student.correctionPercentage !== 420 && student.correctionTotal >= 10 && (
+              <>
+                <p className="text-sm text-gray-500 mt-1">Correction: {student.correctionPercentage}% | KDA {student.correctionTotal - student.correctionPositive}/{student.correctionPositive}</p>
+              </>
+              )}
+                <p className="text-sm text-gray-500">Correction Points: {student.correctionPoints}</p>
             <p className="text-sm text-muted-foreground">Year: {student.year}</p>
             <div className="flex items-center mt-1 space-x-2">
               <div className="flex items-center">
                 <Wallet className="w-4 h-4 mr-1 text-green-500" />
                 <span className="text-sm font-semibold text-green-500">{student.wallet} ₳</span>
               </div>
-              <div className="flex items-center">
-                <Clock className={`w-4 h-4 mr-1 ${getBlackholeColor(student.blackholeTimer)}`} />
-                <span className={`text-sm font-semibold ${getBlackholeColor(student.blackholeTimer)}`}>
-                  {student.blackholeTimer} days
-                </span>
-              </div>
+              {student.blackholeTimer !== 420 && (
+                <div className="flex items-center">
+                  <Clock className={`w-4 h-4 mr-1 ${getBlackholeColor(student.blackholeTimer)}`} />
+                  <span className={`text-sm font-semibold ${getBlackholeColor(student.blackholeTimer)}`}>
+                    {student.blackholeTimer} days
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-end">
@@ -234,16 +240,34 @@ export default function RankingList() {
         result.sort((a, b) => sortMultiplier * (b.level - a.level))
         break
       case 'correction':
-        result.sort((a, b) => sortMultiplier * (a.correctionPercentage - b.correctionPercentage))
-        break
+        result.sort((a, b) => {
+        if ((a.correctionPercentage === 420 && b.correctionPercentage === 420) || (a.correctionTotal < 10 && b.correctionTotal < 10)) {
+          return 0;
+        }
+        if (a.correctionPercentage === 420 || a.correctionTotal < 10) {
+          return 1;
+        }
+        if (b.correctionPercentage === 420 || b.correctionTotal < 10) {
+          return -1;
+        }
+        return sortMultiplier * (a.correctionPercentage - b.correctionPercentage);
+      });
+      break;
       case 'correctionPoints':
-        result.sort((a, b) => sortMultiplier * (b.correctionPoints - a.correctionPoints))
+        result.sort((a, b) => {
+          return sortMultiplier * (b.correctionPoints - a.correctionPoints);
+        })
         break
       case 'wallet':
         result.sort((a, b) => sortMultiplier * (b.wallet - a.wallet))
         break
       case 'blackhole':
-        result.sort((a, b) => sortMultiplier * (a.blackholeTimer - b.blackholeTimer))
+        result.sort((a, b) => {
+          if (a.blackholeTimer === 420 && b.blackholeTimer === 420) return 0;
+          if (a.blackholeTimer === 420) return 1;
+          if (b.blackholeTimer === 420) return -1;
+          return sortMultiplier * (a.blackholeTimer - b.blackholeTimer);
+        })
         break
       default:
         result.sort((a, b) => sortMultiplier * (b.level - a.level))
@@ -439,3 +463,4 @@ export default function RankingList() {
     </div >
   )
 }
+
