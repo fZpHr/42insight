@@ -84,7 +84,7 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
             for (const projectUser of projectUsers) {
                 const student = batch.find(s => s.id === projectUser.user.id)
                 if (student) {
-                    student.grade = projectUser.final_mark || 0
+                    student.grade = projectUser.teams[projectUser.teams.length - 1].final_mark || 0
                     student.lastUpdate = new Date(projectUser.updated_at)
                     student.isToday = isToday(new Date(projectUser.retriable_at))
                 }
