@@ -16,13 +16,7 @@ function reset() {
 
 export function ProfilePicture() {
 
-  const removeTokenCookie = () => {
-    document.cookie = 'token=; Max-Age=0; path=/';
-    localStorage.removeItem('stayConnected');
-    window.location.reload();
-  };
-  const login = localStorage.getItem('login');
-  const ProfilePicture = localStorage.getItem('profilePicture');
+  const user =  JSON.parse(localStorage.getItem('user') || '{}')
 
   return (
     <DropdownMenu.Root>
@@ -34,14 +28,14 @@ export function ProfilePicture() {
           <Avatar.Root className="inline-flex h-9 w-9 select-none items-center justify-center overflow-hidden rounded-full bg-muted">
             <Avatar.Image
               className="h-full w-full object-cover"
-              src={ProfilePicture || undefined}
-              alt={login || undefined}
+              src={user.profilePicture || undefined}
+              alt={user.login || undefined}
             />
             <Avatar.Fallback
               className="text-primary-foreground leading-1 flex h-full w-full items-center justify-center bg-primary text-[15px] font-medium bg-gradient-to-br from-purple-500 to-pink-500"
               delayMs={600}
             >
-              {login ? login[0].toUpperCase() : <User />}
+              {user.login ? user.login[0].toUpperCase() : <User />}
             </Avatar.Fallback>
           </Avatar.Root>
         </button>

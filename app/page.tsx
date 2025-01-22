@@ -59,10 +59,12 @@ export default function Home() {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await response.json();
-        localStorage.setItem('login', data.login);
-        localStorage.setItem('profilePicture', data.image.versions.small);
-        const time = await fetch('/api/time');
-        localStorage.setItem('time', JSON.stringify(await time.json()));
+        const userData = {
+          login: data.login,
+          profilePicture: data.image.versions.small,
+          time: await (await fetch('/api/time')).json()
+        };
+        localStorage.setItem('user', JSON.stringify(userData));
         setIsLoggedIn(response.ok);
       } catch (error) {
         console.error('Authentication Error:', error);

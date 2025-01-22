@@ -333,8 +333,8 @@ export default function RankingList() {
     )
   }
 
-  const time = localStorage.getItem("time")
-  const updatedAt = time ? format(new Date(JSON.parse(time)[0].updatedAt), 'dd-MM-yyyy HH:mm:ss') : 'N/A'
+  const user =  JSON.parse(localStorage.getItem('user') || '{}')
+  const updatedAt = user.time ? format(new Date(user.time[0].updatedAt), 'dd-MM-yyyy HH:mm:ss') : 'N/A'
 
   return (
     <div className="max-w-7xl mx-auto px-4">
@@ -372,19 +372,18 @@ export default function RankingList() {
           <>
             <div className="space-y-4">
               <p className="text-sm text-gray-500">
-                Your position : <strong>{filteredStudents.findIndex(student => student.name === localStorage.getItem('login')) + 1 || 'N/A'}</strong> / {filteredStudents.length}
+                Your position : <strong>{filteredStudents.findIndex(student => student.name === user.login) + 1 || 'N/A'}</strong> / {filteredStudents.length}
                 <a
                   href="#"
                   className="ml-2 text-purple-600 underline"
                   onClick={(e) => {
                     e.preventDefault();
-                    const login = localStorage.getItem('login') || '';
-                    const position = filteredStudents.findIndex(student => student.name === login) + 1;
+                    const position = filteredStudents.findIndex(student => student.name === user.login) + 1;
                     if (position === 0) return;
                     const pageToGo = Math.ceil(position / ITEMS_PER_PAGE);
                     setPage(pageToGo);
                     setTimeout(() => {
-                      const top = document.getElementById(login);
+                      const top = document.getElementById(user.login);
                       top?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       if (top) {
                         top.style.border = '2px solid rgb(147 51 234)';
@@ -392,7 +391,7 @@ export default function RankingList() {
                     }, 0);
                   }}
                 >
-                  (page {Math.ceil((filteredStudents.findIndex(student => student.name === localStorage.getItem('login')) + 1) / ITEMS_PER_PAGE) || 'N/A'})
+                  (page {Math.ceil((filteredStudents.findIndex(student => student.name === user.login) + 1) / ITEMS_PER_PAGE) || 'N/A'})
                 </a>
               </p>
               {paginatedStudents.map((student) => (
