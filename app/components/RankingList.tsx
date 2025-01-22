@@ -29,6 +29,7 @@ interface Student {
   activityData: { date: string; value: number }[]
   blackholeTimer: number
   rank: number
+  location: string
 }
 
 const generateChartData = (startDate: string, days: number) => {
@@ -103,8 +104,8 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
               <>
                 <p className="text-sm text-gray-500 mt-1">Correction: {student.correctionPercentage}% ({student.correctionTotal - student.correctionPositive}/{student.correctionPositive})</p>
               </>
-              )}
-                <p className="text-sm text-gray-500">Correction Points: {student.correctionPoints}</p>
+            )}
+            <p className="text-sm text-gray-500">Correction Points: {student.correctionPoints}</p>
             <p className="text-sm text-muted-foreground">Year: {student.year}</p>
             <div className="flex items-center mt-1 space-x-2">
               <div className="flex items-center">
@@ -184,7 +185,7 @@ const fetchStudents = async (): Promise<Student[]> => {
 }
 const fetchStudentsOnce = async (): Promise<Student[]> => {
   const cachedStudents = sessionStorage.getItem('students');
-  if (cachedStudents) {
+  if (cachedStudents && cachedStudents.length > 0) {
     return JSON.parse(cachedStudents);
   }
 
@@ -220,6 +221,13 @@ export default function RankingList() {
     }
 
     loadStudents()
+    const intervalId = setInterval(async () => {
+      const data = await fetchStudents();
+      setStudents(data);
+      sessionStorage.setItem('students', JSON.stringify(data));
+    }, 1800000);
+
+    return () => clearInterval(intervalId);
   }, [])
 
   const filteredStudents = useMemo(() => {
@@ -241,18 +249,18 @@ export default function RankingList() {
         break
       case 'correction':
         result.sort((a, b) => {
-        if ((a.correctionPercentage === 420 && b.correctionPercentage === 420) || (a.correctionTotal < 10 && b.correctionTotal < 10)) {
-          return 0;
-        }
-        if (a.correctionPercentage === 420 || a.correctionTotal < 10) {
-          return 1;
-        }
-        if (b.correctionPercentage === 420 || b.correctionTotal < 10) {
-          return -1;
-        }
-        return sortMultiplier * (a.correctionPercentage - b.correctionPercentage);
-      });
-      break;
+          if ((a.correctionPercentage === 420 && b.correctionPercentage === 420) || (a.correctionTotal < 10 && b.correctionTotal < 10)) {
+            return 0;
+          }
+          if (a.correctionPercentage === 420 || a.correctionTotal < 10) {
+            return 1;
+          }
+          if (b.correctionPercentage === 420 || b.correctionTotal < 10) {
+            return -1;
+          }
+          return sortMultiplier * (a.correctionPercentage - b.correctionPercentage);
+        });
+        break;
       case 'correctionPoints':
         result.sort((a, b) => {
           return sortMultiplier * (b.correctionPoints - a.correctionPoints);
@@ -374,7 +382,6 @@ export default function RankingList() {
                     const position = filteredStudents.findIndex(student => student.name === login) + 1;
                     if (position === 0) return;
                     const pageToGo = Math.ceil(position / ITEMS_PER_PAGE);
-                    if (pageToGo === page) return;
                     setPage(pageToGo);
                     setTimeout(() => {
                       const top = document.getElementById(login);

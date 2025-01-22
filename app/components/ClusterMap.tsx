@@ -39,6 +39,12 @@ const ClusterMap = () => {
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true)
+            const cachedStudents = sessionStorage.getItem("students")
+            if (cachedStudents) {
+                setStudents(JSON.parse(cachedStudents))
+                setIsLoading(false)
+                return;
+            }
             const fetchedStudents = await fetchStudents()
             setStudents(fetchedStudents)
             setIsLoading(false)

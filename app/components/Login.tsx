@@ -10,7 +10,7 @@ function reset() {
       .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
   });
   Object.keys(localStorage).forEach((key) => {
-    if (key !== 'stayConnected') {
+    if (key !== 'stayConnected' && key !== 'apiKey1' && key !== 'apiKey2') {
       localStorage.removeItem(key);
     }
   });

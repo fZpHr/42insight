@@ -11,7 +11,7 @@ import { Button } from "./ui/button"
 import { Label } from "./ui/label"
 import { AlertCircle, Car } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
-import { isToday } from "date-fns"
+import { isToday, set } from "date-fns"
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar"
 import { Checkbox } from "./ui/checkbox"
 import Link from 'next/link'
@@ -123,6 +123,8 @@ export default function ExamTracker() {
     const [requestsLeft, setRequestsLeft] = useState<number | null>(null)
 
     const updateGrades = async () => {
+        sessionStorage.removeItem('exam')
+        setStudents([])
         setIsUpdating(true)
         setError(null)
         try {
@@ -132,6 +134,7 @@ export default function ExamTracker() {
             }
             const updatedStudents = await getGrades(apiKey1, apiKey2, initialStudents)
             setStudents(updatedStudents)
+            cacheExamData(updatedStudents)
             const requestsLeft = await getRequestsLeft(apiKey1, apiKey2)
             setRequestsLeft(requestsLeft)
         } catch (err) {
@@ -145,7 +148,13 @@ export default function ExamTracker() {
         let interval: NodeJS.Timeout
 
         if (apiKey1 && apiKey2) {
-            updateGrades()
+            const cachedStudents = sessionStorage.getItem('exam')
+            if (cachedStudents && cachedStudents.length > 0) {
+                setStudents(JSON.parse(cachedStudents))
+            }
+            else {
+                updateGrades()
+            }
             interval = setInterval(updateGrades, 600000)
         }
 
@@ -159,10 +168,16 @@ export default function ExamTracker() {
         return 'bg-red-500'
     }
 
+    function cacheExamData(test: Student[] = students) {
+        console.log(JSON.stringify(students))
+        sessionStorage.setItem('exam', JSON.stringify(test))
+    }
+
+
 
     useEffect(() => {
-        const storedApiKey1 = localStorage.getItem('apiKey1');
-        const storedApiKey2 = localStorage.getItem('apiKey2');
+        const storedApiKey1 = localStorage.getItem('apiKey1') ? atob(localStorage.getItem('apiKey1')!) : '';
+        const storedApiKey2 = localStorage.getItem('apiKey2') ? atob(localStorage.getItem('apiKey2')!) : '';
         if (storedApiKey1) setApiKey1(storedApiKey1);
         if (storedApiKey2) setApiKey2(storedApiKey2);
     }, []);
@@ -182,7 +197,7 @@ export default function ExamTracker() {
                                 <Label htmlFor="api-key-1">CLIENT_ID</Label>
                                 <Input
                                     id="api-key-1"
-                                    type="password"
+                                    type="login"
                                     placeholder="Enter your CLIENT_ID"
                                     value={apiKey1}
                                     onChange={(e) => setApiKey1(e.target.value)}
@@ -209,8 +224,8 @@ export default function ExamTracker() {
                                 id="save-keys"
                                 onCheckedChange={(checked) => {
                                     if (checked) {
-                                        localStorage.setItem('apiKey1', apiKey1);
-                                        localStorage.setItem('apiKey2', apiKey2);
+                                        localStorage.setItem('apiKey1', btoa(apiKey1));
+                                        localStorage.setItem('apiKey2', btoa(apiKey2));
                                     } else {
                                         localStorage.removeItem('apiKey1');
                                         localStorage.removeItem('apiKey2');
@@ -287,8 +302,8 @@ export default function ExamTracker() {
                         <>
                             <p><strong>Total Students:</strong> {students.length}</p>
                             <p><strong>Average Grade:</strong> {averageGrade.toFixed(2)}%</p>
-                            <p><strong>Requests Left:</strong> {requestsLeft}</p>
-
+                            {requestsLeft !== null && (
+                                <p><strong>Requests Left:</strong> {requestsLeft}</p>)}
                             <Table className="mt-5">
                                 <TableHeader>
                                     <TableRow>
@@ -316,7 +331,7 @@ export default function ExamTracker() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>{getExamName(student.examId)}</TableCell>
-                                            <TableCell>{student.lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                                            <TableCell>{new Date(student.lastUpdate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
                                             <TableCell>
                                                 <Link href={`https://profile.intra.42.fr/users/${student.id}`} target="_blank" className="flex items-center text-blue-500 hover:underline">
                                                     View Profile
