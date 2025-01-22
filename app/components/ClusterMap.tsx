@@ -89,6 +89,7 @@ const ClusterMap = () => {
                                                     />
                                                 ) : (
                                                     <span className="text-lg">
+                                                        {clusterNumber}
                                                         {row}
                                                         {col}
                                                     </span>
