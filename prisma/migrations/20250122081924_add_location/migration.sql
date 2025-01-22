@@ -4,6 +4,7 @@ CREATE TABLE `Student` (
     `name` VARCHAR(191) NOT NULL,
     `level` DOUBLE NOT NULL,
     `photoUrl` VARCHAR(191) NOT NULL,
+    `location` VARCHAR(191) NOT NULL,
     `correctionTotal` INTEGER NOT NULL DEFAULT 0,
     `correctionPositive` INTEGER NOT NULL DEFAULT 0,
     `correctionNegative` INTEGER NOT NULL DEFAULT 0,
@@ -21,6 +22,15 @@ CREATE TABLE `Student` (
 CREATE TABLE `UpdateTimestamp` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `updatedAt` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `FindPeers` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `projectName` VARCHAR(191) NOT NULL,
+    `subscribers` JSON NOT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

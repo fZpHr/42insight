@@ -15,6 +15,7 @@ import { Loader } from 'lucide-react'
 import Contribute from './components/Contribute'
 import UsefulLinks from './components/UsefulLinks'
 import ExamTracker from './components/examTracker'
+import ClusterMap from './components/ClusterMap'
 
 export default function Home() {
 
@@ -33,6 +34,8 @@ export default function Home() {
         return <UsefulLinks />
       case 'exam-tracker':
         return <ExamTracker />
+      // case 'cluster-map':
+      //   return <ClusterMap />s
       default:
         return <RankingList />
     }

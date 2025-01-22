@@ -12,6 +12,7 @@ model Student {
   name                 String
   level                Float
   photoUrl             String
+  location             String
   correctionTotal      Int      @default(0)
   correctionPositive   Int      @default(0)
   correctionNegative   Int      @default(0)
@@ -26,4 +27,10 @@ model Student {
 model UpdateTimestamp {
   id        Int      @id @default(autoincrement())
   updatedAt DateTime @updatedAt
+}
+
+model FindPeers {
+    id          Int      @id @default(autoincrement())
+    projectName String
+    subscribers Json
 }
