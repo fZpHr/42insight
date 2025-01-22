@@ -40,7 +40,7 @@ async function getRequestsLeft(CLIENT_ID: string, CLIENT_SECRET: string) {
 async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string) {
     let initialStudents: Student[] = []
     const exam_id = ["1324", "1323", "1322", "1321", "1320"]
-    
+
     for (let i = 0; i < exam_id.length; i++) {
         try {
             const response = await axios.post('/api/proxy', {
@@ -48,7 +48,7 @@ async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string
                 CLIENT_ID,
                 CLIENT_SECRET
             })
-            
+
             const studentsData = response.data.data.map((student: { id: number; login: string; image: { versions: { small: string } } }) => ({
                 id: student.id,
                 name: student.login,
@@ -78,7 +78,7 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
                 CLIENT_ID,
                 CLIENT_SECRET
             })
-            
+
             const projectUsers = response.data.data
 
             for (const projectUser of projectUsers) {
@@ -98,9 +98,6 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
     students = students.filter(student => student.isToday)
     return students
 }
-
-// You can remove the getToken function from the frontend since it's now handled by the backend
-
 
 function getExamName(examId: string) {
     switch (examId) {
@@ -149,7 +146,7 @@ export default function ExamTracker() {
 
         if (apiKey1 && apiKey2) {
             updateGrades()
-            interval = setInterval(updateGrades, 1800000)
+            interval = setInterval(updateGrades, 600000)
         }
 
         return () => clearInterval(interval)
@@ -162,7 +159,6 @@ export default function ExamTracker() {
         return 'bg-red-500'
     }
 
-    const COLORS = ['#4CAF50', '#F44336']
 
     useEffect(() => {
         const storedApiKey1 = localStorage.getItem('apiKey1');
@@ -174,164 +170,167 @@ export default function ExamTracker() {
 
     return (
         <div>
-        <Card>
-            <CardHeader>
-                <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
-                <p className="text-muted-foreground">Data is updated every 30min</p>
-            </CardHeader>
-            <CardContent>
-                <div className="mb-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="api-key-1">CLIENT_ID</Label>
-                            <Input
-                                id="api-key-1"
-                                type="password"
-                                placeholder="Enter API Key 1"
-                                value={apiKey1}
-                                onChange={(e) => setApiKey1(e.target.value)}
-                            />
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
+                    <p className="text-muted-foreground">Data is updated every 10min</p>
+                </CardHeader>
+                <CardContent>
+                    <div className="mb-6 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="api-key-1">CLIENT_ID</Label>
+                                <Input
+                                    id="api-key-1"
+                                    type="password"
+                                    placeholder="Enter your CLIENT_ID"
+                                    value={apiKey1}
+                                    onChange={(e) => setApiKey1(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="api-key-2">CLIENT_SECRET</Label>
+                                <Input
+                                    id="api-key-2"
+                                    type="password"
+                                    placeholder="Enter your CLIENT_SECRET"
+                                    value={apiKey2}
+                                    onChange={(e) => setApiKey2(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex items-end">
+                                <Button onClick={updateGrades} disabled={isUpdating || !apiKey1 || !apiKey2}>
+                                    {isUpdating ? 'Updating...' : 'Update Grades'}
+                                </Button>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="api-key-2">CLIENT_SECRET</Label>
-                            <Input
-                                id="api-key-2"
-                                type="password"
-                                placeholder="Enter API Key 2"
-                                value={apiKey2}
-                                onChange={(e) => setApiKey2(e.target.value)}
+                        <div className="items-top flex space-x-2">
+                            <Checkbox
+                                id="save-keys"
+                                onCheckedChange={(checked) => {
+                                    if (checked) {
+                                        localStorage.setItem('apiKey1', apiKey1);
+                                        localStorage.setItem('apiKey2', apiKey2);
+                                    } else {
+                                        localStorage.removeItem('apiKey1');
+                                        localStorage.removeItem('apiKey2');
+                                    }
+                                }}
                             />
-                        </div>
-                        <div className="flex items-end">
-                            <Button onClick={updateGrades} disabled={isUpdating || !apiKey1 || !apiKey2}>
-                                {isUpdating ? 'Updating...' : 'Update Grades'}
-                            </Button>
+                            <div className="grid gap-1.5 leading-none">
+                                <label
+                                    htmlFor="save-keys"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    Save API keys for future use
+                                </label>
+                                <p className="text-sm text-muted-foreground">
+                                    Store your API keys in your local storage
+                                </p>
+                            </div>
                         </div>
                     </div>
-                    <div className="items-top flex space-x-2">
-                        <Checkbox 
-                            id="save-keys"
-                            onCheckedChange={(checked) => {
-                                if (checked) {
-                                    localStorage.setItem('apiKey1', apiKey1);
-                                    localStorage.setItem('apiKey2', apiKey2);
-                                } else {
-                                    localStorage.removeItem('apiKey1');
-                                    localStorage.removeItem('apiKey2');
-                                }
-                            }} 
-                        />
-                        <div className="grid gap-1.5 leading-none">
-                            <label
-                                htmlFor="save-keys"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                                Save API keys for future use
-                            </label>
-                            <p className="text-sm text-muted-foreground">
-                                Store your API keys in your local storage
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                {error && (
-                    <Alert variant="destructive" className="mb-6">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Error</AlertTitle>
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
-                <Alert variant="default" className="mb-6">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Note</AlertTitle>
-                    <AlertDescription className="text-muted-foreground" >The fetch will only display students whose exams are today.</AlertDescription>
-                </Alert>
+                    {error && (
+                        <Alert variant="destructive" className="mb-6">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
 
-                {isUpdating && students.length === 0 && (
-                    <Table className="mt-5">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Student</TableHead>
-                                <TableHead>Grade</TableHead>
-                                <TableHead>Exam</TableHead>
-                                <TableHead>Last Update</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {[...Array(5)].map((_, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-10 h-10 bg-gray-500 rounded-full animate-pulse"></div>
-                                            <div className="h-4 bg-gray-500 rounded w-24 animate-pulse"></div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="h-4 bg-gray-500 rounded w-12 animate-pulse"></div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="h-4 bg-gray-500 rounded w-20 animate-pulse"></div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
-                                    </TableCell>
+                    {isUpdating && students.length === 0 && (
+                        <Table className="mt-5">
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Student</TableHead>
+                                    <TableHead>Grade</TableHead>
+                                    <TableHead>Exam</TableHead>
+                                    <TableHead>Last Update</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                )}
+                            </TableHeader>
+                            <TableBody>
+                                {[...Array(5)].map((_, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell>
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-10 h-10 bg-gray-500 rounded-full animate-pulse"></div>
+                                                <div className="h-4 bg-gray-500 rounded w-24 animate-pulse"></div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="h-4 bg-gray-500 rounded w-12 animate-pulse"></div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="h-4 bg-gray-500 rounded w-20 animate-pulse"></div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
 
-                {students.length > 0 && (
-                    <>
-                        <p><strong>Total Students:</strong> {students.length}</p>
-                        <p><strong>Average Grade:</strong> {averageGrade.toFixed(2)}%</p>
-                        <p><strong>Requests Left:</strong> {requestsLeft}</p>
-                
-                <Table className="mt-5">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Grade</TableHead>
-                      <TableHead>Exam</TableHead>
-                      <TableHead>Last Update</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {students.map((student) => (
-                      <TableRow key={student.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="w-10 h-10">
-                              <AvatarImage src={student.photo} alt={student.name} style={{ objectFit: 'cover' }} />
-                              <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                            <span>{student.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getGradeBadgeColor(student.grade || 0)}>
-                            {student.grade !== undefined ? `${student.grade}%` : 'N/A'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{getExamName(student.examId)}</TableCell>
-                        <TableCell>{student.lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
-                        <TableCell>
-                        <Link href={`https://profile.intra.42.fr/users/${student.id}`} target="_blank" className="flex items-center text-blue-500 hover:underline">
-                            View Profile
-                            <ExternalLink className="ml-1 h-4 w-4" />
-                        </Link>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                </>
-                )}
-            </CardContent>
-        </Card >
+                    {students.length === 0 && !isUpdating && requestsLeft !== null && (
+                        <Alert variant="default" className="mt-5">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>No students found</AlertTitle>
+                            <AlertDescription className="text-muted-foreground">Exam hasn't started yet.</AlertDescription>
+                        </Alert>
+                    )}
+
+                    {students.length > 0 && (
+                        <>
+                            <p><strong>Total Students:</strong> {students.length}</p>
+                            <p><strong>Average Grade:</strong> {averageGrade.toFixed(2)}%</p>
+                            <p><strong>Requests Left:</strong> {requestsLeft}</p>
+
+                            <Table className="mt-5">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Student</TableHead>
+                                        <TableHead>Grade</TableHead>
+                                        <TableHead>Exam</TableHead>
+                                        <TableHead>Last Update</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {students.map((student) => (
+                                        <TableRow key={student.id}>
+                                            <TableCell className="font-medium">
+                                                <div className="flex items-center space-x-3">
+                                                    <Avatar className="w-10 h-10">
+                                                        <AvatarImage src={student.photo} alt={student.name} style={{ objectFit: 'cover' }} />
+                                                        <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span>{student.name}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge className={getGradeBadgeColor(student.grade || 0)}>
+                                                    {student.grade !== undefined ? `${student.grade}%` : 'N/A'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>{getExamName(student.examId)}</TableCell>
+                                            <TableCell>{student.lastUpdate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                                            <TableCell>
+                                                <Link href={`https://profile.intra.42.fr/users/${student.id}`} target="_blank" className="flex items-center text-blue-500 hover:underline">
+                                                    View Profile
+                                                    <ExternalLink className="ml-1 h-4 w-4" />
+                                                </Link>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </>
+                    )}
+                </CardContent>
+            </Card >
         </div>
     )
 }
