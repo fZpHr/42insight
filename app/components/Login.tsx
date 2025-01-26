@@ -21,9 +21,11 @@ function reset() {
 export function Login() {
 
   const [isLoading, setIsLoading] = useState(false)
+  const [checked, setChecked] = useState(false)
 
   const setStayConnected = (checked: boolean) => {
     localStorage.setItem('stayConnected', checked.toString());
+    setChecked(checked);
   }
   const handleLogin = async () => {
     reset();
@@ -43,6 +45,7 @@ export function Login() {
   }
   useEffect(() => {
     if (localStorage.getItem('stayConnected') === 'true') {
+      setChecked(true);
       handleLogin();
     }
   }, []);
@@ -59,7 +62,8 @@ export function Login() {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="stay-connected"
-              onCheckedChange={(checked) => setStayConnected(checked as boolean)}
+              checked={checked}
+              onCheckedChange={(checked: boolean) => setStayConnected(checked)}
               disabled={isLoading}
             />
             <label

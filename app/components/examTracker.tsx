@@ -116,6 +116,7 @@ function getExamName(examId: string) {
 
 export default function ExamTracker() {
     const [students, setStudents] = useState<Student[]>([])
+    const [keepKeys, setKeepKeys] = useState(false)
     const [apiKey1, setApiKey1] = useState('')
     const [apiKey2, setApiKey2] = useState('')
     const [isUpdating, setIsUpdating] = useState(false)
@@ -141,6 +142,18 @@ export default function ExamTracker() {
             setError(err instanceof Error ? err.message : 'An error occurred while updating grades.')
         } finally {
             setIsUpdating(false)
+        }
+    }
+
+    const updateChecked = (checked: boolean) => {
+        setKeepKeys(checked)
+        if (!checked) {
+            localStorage.removeItem('apiKey1')
+            localStorage.removeItem('apiKey2')
+        }
+        else {
+            localStorage.setItem('apiKey1', btoa(apiKey1))
+            localStorage.setItem('apiKey2', btoa(apiKey2))
         }
     }
 
@@ -180,6 +193,7 @@ export default function ExamTracker() {
         const storedApiKey2 = localStorage.getItem('apiKey2') ? atob(localStorage.getItem('apiKey2')!) : '';
         if (storedApiKey1) setApiKey1(storedApiKey1);
         if (storedApiKey2) setApiKey2(storedApiKey2);
+        setKeepKeys(!!(storedApiKey1 && storedApiKey2));
     }, []);
     const averageGrade = students.reduce((sum, student) => sum + (student.grade || 0), 0) / students.length
 
@@ -222,15 +236,8 @@ export default function ExamTracker() {
                         <div className="items-top flex space-x-2">
                             <Checkbox
                                 id="save-keys"
-                                onCheckedChange={(checked) => {
-                                    if (checked) {
-                                        localStorage.setItem('apiKey1', btoa(apiKey1));
-                                        localStorage.setItem('apiKey2', btoa(apiKey2));
-                                    } else {
-                                        localStorage.removeItem('apiKey1');
-                                        localStorage.removeItem('apiKey2');
-                                    }
-                                }}
+                                checked={keepKeys}
+                                onCheckedChange={(checked: boolean) => updateChecked(checked)}
                             />
                             <div className="grid gap-1.5 leading-none">
                                 <label
