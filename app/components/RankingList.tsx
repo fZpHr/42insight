@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from "./ui/card"
 import { Badge } from "./ui/badge"
 import { Button } from "./ui/button"
-import { Trophy, Medal, Award, ChevronRight, Wallet, Activity, Clock, AlertCircle, ArrowUpDown, ChevronsRight, ChevronLeft } from 'lucide-react'
+import { Trophy, Medal, Award, ChevronRight, Wallet, Activity, Clock, AlertCircle, ArrowUpDown, ChevronsRight, ChevronLeft, Eye } from 'lucide-react'
 import Image from 'next/image'
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts'
+import { Input } from "./ui/input"
 import SearchBar from './SearchBar'
 import FilterSort from './FilterSort'
 import ActivityOverlay from './ActivityOverlay'
@@ -74,6 +75,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
     triggerOnce: true,
     threshold: 0.1,
   })
+  const login =  JSON.parse(localStorage.getItem('user') || '{}').login
 
   return (
     <motion.div
@@ -82,7 +84,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
       animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       transition={{ duration: 0.3, delay: 0.05 }}
     >
-      <Card id={student.name} className="hover:shadow-lg transition-shadow duration-300">
+      <Card id={student.name} className={`hover:shadow-lg transition-shadow duration-300 ${student.name === login ? 'border-2 border-purple-600' : ''}`}>
         <CardContent className="flex items-center p-4">
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mr-4 overflow-hidden">
             <Image
@@ -124,7 +126,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
           </div>
           <div className="flex flex-col items-end">
             <span className="text-2xl font-bold mr-4 text-purple-600">#{index + 1}</span>
-            <div className="mt-2 w-24 h-12">
+            <div className="mt-2 w-24 h-12 z-index-10">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={generateChartData('2023-01-01', 10)}>
                   <Line
@@ -194,7 +196,9 @@ const fetchStudentsOnce = async (): Promise<Student[]> => {
   return students;
 };
 
+
 export default function RankingList() {
+  const login =  JSON.parse(localStorage.getItem('user') || '{}').login
   const [students, setStudents] = useState<Student[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState('all')
@@ -205,6 +209,7 @@ export default function RankingList() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState('asc')
+  const [previewLevel, setPreviewLevel] = useState<number | null>(null)
 
   useEffect(() => {
     const loadStudents = async () => {
@@ -225,6 +230,7 @@ export default function RankingList() {
       const data = await fetchStudents();
       setStudents(data);
       sessionStorage.setItem('students', JSON.stringify(data));
+      return () => clearInterval(intervalId);
     }, 1800000);
 
     return () => clearInterval(intervalId);
@@ -281,9 +287,21 @@ export default function RankingList() {
         result.sort((a, b) => sortMultiplier * (b.level - a.level))
     }
 
+
+    if (previewLevel !== null && login) {
+      result = result.map((student) => {
+        if (student.name === login) {
+          return { ...student, level: Math.max(student.level, previewLevel) }
+        }
+        return student
+      })
+
+      result.sort((a, b) => b.level - a.level)
+    }
     result = result.map((student, index) => ({
       ...student,
-      rank: index + 1
+      rank: index + 1,
+      previewRank: student.name === login ? index + 1 : student.rank,
     }))
 
     if (searchQuery) {
@@ -292,7 +310,7 @@ export default function RankingList() {
       )
     }
     return result
-  }, [students, searchQuery, filter, sort, year, sortDirection])
+  }, [students, searchQuery, filter, sort, year, sortDirection,  previewLevel])
 
   const paginatedStudents = useMemo(() => {
     const startIndex = (page - 1) * ITEMS_PER_PAGE
@@ -324,6 +342,7 @@ export default function RankingList() {
   }, [])
 
 
+
   if (error) {
     return (
       <div className="flex items-center justify-center p-8 text-red-500">
@@ -335,6 +354,7 @@ export default function RankingList() {
 
   const user =  JSON.parse(localStorage.getItem('user') || '{}')
   const updatedAt = user.time ? format(new Date(user.time[0].updatedAt), 'dd-MM-yyyy HH:mm:ss') : 'N/A'
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   return (
     <div className="max-w-7xl mx-auto px-4">
@@ -343,6 +363,7 @@ export default function RankingList() {
       < div id="top" className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 md:space-x-4" >
         <SearchBar onSearch={handleSearch} />
         <div className="flex items-center space-x-4">
+          
           <Button
             variant="outline"
             size="sm"
@@ -351,11 +372,21 @@ export default function RankingList() {
           >
             <ArrowUpDown className="h-4 w-4" />
           </Button>
+          <Input
+              type="number"
+              placeholder="Preview Your Level"
+              className="w-40"
+              value={previewLevel ?? ""}
+              onChange={(e) => setPreviewLevel(e.target.value ? Number.parseFloat(e.target.value) : null)}
+              min="1"
+              max="100"
+              step="0.1"
+            />
           <FilterSort
             onSortChange={handleSortChange}
             onYearChange={handleYearChange}
           />
-        </div>
+          </div>
       </div>
 
 
@@ -385,9 +416,6 @@ export default function RankingList() {
                     setTimeout(() => {
                       const top = document.getElementById(user.login);
                       top?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      if (top) {
-                        top.style.border = '2px solid rgb(147 51 234)';
-                      }
                     }, 0);
                   }}
                 >
