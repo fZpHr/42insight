@@ -23,6 +23,7 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false)
   const [checked, setChecked] = useState(false)
 
+
   const setStayConnected = (checked: boolean) => {
     localStorage.setItem('stayConnected', checked.toString());
     setChecked(checked);
@@ -44,6 +45,7 @@ export function Login() {
     window.location.href = loginUrl.toString();
   }
   useEffect(() => {
+    reset()
     if (localStorage.getItem('stayConnected') === 'true') {
       setChecked(true);
       handleLogin();
