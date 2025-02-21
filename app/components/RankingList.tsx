@@ -15,6 +15,13 @@ import ActivityOverlay from './ActivityOverlay'
 import { useInView } from 'react-intersection-observer'
 import { format } from 'date-fns';
 
+interface ActivityData {
+  totalTime: number
+  weeklyTime: number
+  dailyHours: { date: string; value: number }[]
+  lastUpdated: string
+}
+
 interface Student {
   id: number
   name: string
@@ -27,7 +34,7 @@ interface Student {
   correctionPoints: number
   year: number
   wallet: number
-  activityData: { date: string; value: number }[]
+  activityData: ActivityData | { date: string; value: number }[] | null
   blackholeTimer: number
   rank: number
   location: string
@@ -488,7 +495,19 @@ export default function RankingList() {
       {
         activeStudent && (
           <ActivityOverlay
-            student={activeStudent}
+            student={{
+              name: activeStudent.name,
+              activityData: typeof activeStudent.activityData === 'object' && 
+                          'totalTime' in activeStudent.activityData ? 
+                          activeStudent.activityData as ActivityData : 
+                          activeStudent.activityData && Array.isArray(activeStudent.activityData) ? 
+                          {
+                            totalTime: 0,
+                            weeklyTime: 0,
+                            dailyHours: activeStudent.activityData,
+                            lastUpdated: new Date().toISOString()
+                          } : undefined
+            }}
             onClose={() => setActiveStudent(null)}
           />
         )
