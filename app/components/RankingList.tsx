@@ -128,7 +128,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
             <span className="text-2xl font-bold mr-4 text-purple-600">#{index + 1}</span>
             <div className="mt-2 w-24 h-12 z-index-10">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={generateChartData('2023-01-01', 10)}>
+                <LineChart data={student.activityData || []}>
                   <Line
                     type="monotone"
                     dataKey="value"
@@ -145,7 +145,6 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
                 variant="outline"
                 size="sm"
                 onClick={() => onActivityClick(student)}
-                disabled={true}
               >
                 <Activity className="mr-2 h-4 w-4" />
                 Activity
