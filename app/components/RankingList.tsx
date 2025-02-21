@@ -510,20 +510,57 @@ export default function RankingList() {
           <ActivityOverlay
             student={{
               name: activeStudent.name,
-              activityData: activeStudent.activityData ? (
-                typeof activeStudent.activityData === 'object' && 
-                !Array.isArray(activeStudent.activityData) && 
-                'totalTime' in activeStudent.activityData
-                  ? activeStudent.activityData as ActivityData
-                  : Array.isArray(activeStudent.activityData)
-                    ? {
-                        totalTime: 0,
-                        weeklyTime: 0,
-                        dailyHours: activeStudent.activityData,
-                        lastUpdated: new Date().toISOString()
+              activityData: (() => {
+                console.log('Debug activityData:', activeStudent.name, activeStudent.activityData);
+                
+                if (!activeStudent.activityData) {
+                  return undefined;
+                }
+                
+                try {
+                  if (typeof activeStudent.activityData === 'object' && 
+                      !Array.isArray(activeStudent.activityData) && 
+                      'totalTime' in activeStudent.activityData &&
+                      'dailyHours' in activeStudent.activityData) {
+                    return activeStudent.activityData as ActivityData;
+                  }
+                  
+                  if (Array.isArray(activeStudent.activityData)) {
+                    return {
+                      totalTime: 0,
+                      weeklyTime: 0,
+                      dailyHours: activeStudent.activityData,
+                      lastUpdated: new Date().toISOString()
+                    };
+                  }
+                  
+                  if (typeof activeStudent.activityData === 'string') {
+                    try {
+                      const parsed = JSON.parse(activeStudent.activityData);
+                      if (parsed && typeof parsed === 'object') {
+                        if ('dailyHours' in parsed) {
+                          return parsed;
+                        } else if (Array.isArray(parsed)) {
+                          return {
+                            totalTime: 0,
+                            weeklyTime: 0,
+                            dailyHours: parsed,
+                            lastUpdated: new Date().toISOString()
+                          };
+                        }
                       }
-                    : undefined
-              ) : undefined
+                    } catch (e) {
+                      console.error('Error parsing activityData JSON', e);
+                    }
+                  }
+                  
+                  console.warn('Unable to process activityData format for:', activeStudent.name);
+                  return undefined;
+                } catch (error) {
+                  console.error('Error processing activityData:', error);
+                  return undefined;
+                }
+              })()
             }}
             onClose={() => setActiveStudent(null)}
           />
