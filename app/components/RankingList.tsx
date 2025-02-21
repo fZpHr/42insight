@@ -305,7 +305,7 @@ export default function RankingList() {
         break
       case 'activity':
         result.sort((a, b) => {
-          const getActivityTime = (student) => {
+          const getActivityTime = (student: Student) => {
             if (!student.activityData) return 0;
             
             if (typeof student.activityData === 'object' && !Array.isArray(student.activityData)) {
