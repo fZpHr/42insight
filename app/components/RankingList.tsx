@@ -505,22 +505,25 @@ export default function RankingList() {
           </>
         )
       }
-
       {
         activeStudent && (
           <ActivityOverlay
             student={{
               name: activeStudent.name,
-              activityData: typeof activeStudent.activityData === 'object' && 
-                          'totalTime' in activeStudent.activityData ? 
-                          activeStudent.activityData as ActivityData : 
-                          activeStudent.activityData && Array.isArray(activeStudent.activityData) ? 
-                          {
-                            totalTime: 0,
-                            weeklyTime: 0,
-                            dailyHours: activeStudent.activityData,
-                            lastUpdated: new Date().toISOString()
-                          } : undefined
+              activityData: activeStudent.activityData ? (
+                typeof activeStudent.activityData === 'object' && 
+                !Array.isArray(activeStudent.activityData) && 
+                'totalTime' in activeStudent.activityData
+                  ? activeStudent.activityData as ActivityData
+                  : Array.isArray(activeStudent.activityData)
+                    ? {
+                        totalTime: 0,
+                        weeklyTime: 0,
+                        dailyHours: activeStudent.activityData,
+                        lastUpdated: new Date().toISOString()
+                      }
+                    : undefined
+              ) : undefined
             }}
             onClose={() => setActiveStudent(null)}
           />
