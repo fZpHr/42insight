@@ -82,7 +82,21 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
     triggerOnce: true,
     threshold: 0.1,
   })
-  const login =  JSON.parse(localStorage.getItem('user') || '{}').login
+  const login = JSON.parse(localStorage.getItem('user') || '{}').login
+
+  const chartData = useMemo(() => {
+    if (!student.activityData) return [];
+    
+    if (Array.isArray(student.activityData)) {
+      return student.activityData;
+    }
+    
+    if (typeof student.activityData === 'object' && 'dailyHours' in student.activityData) {
+      return student.activityData.dailyHours;
+    }
+    
+    return [];
+  }, [student.activityData]);
 
   return (
     <motion.div
@@ -135,7 +149,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
             <span className="text-2xl font-bold mr-4 text-purple-600">#{index + 1}</span>
             <div className="mt-2 w-24 h-12 z-index-10">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={student.activityData || []}>
+                <LineChart data={chartData}>
                   <Line
                     type="monotone"
                     dataKey="value"
