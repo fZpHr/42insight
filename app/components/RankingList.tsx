@@ -308,13 +308,16 @@ export default function RankingList() {
           const getActivityTime = (student: Student) => {
             if (!student.activityData) return 0;
             
-            if (typeof student.activityData === 'object' && !Array.isArray(student.activityData)) {
-              if ('totalTime' in student.activityData) {
-                return student.activityData.totalTime;
-              }
-              if ('weeklyTime' in student.activityData) {
-                return student.activityData.weeklyTime;
-              }
+            if (typeof student.activityData === 'object' && !Array.isArray(student.activityData) && 
+                'totalTime' in student.activityData) {
+              const activityData = student.activityData as ActivityData;
+              return activityData.totalTime;
+            }
+            
+            if (typeof student.activityData === 'object' && !Array.isArray(student.activityData) && 
+                'weeklyTime' in student.activityData) {
+              const activityData = student.activityData as ActivityData;
+              return activityData.weeklyTime;
             }
             
             if (Array.isArray(student.activityData)) {
