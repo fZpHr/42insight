@@ -26,6 +26,7 @@ export default function FilterSort({ onSortChange, onYearChange }: FilterSortPro
           <SelectItem value="correctionPoints">Correction Points</SelectItem>
           <SelectItem value="wallet">Wallet</SelectItem>
           <SelectItem value="blackhole">Blackhole Timer</SelectItem>
+          <SelectItem value="activity">Activity Hours</SelectItem>
         </SelectContent>
       </Select>
       <Select onValueChange={onYearChange}>
