@@ -165,12 +165,8 @@ export default function ExamTracker() {
             if (cachedStudents && cachedStudents.length > 0) {
                 setStudents(JSON.parse(cachedStudents))
             }
-            else {
-                updateGrades()
-            }
             interval = setInterval(updateGrades, 600000)
         }
-
         return () => clearInterval(interval)
     }, [apiKey1, apiKey2])
 
@@ -198,7 +194,7 @@ export default function ExamTracker() {
     const averageGrade = students.reduce((sum, student) => sum + (student.grade || 0), 0) / students.length
 
     return (
-        <div>
+        <div className="max-w-7xl mx-auto px-4">
             <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
