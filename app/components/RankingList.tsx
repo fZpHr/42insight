@@ -107,7 +107,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
     >
       <Card id={student.name} className={`hover:shadow-lg transition-shadow duration-300 ${student.name === login ? 'border-2 border-purple-600' : ''}`}>
         <CardContent className="flex items-center p-4">
-          <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mr-4 overflow-hidden">
+            <div className="hidden md:flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mr-4 overflow-hidden">
             <Image
               src={student.photoUrl || "/placeholder.svg"}
               alt={`${student.name}'s photo`}
@@ -116,7 +116,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
               className="object-cover w-full h-full"
               loading="lazy"
             />
-          </div>
+            </div>
           <div className="flex-grow">
             <div className="flex items-center">
               <h3 className="text-lg font-semibold mr-2">{student.name}</h3>
@@ -163,20 +163,20 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
             </div>
             <div className="flex gap-2 mt-2">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onActivityClick(student)}
+              variant="outline"
+              size="sm"
+              onClick={() => onActivityClick(student)}
               >
-                <Activity className="mr-2 h-4 w-4" />
-                Activity
+              <Activity className="h-4 w-4" />
+              <span className="hidden md:inline ml-2">Activity</span>
               </Button>
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(`https://profile.intra.42.fr/users/${student.name}`, '_blank')}
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`https://profile.intra.42.fr/users/${student.name}`, '_blank')}
               >
-                <ChevronRight className="mr-2 h-4 w-4" />
-                View Profile
+              <ChevronRight className="h-4 w-4" />
+              <span className="hidden md:inline ml-2">View Profile</span>
               </Button>
             </div>
           </div>
@@ -543,7 +543,7 @@ export default function RankingList() {
             student={{
               name: activeStudent.name,
               activityData: (() => {
-                console.log('Debug activityData:', activeStudent.name, activeStudent.activityData);
+                //console.log('Debug activityData:', activeStudent.name, activeStudent.activityData);
                 
                 if (!activeStudent.activityData) {
                   return undefined;
@@ -555,7 +555,7 @@ export default function RankingList() {
                       'totalTime' in activeStudent.activityData &&
                       'dailyHours' in activeStudent.activityData) {
                     return activeStudent.activityData as ActivityData;
-                  }
+                  }Activity
                   
                   if (Array.isArray(activeStudent.activityData)) {
                     return {
