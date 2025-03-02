@@ -34,8 +34,8 @@ export default function Home() {
         return <UsefulLinks />
       case 'exam-tracker':
         return <ExamTracker />
-      case 'cluster-map':
-        return <ClusterMap />
+      //case 'cluster-map':
+      //  return <ClusterMap />
       default:
         return <RankingList />
     }

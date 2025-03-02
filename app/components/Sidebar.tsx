@@ -11,7 +11,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, setIsOpen, activeView, setActiveView }: SidebarProps) {
   const navItems = [
     { name: 'Rankings', icon: Grid, value: 'rankings' },
-    { name: 'Cluster-map', icon: Map, value: 'cluster-map' },
+    //{ name: 'Cluster-map', icon: Map, value: 'cluster-map' },
     { name: 'Trombinoscope', icon: Users, value: 'trombinoscope' },
     { name: 'Exam Tracker', icon: BarChart3, value: 'exam-tracker' },
     { name: 'Useful Links', icon: LinkIcon, value: 'useful-links' },
