@@ -165,12 +165,8 @@ export default function ExamTracker() {
             if (cachedStudents && cachedStudents.length > 0) {
                 setStudents(JSON.parse(cachedStudents))
             }
-            else {
-                updateGrades()
-            }
             interval = setInterval(updateGrades, 600000)
         }
-
         return () => clearInterval(interval)
     }, [apiKey1, apiKey2])
 
