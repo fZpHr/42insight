@@ -15,9 +15,9 @@ interface FilterSortProps {
 
 export default function FilterSort({ onSortChange, onYearChange }: FilterSortProps) {
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full">
       <Select onValueChange={onSortChange}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Sort by" />
         </SelectTrigger>
         <SelectContent>
@@ -30,7 +30,7 @@ export default function FilterSort({ onSortChange, onYearChange }: FilterSortPro
         </SelectContent>
       </Select>
       <Select onValueChange={onYearChange}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Filter by Year" />
         </SelectTrigger>
         <SelectContent>

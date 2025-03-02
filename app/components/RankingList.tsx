@@ -422,7 +422,7 @@ export default function RankingList() {
           >
             <ArrowUpDown className="h-4 w-4" />
           </Button>
-          <Input
+          {/* <Input
               type="number"
               placeholder="Preview Your Level"
               className="w-40"
@@ -431,7 +431,7 @@ export default function RankingList() {
               min="1"
               max="100"
               step="0.1"
-            />
+            /> */}
           <FilterSort
             onSortChange={handleSortChange}
             onYearChange={handleYearChange}
@@ -452,6 +452,7 @@ export default function RankingList() {
         ) : (
           <>
             <div className="space-y-4">
+              {user.login && filteredStudents.findIndex(student => student.name === user.login) !== -1 && (
               <p className="text-sm text-gray-500">
                 Your position : <strong>{filteredStudents.findIndex(student => student.name === user.login) + 1 || 'N/A'}</strong> / {filteredStudents.length}
                 <a
@@ -472,6 +473,7 @@ export default function RankingList() {
                   (page {Math.ceil((filteredStudents.findIndex(student => student.name === user.login) + 1) / ITEMS_PER_PAGE) || 'N/A'})
                 </a>
               </p>
+              )}
               {paginatedStudents.map((student) => (
                 <StudentCard
                   key={student.id}
