@@ -194,7 +194,7 @@ export default function ExamTracker() {
     const averageGrade = students.reduce((sum, student) => sum + (student.grade || 0), 0) / students.length
 
     return (
-        <div>
+        <div className="max-w-7xl mx-auto px-4">
             <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>

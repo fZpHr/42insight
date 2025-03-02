@@ -61,7 +61,7 @@ const links = [
 
 export default function UsefulLinks() {
     return (
-        <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 space-y-6">
             <h2 className="text-3xl font-semibold">Useful Links</h2>
             <p className="text-muted-foreground">
                 Quick access to important school resources and services.

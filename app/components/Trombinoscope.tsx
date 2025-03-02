@@ -52,7 +52,7 @@ export default function Trombinoscope() {
   }, [])
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto px-4">
       <h2 className="text-3xl font-semibold mb-6">Trombinoscope</h2>
       <p className="text-sm text-muted-foreground mb-4">Number of students: {students.length}</p>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">

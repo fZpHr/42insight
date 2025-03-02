@@ -6,19 +6,19 @@ import { Github } from 'lucide-react'
 export default function Contribute() {
   const roadmapItems = [
     { title: "Resolve all skill issues", "status": "∞" },
-    { title: "Export All Old Features", status: "In Progress" },
-    { title: "More stats(activity,..)", status: "In Progress" },
+    { title: "Export All Old Features", status: "Completed" },
+    { title: "More stats(activity,..)", status: "Completed" },
     { title: "Our Find peers", status: "In Progress" },
     { title: "Exam tracker", status: "In Progress" },
     { title: "Responsive Design", status: "In Progress" },
     { title: "RGPD Compliance", status: "Planned" },
     { title: "Mobile app", status: "In Discussion" },
-    { title: "Tree-Graph Relation", "status": "In Discussion" },
+    { title: "Tree-Graph Relation", "status": "Planned" },
     { title: "Extension for Search Engine/Overlay intra", status: "In Discussion" },
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 space-y-6">
       <h2 className="text-3xl font-semibold mb-6">Contribute to 42 Insight</h2>
 
       <Card className="shadow-lg">
