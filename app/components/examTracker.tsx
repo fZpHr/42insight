@@ -24,6 +24,7 @@ interface Student {
     grade: number
     lastUpdate: Date
     examId: string
+    occurence: number
     isToday: boolean
 }
 
@@ -54,6 +55,7 @@ async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string
                 name: student.login,
                 photo: student.image.versions.small,
                 grade: 0,
+                occurence: 0,
                 lastUpdate: new Date(),
                 examId: exam_id[i],
                 isToday: false
@@ -86,6 +88,7 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
                 if (student) {
                     student.grade = projectUser.teams[projectUser.teams.length - 1].final_mark || 0
                     student.lastUpdate = new Date(projectUser.updated_at)
+                    student.occurence = projectUser.occurrence
                     student.isToday = isToday(new Date(projectUser.retriable_at))
                 }
             }
@@ -292,6 +295,7 @@ export default function ExamTracker() {
                                     <TableHead>Grade</TableHead>
                                     <TableHead>Exam</TableHead>
                                     <TableHead>Last Update</TableHead>
+                                    <TableHead>Retry</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -308,6 +312,9 @@ export default function ExamTracker() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="h-4 bg-gray-500 rounded w-20 animate-pulse"></div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
@@ -342,6 +349,7 @@ export default function ExamTracker() {
                                         <TableHead>Grade</TableHead>
                                         <TableHead>Exam</TableHead>
                                         <TableHead>Last Update</TableHead>
+                                        <TableHead>Retry</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -363,6 +371,7 @@ export default function ExamTracker() {
                                             </TableCell>
                                             <TableCell>{getExamName(student.examId)}</TableCell>
                                             <TableCell>{new Date(student.lastUpdate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                                            <TableCell>{student.occurence}</TableCell>
                                             <TableCell>
                                                 <Link href={`https://profile.intra.42.fr/users/${student.id}`} target="_blank" className="flex items-center text-blue-500 hover:underline">
                                                     View Profile
