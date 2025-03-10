@@ -86,15 +86,15 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
 
   const chartData = useMemo(() => {
     if (!student.activityData) return [];
-    
+
     if (Array.isArray(student.activityData)) {
       return student.activityData;
     }
-    
+
     if (typeof student.activityData === 'object' && 'dailyHours' in student.activityData) {
       return student.activityData.dailyHours;
     }
-    
+
     return [];
   }, [student.activityData]);
 
@@ -107,7 +107,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
     >
       <Card id={student.name} className={`hover:shadow-lg transition-shadow duration-300 ${student.name === login ? 'border-2 border-purple-600' : ''}`}>
         <CardContent className="flex items-center p-4">
-            <div className="hidden md:flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mr-4 overflow-hidden">
+          <div className="hidden md:flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mr-4 overflow-hidden">
             <Image
               src={student.photoUrl || "/placeholder.svg"}
               alt={`${student.name}'s photo`}
@@ -116,7 +116,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
               className="object-cover w-full h-full"
               loading="lazy"
             />
-            </div>
+          </div>
           <div className="flex-grow">
             <div className="flex items-center">
               <h3 className="text-lg font-semibold mr-2">{student.name}</h3>
@@ -163,20 +163,20 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
             </div>
             <div className="flex gap-2 mt-2">
               <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onActivityClick(student)}
+                variant="outline"
+                size="sm"
+                onClick={() => onActivityClick(student)}
               >
-              <Activity className="h-4 w-4" />
-              <span className="hidden md:inline ml-2">Activity</span>
+                <Activity className="h-4 w-4" />
+                <span className="hidden md:inline ml-2">Activity</span>
               </Button>
               <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`https://profile.intra.42.fr/users/${student.name}`, '_blank')}
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`https://profile.intra.42.fr/users/${student.name}`, '_blank')}
               >
-              <ChevronRight className="h-4 w-4" />
-              <span className="hidden md:inline ml-2">View Profile</span>
+                <ChevronRight className="h-4 w-4" />
+                <span className="hidden md:inline ml-2">View Profile</span>
               </Button>
             </div>
           </div>
@@ -218,7 +218,7 @@ const fetchStudentsOnce = async (): Promise<Student[]> => {
 
 
 export default function RankingList() {
-  const login =  JSON.parse(localStorage.getItem('user') || '{}').login
+  const login = JSON.parse(localStorage.getItem('user') || '{}').login
   const [students, setStudents] = useState<Student[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState('all')
@@ -307,29 +307,29 @@ export default function RankingList() {
         result.sort((a, b) => {
           const getActivityTime = (student: Student) => {
             if (!student.activityData) return 0;
-            
-            if (typeof student.activityData === 'object' && !Array.isArray(student.activityData) && 
-                'totalTime' in student.activityData) {
+
+            if (typeof student.activityData === 'object' && !Array.isArray(student.activityData) &&
+              'totalTime' in student.activityData) {
               const activityData = student.activityData as ActivityData;
               return activityData.totalTime;
             }
-            
-            if (typeof student.activityData === 'object' && !Array.isArray(student.activityData) && 
-                'weeklyTime' in student.activityData) {
+
+            if (typeof student.activityData === 'object' && !Array.isArray(student.activityData) &&
+              'weeklyTime' in student.activityData) {
               const activityData = student.activityData as ActivityData;
               return activityData.weeklyTime;
             }
-            
+
             if (Array.isArray(student.activityData)) {
               return student.activityData.reduce((sum, day) => sum + (day.value || 0), 0);
             }
-            
+
             return 0;
           };
-          
+
           const aTime = getActivityTime(a);
           const bTime = getActivityTime(b);
-          
+
           return sortMultiplier * (bTime - aTime);
         });
         break;
@@ -360,7 +360,7 @@ export default function RankingList() {
       )
     }
     return result
-  }, [students, searchQuery, filter, sort, year, sortDirection,  previewLevel])
+  }, [students, searchQuery, filter, sort, year, sortDirection, previewLevel])
 
   const paginatedStudents = useMemo(() => {
     const startIndex = (page - 1) * ITEMS_PER_PAGE
@@ -402,7 +402,7 @@ export default function RankingList() {
     )
   }
 
-  const user =  JSON.parse(localStorage.getItem('user') || '{}')
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
   const updatedAt = user.time ? format(new Date(user.time[0].updatedAt), 'dd-MM-yyyy HH:mm:ss') : 'N/A'
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -413,7 +413,7 @@ export default function RankingList() {
       < div id="top" className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 md:space-x-4" >
         <SearchBar onSearch={handleSearch} />
         <div className="flex items-center space-x-4">
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -436,7 +436,7 @@ export default function RankingList() {
             onSortChange={handleSortChange}
             onYearChange={handleYearChange}
           />
-          </div>
+        </div>
       </div>
 
 
@@ -453,26 +453,26 @@ export default function RankingList() {
           <>
             <div className="space-y-4">
               {user.login && filteredStudents.findIndex(student => student.name === user.login) !== -1 && (
-              <p className="text-sm text-gray-500">
-                Your position : <strong>{filteredStudents.findIndex(student => student.name === user.login) + 1 || 'N/A'}</strong> / {filteredStudents.length}
-                <a
-                  href="#"
-                  className="ml-2 text-purple-600 underline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const position = filteredStudents.findIndex(student => student.name === user.login) + 1;
-                    if (position === 0) return;
-                    const pageToGo = Math.ceil(position / ITEMS_PER_PAGE);
-                    setPage(pageToGo);
-                    setTimeout(() => {
-                      const top = document.getElementById(user.login);
-                      top?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 0);
-                  }}
-                >
-                  (page {Math.ceil((filteredStudents.findIndex(student => student.name === user.login) + 1) / ITEMS_PER_PAGE) || 'N/A'})
-                </a>
-              </p>
+                <p className="text-sm text-gray-500">
+                  Your position : <strong>{filteredStudents.findIndex(student => student.name === user.login) + 1 || 'N/A'}</strong> / {filteredStudents.length}
+                  <a
+                    href="#"
+                    className="ml-2 text-purple-600 underline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const position = filteredStudents.findIndex(student => student.name === user.login) + 1;
+                      if (position === 0) return;
+                      const pageToGo = Math.ceil(position / ITEMS_PER_PAGE);
+                      setPage(pageToGo);
+                      setTimeout(() => {
+                        const top = document.getElementById(user.login);
+                        top?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 0);
+                    }}
+                  >
+                    (page {Math.ceil((filteredStudents.findIndex(student => student.name === user.login) + 1) / ITEMS_PER_PAGE) || 'N/A'})
+                  </a>
+                </p>
               )}
               {paginatedStudents.map((student) => (
                 <StudentCard
@@ -544,19 +544,19 @@ export default function RankingList() {
               name: activeStudent.name,
               activityData: (() => {
                 //console.log('Debug activityData:', activeStudent.name, activeStudent.activityData);
-                
+
                 if (!activeStudent.activityData) {
                   return undefined;
                 }
-                
+
                 try {
-                  if (typeof activeStudent.activityData === 'object' && 
-                      !Array.isArray(activeStudent.activityData) && 
-                      'totalTime' in activeStudent.activityData &&
-                      'dailyHours' in activeStudent.activityData) {
+                  if (typeof activeStudent.activityData === 'object' &&
+                    !Array.isArray(activeStudent.activityData) &&
+                    'totalTime' in activeStudent.activityData &&
+                    'dailyHours' in activeStudent.activityData) {
                     return activeStudent.activityData as ActivityData;
-                  }Activity
-                  
+                  } Activity
+
                   if (Array.isArray(activeStudent.activityData)) {
                     return {
                       totalTime: 0,
@@ -565,7 +565,7 @@ export default function RankingList() {
                       lastUpdated: new Date().toISOString()
                     };
                   }
-                  
+
                   if (typeof activeStudent.activityData === 'string') {
                     try {
                       const parsed = JSON.parse(activeStudent.activityData);
@@ -585,7 +585,7 @@ export default function RankingList() {
                       console.error('Error parsing activityData JSON', e);
                     }
                   }
-                  
+
                   console.warn('Unable to process activityData format for:', activeStudent.name);
                   return undefined;
                 } catch (error) {

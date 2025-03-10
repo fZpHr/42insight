@@ -59,18 +59,17 @@ async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string
                 isToday: false
             }))
             initialStudents = [...initialStudents, ...studentsData.filter((student: Student) => !initialStudents.some(s => s.id === student.id))]
-            await new Promise(r => setTimeout(r, 1000));
         } catch (error) {
             console.error('Error fetching students:', error)
         }
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 2000))
     }
     return initialStudents
 }
 
 async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Student[]) {
-    for (let i = 0; i < students.length; i += 20) {
-        const batch = students.slice(i, i + 20)
+    for (let i = 0; i < students.length; i += 18) {
+        const batch = students.slice(i, i + 18)
         const userIds = batch.map(student => student.id).join(',')
 
         try {
@@ -90,11 +89,10 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
                     student.isToday = isToday(new Date(projectUser.retriable_at))
                 }
             }
-            await new Promise(r => setTimeout(r, 1000));
         } catch (error) {
             console.error('Error fetching grades:', error)
         }
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 2000))
     }
     students.sort((a, b) => b.grade - a.grade)
     students = students.filter(student => student.isToday)
@@ -124,9 +122,10 @@ export default function ExamTracker() {
     const [isUpdating, setIsUpdating] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [requestsLeft, setRequestsLeft] = useState<number | null>(null)
+    const [autoUpdate, setAutoUpdate] = useState(false)
 
     const updateGrades = async () => {
-        sessionStorage.removeItem('exam')
+        //sessionStorage.removeItem('exam')
         setStudents([])
         setIsUpdating(true)
         setError(null)
@@ -167,7 +166,9 @@ export default function ExamTracker() {
             if (cachedStudents && cachedStudents.length > 0) {
                 setStudents(JSON.parse(cachedStudents))
             }
-            interval = setInterval(updateGrades, 120000);
+            if (autoUpdate) {
+                interval = setInterval(updateGrades, 120000);
+            }
         }
         return () => clearInterval(interval)
     }, [apiKey1, apiKey2])
@@ -225,7 +226,7 @@ export default function ExamTracker() {
                                     onChange={(e) => setApiKey2(e.target.value)}
                                 />
                             </div>
-                            <div className="flex items-end">
+                            <div className="flex items-end space-x-4">
                                 <Button onClick={updateGrades} disabled={isUpdating || !apiKey1 || !apiKey2}>
                                     {isUpdating ? 'Updating...' : 'Update Grades'}
                                 </Button>
@@ -246,6 +247,22 @@ export default function ExamTracker() {
                                 </label>
                                 <p className="text-sm text-muted-foreground">
                                     Store your API keys in your local storage
+                                </p>
+                            </div>
+                            <Checkbox
+                                id="save-keys"
+                                checked={autoUpdate}
+                                onCheckedChange={(checked: boolean) => setAutoUpdate(checked)}
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <label
+                                    htmlFor="save-keys"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    Auto-Update Grades
+                                </label>
+                                <p className="text-sm text-muted-foreground">
+                                    Automatically update grades every 2 minutes
                                 </p>
                             </div>
                         </div>
