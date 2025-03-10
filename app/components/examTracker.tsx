@@ -59,6 +59,7 @@ async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string
                 isToday: false
             }))
             initialStudents = [...initialStudents, ...studentsData.filter((student: Student) => !initialStudents.some(s => s.id === student.id))]
+            await new Promise(r => setTimeout(r, 1000));
         } catch (error) {
             console.error('Error fetching students:', error)
         }
@@ -89,6 +90,7 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
                     student.isToday = isToday(new Date(projectUser.retriable_at))
                 }
             }
+            await new Promise(r => setTimeout(r, 1000));
         } catch (error) {
             console.error('Error fetching grades:', error)
         }
@@ -165,7 +167,7 @@ export default function ExamTracker() {
             if (cachedStudents && cachedStudents.length > 0) {
                 setStudents(JSON.parse(cachedStudents))
             }
-            interval = setInterval(updateGrades, 600000)
+            interval = setInterval(updateGrades, 120000);
         }
         return () => clearInterval(interval)
     }, [apiKey1, apiKey2])
