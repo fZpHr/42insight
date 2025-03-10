@@ -125,7 +125,7 @@ export default function ExamTracker() {
     const [autoUpdate, setAutoUpdate] = useState(false)
 
     const updateGrades = async () => {
-        //sessionStorage.removeItem('exam')
+        sessionStorage.removeItem('exam')
         setStudents([])
         setIsUpdating(true)
         setError(null)
@@ -156,6 +156,15 @@ export default function ExamTracker() {
             localStorage.setItem('apiKey1', btoa(apiKey1))
             localStorage.setItem('apiKey2', btoa(apiKey2))
         }
+    }
+
+    const updateAutoUpdate = (checked: boolean) => {
+        setAutoUpdate(checked)
+        if (!checked) {
+            localStorage.removeItem('autoUpdate')
+        }
+        else
+            localStorage.setItem('autoUpdate', checked.toString())
     }
 
     useEffect(() => {
@@ -192,6 +201,7 @@ export default function ExamTracker() {
         const storedApiKey2 = localStorage.getItem('apiKey2') ? atob(localStorage.getItem('apiKey2')!) : '';
         if (storedApiKey1) setApiKey1(storedApiKey1);
         if (storedApiKey2) setApiKey2(storedApiKey2);
+        if (localStorage.getItem('autoUpdate')) setAutoUpdate(true);
         setKeepKeys(!!(storedApiKey1 && storedApiKey2));
     }, []);
     const averageGrade = students.reduce((sum, student) => sum + (student.grade || 0), 0) / students.length
@@ -201,7 +211,6 @@ export default function ExamTracker() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
-                    <p className="text-muted-foreground">Data is updated every 2min</p>
                 </CardHeader>
                 <CardContent>
                     <div className="mb-6 space-y-4">
@@ -252,7 +261,7 @@ export default function ExamTracker() {
                             <Checkbox
                                 id="save-keys"
                                 checked={autoUpdate}
-                                onCheckedChange={(checked: boolean) => setAutoUpdate(checked)}
+                                onCheckedChange={(checked: boolean) => updateAutoUpdate(checked)}
                             />
                             <div className="grid gap-1.5 leading-none">
                                 <label
