@@ -200,7 +200,7 @@ export default function ExamTracker() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
-                    <p className="text-muted-foreground">Data is updated every 10min</p>
+                    <p className="text-muted-foreground">Data is updated every 2min</p>
                 </CardHeader>
                 <CardContent>
                     <div className="mb-6 space-y-4">
