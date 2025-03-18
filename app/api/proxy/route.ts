@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import axios from 'axios'
 
-// Cache the token and its expiration
-let cachedToken: string | null = null
-let tokenExpiration: number | null = null
+const tokenCache = new Map<string, { token: string; expiresAt: number }>()
 
 async function getToken(CLIENT_ID: string, CLIENT_SECRET: string) {
-    // Check if we have a valid cached token
-    if (cachedToken && tokenExpiration && Date.now() < tokenExpiration) {
-        return cachedToken
+    const cached = tokenCache.get(CLIENT_ID)
+
+    if (cached && Date.now() < cached.expiresAt) {
+        return cached.token
     }
 
     try {
@@ -18,9 +17,12 @@ async function getToken(CLIENT_ID: string, CLIENT_SECRET: string) {
             client_secret: CLIENT_SECRET,
         })
 
-        cachedToken = response.data.access_token
-        tokenExpiration = Date.now() + (response.data.expires_in * 1000) - 60000
-        return cachedToken
+        const newToken = response.data.access_token
+        const expiresAt = Date.now() + response.data.expires_in * 1000 - 60000
+
+        tokenCache.set(CLIENT_ID, { token: newToken, expiresAt })
+
+        return newToken
     } catch (error: any) {
         throw new Error('Failed to obtain access token')
     }
@@ -30,7 +32,13 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
         const { endpoint, method, data, CLIENT_ID, CLIENT_SECRET } = body
+
+        if (!CLIENT_ID || !CLIENT_SECRET) {
+            return NextResponse.json({ error: "Missing credentials" }, { status: 400 })
+        }
+
         const token = await getToken(CLIENT_ID, CLIENT_SECRET)
+
         const response = await axios({
             method: method || 'GET',
             url: `https://api.intra.42.fr/v2${endpoint}`,

@@ -69,7 +69,7 @@ async function getAllSubscribedStudents(CLIENT_ID: string, CLIENT_SECRET: string
     return initialStudents
 }
 
-async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Student[]) {
+async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Student[], setActiveStudents: React.Dispatch<React.SetStateAction<Student[]>>) {
     for (let i = 0; i < students.length; i += 18) {
         const batch = students.slice(i, i + 18)
         const userIds = batch.map(student => student.id).join(',')
@@ -88,7 +88,7 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
                 if (student) {
                     student.grade = projectUser.teams[projectUser.teams.length - 1].final_mark || 0
                     student.lastUpdate = new Date(projectUser.updated_at)
-                    student.occurence = projectUser.occurrence
+                    student.occurence = projectUser.occurrence + 1
                     student.isToday = isToday(new Date(projectUser.retriable_at))
                 }
             }
@@ -99,6 +99,7 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
     }
     students.sort((a, b) => b.grade - a.grade)
     students = students.filter(student => student.isToday)
+    setActiveStudents(students)
     return students
 }
 
@@ -119,6 +120,7 @@ function getExamName(examId: string) {
 
 export default function ExamTracker() {
     const [students, setStudents] = useState<Student[]>([])
+    const [activeStudents, setActiveStudents] = useState<Student[]>([])
     const [keepKeys, setKeepKeys] = useState(false)
     const [apiKey1, setApiKey1] = useState('')
     const [apiKey2, setApiKey2] = useState('')
@@ -128,26 +130,54 @@ export default function ExamTracker() {
     const [autoUpdate, setAutoUpdate] = useState(false)
 
     const updateGrades = async () => {
-        sessionStorage.removeItem('exam')
-        setStudents([])
-        setIsUpdating(true)
-        setError(null)
+        setIsUpdating(true);
+        setError(null);
+
         try {
-            let initialStudents = students
-            if (students.length === 0) {
-                initialStudents = await getAllSubscribedStudents(apiKey1, apiKey2)
+            let initialStudents = students;
+
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const isExamDay = dayOfWeek === 3 || dayOfWeek === 4;
+
+            if (!isExamDay) {
+                setError("Today is not an exam day. Exams are held on Wednesdays and Thursdays.");
+                setIsUpdating(false);
+                return;
             }
-            const updatedStudents = await getGrades(apiKey1, apiKey2, initialStudents)
-            setStudents(updatedStudents)
-            cacheExamData(updatedStudents)
-            const requestsLeft = await getRequestsLeft(apiKey1, apiKey2)
-            setRequestsLeft(requestsLeft)
+
+            const cachedStudentsResponse = await fetch("/api/cacheExamData");
+            if (cachedStudentsResponse.ok) {
+                const cachedStudents = await cachedStudentsResponse.json();
+                setStudents(cachedStudents);
+                return;
+            }
+
+            if (students.length === 0) {
+                initialStudents = await getAllSubscribedStudents(apiKey1, apiKey2);
+            }
+
+            const updatedStudents = activeStudents.length > 0
+                ? await getGrades(apiKey1, apiKey2, activeStudents, setActiveStudents)
+                : await getGrades(apiKey1, apiKey2, initialStudents, setStudents);
+
+            setStudents(updatedStudents);
+
+            await fetch("/api/cache", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ students: updatedStudents }),
+            });
+
+            const requestsLeft = await getRequestsLeft(apiKey1, apiKey2);
+            setRequestsLeft(requestsLeft);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred while updating grades.')
+            setError(err instanceof Error ? err.message : "An error occurred while updating grades.");
         } finally {
-            setIsUpdating(false)
+            setIsUpdating(false);
         }
-    }
+    };
+
 
     const updateChecked = (checked: boolean) => {
         setKeepKeys(checked)
@@ -171,19 +201,32 @@ export default function ExamTracker() {
     }
 
     useEffect(() => {
-        let interval: NodeJS.Timeout
+        let interval: NodeJS.Timeout;
 
-        if (apiKey1 && apiKey2) {
-            const cachedStudents = sessionStorage.getItem('exam')
-            if (cachedStudents && cachedStudents.length > 0) {
-                setStudents(JSON.parse(cachedStudents))
-            }
-            if (autoUpdate) {
-                interval = setInterval(updateGrades, 120000);
-            }
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const isExamDay = dayOfWeek === 3 || dayOfWeek === 4;
+
+        if (!isExamDay) {
+            setError("Today is not an exam day. Exams are held on Wednesdays and Thursdays.");
+            setIsUpdating(false);
+            return;
         }
-        return () => clearInterval(interval)
-    }, [apiKey1, apiKey2])
+
+        fetch("/api/cache")
+            .then(res => res.json())
+            .then(data => {
+                if (data) setStudents(data);
+            })
+            .catch(() => console.log("No cached data found"));
+
+        if (autoUpdate && !isUpdating) {
+            interval = setInterval(updateGrades, 120000);
+        }
+
+        return () => clearInterval(interval);
+    }, []);
+
 
     const getGradeBadgeColor = (grade: number) => {
         if (grade >= 90) return 'bg-green-500'
@@ -191,13 +234,6 @@ export default function ExamTracker() {
         if (grade >= 70) return 'bg-yellow-500'
         return 'bg-red-500'
     }
-
-    function cacheExamData(test: Student[] = students) {
-        console.log(JSON.stringify(students))
-        sessionStorage.setItem('exam', JSON.stringify(test))
-    }
-
-
 
     useEffect(() => {
         const storedApiKey1 = localStorage.getItem('apiKey1') ? atob(localStorage.getItem('apiKey1')!) : '';
@@ -295,7 +331,8 @@ export default function ExamTracker() {
                                     <TableHead>Grade</TableHead>
                                     <TableHead>Exam</TableHead>
                                     <TableHead>Last Update</TableHead>
-                                    <TableHead>Retry</TableHead>
+                                    <TableHead>Try</TableHead>
+                                    <TableHead>Intra</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -348,8 +385,9 @@ export default function ExamTracker() {
                                         <TableHead>Student</TableHead>
                                         <TableHead>Grade</TableHead>
                                         <TableHead>Exam</TableHead>
-                                        <TableHead>Last Update</TableHead>
-                                        <TableHead>Retry</TableHead>
+                                        <TableHead>Last push</TableHead>
+                                        <TableHead>Try</TableHead>
+                                        <TableHead>Intra</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
