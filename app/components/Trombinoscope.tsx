@@ -69,13 +69,14 @@ export default function Trombinoscope() {
             >
               <CardContent className="p-0">
                 <div className="relative aspect-square">
-                  <Image
+                  <img
                     src={student.photoUrl}
                     alt={`${student.name}'s photo`}
-                    layout="fill"
-                    objectFit="cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-cover w-full h-full"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    loading="lazy"
                   />
+
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-lg mb-1">{student.name}</h3>

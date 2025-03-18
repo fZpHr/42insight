@@ -2,8 +2,8 @@ import { Redis } from "@upstash/redis";
 import { NextRequest, NextResponse } from "next/server";
 
 const redis = new Redis({
-    url: "https://optimal-mako-30221.upstash.io",
-    token: "",
+    url: process.env.REDIS_URL,
+    token: process.env.REDIS_PASSWORD,
 });
 
 export async function POST(request: NextRequest) {

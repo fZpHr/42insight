@@ -108,7 +108,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
       <Card id={student.name} className={`hover:shadow-lg transition-shadow duration-300 ${student.name === login ? 'border-2 border-purple-600' : ''}`}>
         <CardContent className="flex items-center p-4">
           <div className="hidden md:flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mr-4 overflow-hidden">
-            <Image
+            <img
               src={student.photoUrl || "/placeholder.svg"}
               alt={`${student.name}'s photo`}
               width={128}
@@ -116,6 +116,7 @@ const StudentCard = ({ student, index, onActivityClick }: StudentCardProps) => {
               className="object-cover w-full h-full"
               loading="lazy"
             />
+
           </div>
           <div className="flex-grow">
             <div className="flex items-center">
