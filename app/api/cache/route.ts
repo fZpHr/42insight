@@ -1,14 +1,11 @@
 import { Redis } from "@upstash/redis";
 import { NextRequest, NextResponse } from "next/server";
-try {
+
+
 const redis = new Redis({
     url: process.env.REDIS_URL,
     token: process.env.REDIS_PASSWORD,
 });
-}
-catch (error){
-    console.log(error);
-}
 
 export async function POST(request: NextRequest) {
     try {
