@@ -1,8 +1,9 @@
 import './globals.css'
+import { Analytics } from "@vercel/analytics/react"
 import { Poppins } from 'next/font/google'
 import { ThemeProvider } from "./components/theme-provider"
 
-const poppins = Poppins({ 
+const poppins = Poppins({
   weight: ['400', '600', '700'],
   subsets: ['latin'],
   display: 'swap',
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className={`${poppins.className} min-h-screen bg-background text-foreground`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

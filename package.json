@@ -20,6 +20,7 @@
     "@radix-ui/react-tooltip": "^1.1.6",
     "@tanstack/react-query": "^5.62.11",
     "@upstash/redis": "^1.34.5",
+    "@vercel/analytics": "^1.5.0",
     "axios": "^1.7.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
