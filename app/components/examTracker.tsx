@@ -97,8 +97,9 @@ async function getGrades(CLIENT_ID: string, CLIENT_SECRET: string, students: Stu
         }
         await new Promise(resolve => setTimeout(resolve, 2000))
     }
+    students = Array.isArray(students) ? students.filter(student => student.isToday) : []
+    //students = students.slice(0, 5) # for debugging
     students.sort((a, b) => b.grade - a.grade)
-    students = students.filter(student => student.isToday)
     setActiveStudents(students)
     return students
 }
