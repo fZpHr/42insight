@@ -9,9 +9,9 @@ import { Badge } from "./ui/badge"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
 import { Label } from "./ui/label"
-import { AlertCircle, Car } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
-import { isToday, set } from "date-fns"
+import { isToday } from "date-fns"
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar"
 import { Checkbox } from "./ui/checkbox"
 import Link from 'next/link'
@@ -243,7 +243,9 @@ export default function ExamTracker() {
         if (localStorage.getItem('autoUpdate')) setAutoUpdate(true);
         setKeepKeys(!!(storedApiKey1 && storedApiKey2));
     }, []);
-    const averageGrade = students.reduce((sum, student) => sum + (student.grade || 0), 0) / students.length
+    const averageGrade = Array.isArray(students) && students.length > 0
+        ? students.reduce((sum, student) => sum + (student.grade || 0), 0) / students.length
+        : 0;
 
     return (
         <div className="max-w-7xl mx-auto px-4">
