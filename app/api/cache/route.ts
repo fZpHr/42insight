@@ -1,13 +1,13 @@
 import { Redis } from "@upstash/redis";
 import { NextRequest, NextResponse } from "next/server";
 
-const redis = new Redis({
-    url: process.env.REDIS_URL,
-    token: process.env.REDIS_PASSWORD,
-});
 
 export async function POST(request: NextRequest) {
     try {
+        const redis = new Redis({
+            url: process.env.REDIS_URL,
+            token: process.env.REDIS_PASSWORD,
+        });
         const { students } = await request.json();
         if (!students) {
             return NextResponse.json({ error: "No students data provided" }, { status: 400 });
@@ -25,6 +25,10 @@ export async function GET() {
 
     if (cachedData) {
         try {
+            const redis = new Redis({
+            url: process.env.REDIS_URL,
+            token: process.env.REDIS_PASSWORD,
+            });
             const parsedData = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
             return NextResponse.json(parsedData, { status: 200 });
         } catch (error) {
