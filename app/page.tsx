@@ -16,6 +16,7 @@ import Contribute from './components/Contribute'
 import UsefulLinks from './components/UsefulLinks'
 import ExamTracker from './components/examTracker'
 import ClusterMap from './components/ClusterMap'
+import Games from './components/Games'
 
 export default function Home() {
 
@@ -36,6 +37,8 @@ export default function Home() {
         return <ExamTracker />
       //case 'cluster-map':
       //  return <ClusterMap />
+      // case 'games':
+      //   return <Games />
       default:
         return <RankingList />
     }

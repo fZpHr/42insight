@@ -1,4 +1,4 @@
-import { BarChart3, Users, Grid, X, GitPullRequest, LinkIcon, Map } from 'lucide-react'
+import { BarChart3, Users, Grid, X, GitPullRequest, LinkIcon, Map, Gamepad2 } from 'lucide-react'
 import { Button } from "./ui/button"
 
 interface SidebarProps {
@@ -15,6 +15,7 @@ export default function Sidebar({ isOpen, setIsOpen, activeView, setActiveView }
     { name: 'Trombinoscope', icon: Users, value: 'trombinoscope' },
     { name: 'Exam Tracker', icon: BarChart3, value: 'exam-tracker' },
     { name: 'Useful Links', icon: LinkIcon, value: 'useful-links' },
+    // { name: 'Games', icon: Gamepad2, value: 'games'},
     { name: 'Contribute', icon: GitPullRequest, value: 'contribute' },
   ]
 
