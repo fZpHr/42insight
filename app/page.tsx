@@ -17,6 +17,7 @@ import UsefulLinks from './components/UsefulLinks'
 import ExamTracker from './components/examTracker'
 import ClusterMap from './components/ClusterMap'
 import Games from './components/Games'
+import Head from 'next/head';
 
 export default function Home() {
 
@@ -92,6 +93,9 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-background">
+      <Head>
+        <title>42 Insight</title>
+      </Head>
       <Sidebar
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
