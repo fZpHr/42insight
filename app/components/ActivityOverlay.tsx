@@ -65,7 +65,6 @@ export default function ActivityOverlay({ student, onClose }: ActivityOverlayPro
           const date = parseISO(day.date)
           return date >= weekStart && date <= weekEnd
         })
-        
         const totalHours = weekData.reduce((sum, day) => sum + day.value, 0)
         
         weekly.push({
@@ -75,7 +74,7 @@ export default function ActivityOverlay({ student, onClose }: ActivityOverlayPro
         })
       }
       
-      setWeeklyData(weekly)
+      setWeeklyData(weekly.reverse())
     }
   }, [student])
   
