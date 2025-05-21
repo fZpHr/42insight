@@ -22,6 +22,7 @@ model Student {
   wallet               Int
   activityData         Json     @default("{\"activities\":[]}")
   blackholeTimer       Int
+  campus               String?
 }
 
 model UpdateTimestamp {
