@@ -1,19 +1,14 @@
-'use client'
+"use client"
 
-import { 
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectItem,
-  SelectValue,
-} from "./ui/select"
+import { Select, SelectContent, SelectTrigger, SelectItem, SelectValue } from "./ui/select"
 
 interface FilterSortProps {
   onSortChange: (sort: string) => void
   onYearChange: (year: string) => void
+  onCampusChange: (campus: string) => void
 }
 
-export default function FilterSort({ onSortChange, onYearChange }: FilterSortProps) {
+export default function FilterSort({ onSortChange, onYearChange, onCampusChange }: FilterSortProps) {
   return (
     <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full">
       <Select onValueChange={onSortChange}>
@@ -40,7 +35,16 @@ export default function FilterSort({ onSortChange, onYearChange }: FilterSortPro
           <SelectItem value="2024">2024</SelectItem>
         </SelectContent>
       </Select>
+      <Select onValueChange={onCampusChange}>
+        <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectValue placeholder="Filter by Campus" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Tous les campus</SelectItem>
+          <SelectItem value="Nice">Nice</SelectItem>
+          <SelectItem value="Angouleme">Angoulême</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   )
 }
-
