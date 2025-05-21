@@ -42,7 +42,7 @@ export default function FilterSort({ onSortChange, onYearChange, onCampusChange 
         <SelectContent>
           <SelectItem value="all">Tous les campus</SelectItem>
           <SelectItem value="Nice">Nice</SelectItem>
-          <SelectItem value="Angouleme">Angoulême</SelectItem>
+          <SelectItem value="Angoulême">Angoulême</SelectItem>
         </SelectContent>
       </Select>
     </div>
