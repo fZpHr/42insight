@@ -235,7 +235,7 @@ export default function RankingList() {
   const [filter, setFilter] = useState("all")
   const [sort, setSort] = useState("level")
   const [year, setYear] = useState("all")
-  const [campus, setCampus] = useState("all")
+  const [campus, setCampus] = useState("Angoulême")
   const [activeStudent, setActiveStudent] = useState<Student | null>(null)
   const [page, setPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
