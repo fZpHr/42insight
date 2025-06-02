@@ -1,4 +1,6 @@
-import { BarChart3, Users, Grid, X, GitPullRequest, LinkIcon, Map, Gamepad2 } from 'lucide-react'
+"use client"
+
+import { BarChart3, Users, Grid, X, GitPullRequest, LinkIcon } from "lucide-react"
 import { Button } from "./ui/button"
 
 interface SidebarProps {
@@ -10,29 +12,27 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, setIsOpen, activeView, setActiveView }: SidebarProps) {
   const navItems = [
-    { name: 'Rankings', icon: Grid, value: 'rankings' },
+    { name: "Rankings", icon: Grid, value: "rankings" },
     //{ name: 'Cluster-map', icon: Map, value: 'cluster-map' },
-    { name: 'Trombinoscope', icon: Users, value: 'trombinoscope' },
-    { name: 'Exam Tracker', icon: BarChart3, value: 'exam-tracker' },
-    { name: 'Useful Links', icon: LinkIcon, value: 'useful-links' },
+    { name: "Trombinoscope", icon: Users, value: "trombinoscope" },
+    { name: "Exam Tracker", icon: BarChart3, value: "exam-tracker" },
+    { name: "Relation Tree", icon: Users, value: "relation-tree" },
+    { name: "Useful Links", icon: LinkIcon, value: "useful-links" },
     // { name: 'Games', icon: Gamepad2, value: 'games'},
-    { name: 'Contribute', icon: GitPullRequest, value: 'contribute' },
+    { name: "Contribute", icon: GitPullRequest, value: "contribute" },
   ]
 
   return (
-    <div className={`
+    <div
+      className={`
       fixed inset-y-0 left-0 z-50 w-64 bg-card shadow-lg transform transition-transform duration-300 ease-in-out
-      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      ${isOpen ? "translate-x-0" : "-translate-x-full"}
       md:relative md:translate-x-0
-    `}>
+    `}
+    >
       <div className="flex items-center justify-between p-4 border-b border-border">
         <h2 className="text-xl font-semibold text-foreground">42 Insight</h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={() => setIsOpen(false)}
-        >
+        <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsOpen(false)}>
           <X className="h-6 w-6" />
         </Button>
       </div>
@@ -58,4 +58,3 @@ export default function Sidebar({ isOpen, setIsOpen, activeView, setActiveView }
     </div>
   )
 }
-

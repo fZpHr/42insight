@@ -1,45 +1,44 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import * as React from 'react'
-import { Menu } from 'lucide-react'
-import { ProfilePicture } from './components/ui/ProfilePicture'
+import { useState } from "react"
+import { Menu } from "lucide-react"
+import { ProfilePicture } from "./components/ui/ProfilePicture"
 import { Button } from "./components/ui/button"
 import RankingList from "./components/RankingList"
 import Trombinoscope from "./components/Trombinoscope"
 import Sidebar from "./components/Sidebar"
 import { DarkModeToggle } from "./components/DarkModeToggle"
-import { useEffect } from 'react'
-import { Login } from './components/Login'
-import { Loader } from 'lucide-react'
-import Contribute from './components/Contribute'
-import UsefulLinks from './components/UsefulLinks'
-import ExamTracker from './components/examTracker'
-import ClusterMap from './components/ClusterMap'
-import Games from './components/Games'
-import Head from 'next/head';
+import { useEffect } from "react"
+import { Login } from "./components/Login"
+import { Loader } from "lucide-react"
+import Contribute from "./components/Contribute"
+import UsefulLinks from "./components/UsefulLinks"
+import ExamTracker from "./components/examTracker"
+import Head from "next/head"
+import RelationTree from "./components/RelationTree"
 
 export default function Home() {
-
-  const [activeView, setActiveView] = useState('rankings')
+  const [activeView, setActiveView] = useState("rankings")
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const renderContent = () => {
     switch (activeView) {
-      case 'rankings':
+      case "rankings":
         return <RankingList />
-      case 'trombinoscope':
+      case "trombinoscope":
         return <Trombinoscope />
-      case 'contribute':
+      case "contribute":
         return <Contribute />
-      case 'useful-links':
+      case "useful-links":
         return <UsefulLinks />
-      case 'exam-tracker':
+      case "exam-tracker":
         return <ExamTracker />
       //case 'cluster-map':
       //  return <ClusterMap />
       // case 'games':
       //   return <Games />
+      case "relation-tree":
+        return <RelationTree />
       default:
         return <RankingList />
     }
@@ -50,34 +49,34 @@ export default function Home() {
   useEffect(() => {
     const checkAuth = async () => {
       const token = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('token='))
-        ?.split('=')[1];
+        .split("; ")
+        .find((row) => row.startsWith("token="))
+        ?.split("=")[1]
 
       if (!token) {
-        setIsLoggedIn(false);
-        return;
+        setIsLoggedIn(false)
+        return
       }
       try {
-        const response = await fetch('/api/getter', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await response.json();
+        const response = await fetch("/api/getter", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await response.json()
         const userData = {
           login: data.login,
           profilePicture: data.image.versions.small,
-          time: await (await fetch('/api/time')).json()
-        };
-        localStorage.setItem('user', JSON.stringify(userData));
-        setIsLoggedIn(response.ok);
+          time: await (await fetch("/api/time")).json(),
+        }
+        localStorage.setItem("user", JSON.stringify(userData))
+        setIsLoggedIn(response.ok)
       } catch (error) {
-        console.error('Authentication Error:', error);
-        setIsLoggedIn(false);
+        console.error("Authentication Error:", error)
+        setIsLoggedIn(false)
       }
-    };
+    }
 
-    checkAuth();
-  }, []);
+    checkAuth()
+  }, [])
 
   if (isLoggedIn === null) {
     return (
@@ -96,12 +95,7 @@ export default function Home() {
       <Head>
         <title>42 Insight</title>
       </Head>
-      <Sidebar
-        isOpen={sidebarOpen}
-        setIsOpen={setSidebarOpen}
-        activeView={activeView}
-        setActiveView={setActiveView}
-      />
+      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} activeView={activeView} setActiveView={setActiveView} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-card shadow-sm z-10">
@@ -110,12 +104,7 @@ export default function Home() {
             <div className="flex items-center space-x-4">
               <DarkModeToggle />
               <ProfilePicture />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
+              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(true)}>
                 <Menu className="h-6 w-6" />
               </Button>
             </div>
@@ -123,12 +112,9 @@ export default function Home() {
         </header>
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background">
-          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            {renderContent()}
-          </div>
+          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">{renderContent()}</div>
         </main>
       </div>
     </div>
   )
 }
-

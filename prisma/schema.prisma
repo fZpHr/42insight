@@ -23,6 +23,7 @@ model Student {
   activityData         Json     @default("{\"activities\":[]}")
   blackholeTimer       Int
   campus               String?
+  relation             Json
 }
 
 model UpdateTimestamp {
