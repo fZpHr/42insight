@@ -65,7 +65,7 @@ const fetchStudents = async (): Promise<Student[]> => {
     console.log("First student data structure:", data[0]);
     
     // Check for relation data specifically
-    const studentsWithRelation = data.filter(student => student.relation);
+    const studentsWithRelation = data.filter((student: Student) => student.relation);
     console.log(`Students with relation field: ${studentsWithRelation.length}/${data.length}`);
     
     // If any students have relation data, log one example
@@ -350,7 +350,7 @@ export default function RelationTree() {
       .force("center", d3.forceCenter(centerX, centerY))
       .force(
         "collision",
-        d3.forceCollide().radius((d) => Math.max(15, Math.sqrt(d.relationCount) * 8) + 5),
+        d3.forceCollide().radius((d) => Math.max(15, Math.sqrt((d as RelationNode).relationCount) * 8) + 5),
       )
 
     simulationRef.current = simulation

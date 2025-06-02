@@ -2,6 +2,7 @@
 
 import { BarChart3, Users, Grid, X, GitPullRequest, LinkIcon } from "lucide-react"
 import { Button } from "./ui/button"
+import { Badge } from "./ui/badge"
 
 interface SidebarProps {
   isOpen: boolean
@@ -16,7 +17,7 @@ export default function Sidebar({ isOpen, setIsOpen, activeView, setActiveView }
     //{ name: 'Cluster-map', icon: Map, value: 'cluster-map' },
     { name: "Trombinoscope", icon: Users, value: "trombinoscope" },
     { name: "Exam Tracker", icon: BarChart3, value: "exam-tracker" },
-    { name: "Relation Tree", icon: Users, value: "relation-tree" },
+    { name: "Relation Tree", icon: Users, value: "relation-tree", isNew: true },
     { name: "Useful Links", icon: LinkIcon, value: "useful-links" },
     // { name: 'Games', icon: Gamepad2, value: 'games'},
     { name: "Contribute", icon: GitPullRequest, value: "contribute" },
@@ -49,7 +50,12 @@ export default function Sidebar({ isOpen, setIsOpen, activeView, setActiveView }
                 }}
               >
                 <item.icon className="mr-3 h-5 w-5" />
-                {item.name}
+                <div className="flex items-center gap-2">
+                  {item.name}
+                  {item.isNew && (
+                    <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs py-0 px-1.5">NEW</Badge>
+                  )}
+                </div>
               </Button>
             </li>
           ))}
