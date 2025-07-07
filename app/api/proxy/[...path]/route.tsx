@@ -30,13 +30,13 @@ export async function GET(
             throw new Error("Not authorized")
         }
 
-        if (decoded.login != "bapasqui") {
+        if (decoded.login !== "bapasqui" && decoded.login !== "hbelle") {
             const count = await redis.get(decoded.login + RATE_KEY)
             if (count && parseInt(String(count)) >= RATE_LIMIT) {
-                return NextResponse.json(
-                    { error: 'Rate limit exceeded' },
-                    { status: 429 }
-                )
+            return NextResponse.json(
+                { error: 'Rate limit exceeded' },
+                { status: 429 }
+            )
             }
         }
         await redis.incr(decoded.login + RATE_KEY)

@@ -114,7 +114,7 @@ export default function Trombinoscope() {
                     <SelectContent>
                         <SelectItem value={user?.campus! || "angouleme"}><Star></Star>Angoulême</SelectItem>
                         <SelectItem value="nice">Nice</SelectItem>
-                        {user?.name === "bapasqui" && (
+                        {(user?.name === "bapasqui" || user?.name === "hbelle") && (
                             <>
                                 <SelectItem value="amsterdam">Amsterdam</SelectItem>
                                 <SelectItem value="paris">Paris</SelectItem>

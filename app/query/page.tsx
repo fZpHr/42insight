@@ -49,7 +49,7 @@ export default function Query() {
 
     const fetchQueryResults = async (query: string) => {
         try {
-            if (requestCount >= 10 && user?.name != "bapasqui") {
+            if (requestCount >= 10 && !(user?.name === "bapasqui" || user?.name === "hbelle")) {
                 toast.error('Rate limit exceeded', {
                     duration: 2000,
                     position: 'bottom-right',
@@ -137,7 +137,7 @@ export default function Query() {
                         </a>{' '}
                         for available endpoints.
                     </p>
-                    {user?.name != "bapasqui" && (
+                    {!(user?.name === "bapasqui" || user?.name === "hbelle") && (
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <label className="text-sm font-medium">Rate Limit</label>
