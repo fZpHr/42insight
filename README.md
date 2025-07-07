@@ -13,18 +13,25 @@ All of the Old Features from our existing website have been moved to one website
 - 🏆 Rankings (Level, Correcteur, ...)
 - 👥 Trombinoscope
 - 📈 Exam tracker
+- Pool Rankings
+- Tree Graph Relation
 
 ### 🚀 Upcoming Features : 
 
 - Our own ``find-peers`` since the current one is not regurlarly updated
-- A ```Tree-Graph Relation```
+- A `Correction Slots` feature to help you make slots even on mobile devices
 
 ## Stack
 
-- Frontend: React.js with Next.js, components from ShadCN, design from V0.dev
-- Backend: Not really one (API with Nextjs)
+- Frontend: React.js with Next.js, components from ShadCN, design mostly from V0.dev
+- Backend: Next.js API routes
+- State Management: Context API
+- Tanstack: TanStack Query (React Query)
 - Authentication: OAuth2 (42 API)
 - Database: Mariadb
+- ORM: Prisma
+- Caching: Redis (Upstash)
+- Deployment: Vercel
 
 ## Contributions
 

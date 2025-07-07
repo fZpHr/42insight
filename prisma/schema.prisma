@@ -1,29 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model Student {
-  id                   Int      @id
+  id                   Int     @id
   name                 String
   level                Float
   photoUrl             String
   location             String
+  correctionTotal      Int     @default(0)
+  correctionPositive   Int     @default(0)
+  correctionNegative   Int     @default(0)
+  correctionPercentage Float   @default(0)
+  correctionPoints     Int
+  year                 Int
+  wallet               Int
+  activityData         String  @db.LongText
+  blackholeTimer       Int
+  campus               String?
+  relation             String  @db.LongText
+}
+
+model PoolUser {
+  id                   Int      @id
+  name                 String
+  firstName           String
+  level                Float
+  photoUrl             String
+  location             String
+  correctionPoints     Int
   correctionTotal      Int      @default(0)
   correctionPositive   Int      @default(0)
   correctionNegative   Int      @default(0)
   correctionPercentage Float    @default(0)
-  correctionPoints     Int
+  activityData         Json     @default("{\"activities\":[]}")
+  examGrades           Json     @default("{\"exam0\":0,\"exam1\":0,\"exam2\":0,\"exam3\":0}")
   year                 Int
   wallet               Int
-  activityData         Json     @default("{\"activities\":[]}")
-  blackholeTimer       Int
-  campus               String?
-  relation             Json
+  isPoolUser           Boolean  @default(false)
 }
 
 model UpdateTimestamp {
@@ -32,7 +51,7 @@ model UpdateTimestamp {
 }
 
 model FindPeers {
-    id          Int      @id @default(autoincrement())
-    projectName String
-    subscribers Json
+  id          Int    @id @default(autoincrement())
+  projectName String
+  subscribers String @db.LongText
 }
