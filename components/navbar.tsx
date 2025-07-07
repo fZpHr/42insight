@@ -204,7 +204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />   
                             )} */}
                             <SidebarMenuButton size="lg" asChild className="flex-1">
-                                <Link href="/dashboard/profile">
+                                <div>
                                     <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-gray-800 to-black text-sidebar-primary-foreground">
                                         <img src={user?.photoUrl || "/default-avatar.png"} alt="User Avatar" className="h-8 w-8 rounded-lg object-cover" />
                                     </div>
@@ -214,7 +214,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                             Level {user?.level} • {user?.campus}
                                         </span>
                                     </div>
-                                </Link>
+                                </div>
                             </SidebarMenuButton>
                         </div>
                         <DropdownMenu>
