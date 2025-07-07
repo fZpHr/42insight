@@ -112,8 +112,8 @@ export default function Trombinoscope() {
                         <SelectValue placeholder="Select campus" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value={user?.campus! || "angouleme"}><Star></Star>Angoulême</SelectItem>
-                        <SelectItem value="nice">Nice</SelectItem>
+                        <SelectItem value="angouleme">{user?.campus === "Angoulême" && <Star className="h-4 w-4 mr-1" />}Angoulême</SelectItem>
+                        <SelectItem value="nice">{user?.campus === "Nice" && <Star className="h-4 w-4 mr-1" />}Nice</SelectItem>
                         {(user?.name === "bapasqui" || user?.name === "hbelle") && (
                             <>
                                 <SelectItem value="amsterdam">Amsterdam</SelectItem>

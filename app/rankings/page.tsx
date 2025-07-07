@@ -94,7 +94,6 @@ const processedStudents = students
         .filter((student: Student) => student.name.toLowerCase().includes(searchTerm.toLowerCase()))
         .filter((student: Student) => {
             if (selectedYear === "all") return true;
-            // Replace 'year' with the actual field name that contains the year in your Student type
             return student.year?.toString() === selectedYear;
         }),
     sortOptions.find((option) => option.value === sortBy)?.key || "level",

@@ -264,7 +264,7 @@ export default function Dashboard() {
             Welcome back, {userIntraInfo?.usual_full_name || user?.name}!
           </h1>
           <p className="text-muted-foreground text-lg">
-            {userIntraInfo?.campus?.[0]?.name || "42 Campus"} • {currentCursus?.cursus?.name || "Common Core"}
+            {user?.campus || userIntraInfo?.campus?.[0]?.name} • {currentCursus?.cursus?.name || "Common Core"}
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
             {currentCursus?.grade && (
