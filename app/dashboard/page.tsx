@@ -168,7 +168,7 @@ export default function Dashboard() {
     queryKey: ["userIntraInfo", user?.name],
     queryFn: () => fetchUserIntraInfo(user?.name || ""),
     enabled: !!user && !loading,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
   })
 
