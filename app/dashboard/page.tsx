@@ -158,7 +158,7 @@ function LoadingDashboard() {
 }
 
 export default function Dashboard() {
-  const { user, loading, fetchUserIntraInfo, getCampusRank } = useAuth()
+  const { user, loading, fetchUserIntraInfo, getCampusRank, isStaff } = useAuth()
 
   const {
     data: userIntraInfo,
@@ -281,31 +281,33 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-    <Card className="w-full">
-        <CardContent className="p-4">
+      {!isStaff && (
+        <>
+        <Card className="w-full">
+          <CardContent className="p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat, index) => {
+              {stats.map((stat, index) => {
                 const Icon = stat.icon
                 if (intraLoading || rankLoading) {
-                    return (
+                  return (
                     <div key={index} className="flex flex-col items-center text-center space-y-1">
-                        <Skeleton className="h-6 w-6 rounded" />
-                        <Skeleton className="h-3 w-12" />
-                        <Skeleton className="h-5 w-10" />
+                      <Skeleton className="h-6 w-6 rounded" />
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-5 w-10" />
                     </div>
-                    )
+                  )
                 }
                 return (
-                    <div key={index} className="flex flex-col items-center text-center space-y-1">
+                  <div key={index} className="flex flex-col items-center text-center space-y-1">
                     <Icon className="h-6 w-6 text-primary" />
                     <p className="text-xs font-medium text-muted-foreground">{stat.title}</p>
                     <p className="text-xl font-bold">{stat.value}</p>
-                    </div>
+                  </div>
                 )
-            })}
+              })}
             </div>
-        </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
 
       {/* Progress and Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -411,6 +413,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+      </>
+    )}
     </div>
   )
 }

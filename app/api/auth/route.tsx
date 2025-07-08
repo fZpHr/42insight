@@ -70,10 +70,12 @@ export async function GET(request: Request) {
     if (poolUserRecord && poolUserRecord.id && poolUserRecord.isPoolUser) {
       isPoolUser = true
     }
+
     const jwtPayload = {
       userId: userData.id,
       login: userData.login,
-      isPoolUser: isPoolUser, 
+      isPoolUser: isPoolUser,
+      isStaff: userData["staff?"],
       apiToken: accessToken,
       iat: Math.floor(Date.now() / 1000),
     }

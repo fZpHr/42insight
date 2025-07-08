@@ -18,6 +18,26 @@ export async function GET() {
         if (!decoded) {
             throw new Error("Not authorized")
         }
+
+        if (decoded.isStaff) {
+            const userResponse = await fetch('https://api.intra.42.fr/v2/me', {
+                headers: {
+                  Authorization: `Bearer ${decoded.apiToken}`,
+                },
+              })
+            if (!userResponse.ok) {
+                throw new Error('Failed to fetch user data from 42 API')
+            }
+            const userData = await userResponse.json()
+            return NextResponse.json({
+                userId: userData.id,
+                login: userData.login,
+                photoUrl: userData.image?.versions?.small || '',
+                isPoolUser: false,
+                isStaff: true,
+            })
+        }
+
         const dbUser = await prisma.student.findUnique({
             where: {
                 id: decoded.userId
