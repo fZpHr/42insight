@@ -131,11 +131,13 @@ const navigationData = {
                     title: "Useful Links",
                     url: "/links",
                     icon: LinkIcon,
+                    description: "Quick access to important resources",
                 },
                 {
                     title: "Query",
                     url: "/query",
-                    icon: Database
+                    icon: Database,
+                    description: "Search the 42 API",
                 }
             ],
         },
@@ -163,6 +165,7 @@ const restrictednavigationData = {
                     title: "Useful Links",
                     url: "/links",
                     icon: LinkIcon,
+                    description: "Quick access to important resources",
                 },
             ],
         },
