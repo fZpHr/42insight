@@ -206,7 +206,7 @@ export default function Dashboard() {
         icon: Trophy,
       },
       {
-        title: "Campus Rank",
+        title: "Rank",
         value: campusRank || "N/A",
         icon: Users,
       },
