@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const token = cookies.token;
 
             if (!token) { throw new Error('No authentication token found'); }
-            const response = await fetch(`/api/proxy/users/${login}`, {
+            const response = await fetch(`/api/users/${login}/intra`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!response.ok) {
