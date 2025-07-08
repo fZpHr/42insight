@@ -132,18 +132,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const cookies = parseCookies();
             const token = cookies.token;
             if (!token) { throw new Error('No authentication token found'); }
-            const response = await fetch(`/api/users/campus/${campus}`, {
+            const response = await fetch(`/api/users/${user?.name}/rank`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!response.ok) {
                 throw new Error('Failed to fetch campus rank');
             }
             const data = await response.json();
-
-            const sortedStudents = data.sort((a: Student, b: Student) => b.level - a.level);
-            const currentUserIndex = sortedStudents.findIndex((student: Student) => student.name === user?.name);
-            const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
-            return currentUserRank;
+            return data.rank || null;
         } catch (error) {
             console.error('Error fetching campus rank:', error);
             throw error;

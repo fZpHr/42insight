@@ -31,16 +31,7 @@ export async function GET(
         const students = await prisma.student.findMany({
             where: { campus: params.campus_name }
         })
-        const userLogins = students.map(student => student.name);
-        const hasUserLogin = decoded.login && userLogins.includes(decoded.login);
-        if (!hasUserLogin) {
-            const poolUsers = await prisma.poolUser.findMany({});
-            if (poolUsers.length > 0) {
-                return NextResponse.json(poolUsers);
-            }
-        }
         
-
         if (!students || students.length == 0) {
             try {
                 const campusMapping: { [key: string]: number } = {
