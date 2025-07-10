@@ -228,35 +228,35 @@ const processedStudents = students
 
     return (
         <div className="max-w-7xl mx-auto px-4 space-y-6">
-            <Card className="sticky top-4 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <Card className="lg:sticky lg:top-4 lg:z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <CardHeader>
-                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:w-auto">
                             {userRank && (
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={scrollToUserPosition}
-                                    className="flex items-center gap-1 px-3 bg-transparent"
+                                    className="flex items-center gap-1 px-3 bg-transparent w-full sm:w-auto"
                                     title="Go to your position"
                                 >
                                     <Target className="h-4 w-4 text-muted-foreground" />
                                     <span className="hidden sm:inline">#{userRank}</span>
                                 </Button>
                             )}
-                            <div className="relative w-full sm:w-auto">
+                            <div className="relative w-full sm:w-64">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search students..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 w-full sm:w-64"
+                                    className="pl-10 w-full"
                                 />
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+                        <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:w-auto">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 <Select value={selectedYear} onValueChange={setSelectedYear}>
                                     <SelectTrigger className="w-full sm:w-32">
@@ -271,50 +271,45 @@ const processedStudents = students
                                 </Select>
                             </div>
                             <div className="flex items-center gap-2 w-full sm:w-auto">
-                                <div className="flex items-center gap-2 flex-1 sm:flex-initial">
-                                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                                    <Select value={selectedCampus || user?.campus} onValueChange={setSelectedCampus}>
-                                        <SelectTrigger className="w-full sm:w-32">
-                                            <SelectValue placeholder="Campus" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {campusOptions.map((option) => (
-                                                <SelectItem key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="flex items-center gap-2 flex-1 sm:flex-initial">
-                                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                                    <Select value={sortBy} onValueChange={handleSortChange}>
-                                        <SelectTrigger className="w-full sm:w-48">
-                                            <SelectValue placeholder="Sort by..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {sortOptions.map((option) => (
-                                                <SelectItem key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={toggleSortDirection}
-                                    className="flex items-center gap-1 px-3 bg-transparent"
-                                    title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
-                                >
-                                    {getSortIcon()}
-                                    <span className="hidden sm:inline">{sortDirection === "asc" ? "Asc" : "Desc"}</span>
-                                </Button>
-
+                                <MapPin className="h-4 w-4 text-muted-foreground" />
+                                <Select value={selectedCampus || user?.campus} onValueChange={setSelectedCampus}>
+                                    <SelectTrigger className="w-full sm:w-32">
+                                        <SelectValue placeholder="Campus" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {campusOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                <Select value={sortBy} onValueChange={handleSortChange}>
+                                    <SelectTrigger className="w-full sm:w-48">
+                                        <SelectValue placeholder="Sort by..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {sortOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={toggleSortDirection}
+                                className="flex items-center gap-1 px-3 bg-transparent w-full sm:w-auto"
+                                title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
+                            >
+                                {getSortIcon()}
+                                <span className="hidden sm:inline">{sortDirection === "asc" ? "Asc" : "Desc"}</span>
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>

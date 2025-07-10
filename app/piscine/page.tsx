@@ -204,37 +204,6 @@ export default function Piscine() {
 
     return (
         <div className="max-w-7xl mx-auto px-2 sm:px-4">
-            {/* New Tutors Section */}
-            {isLoadingTutors && (
-                <Card>
-                    <CardHeader>
-                        <Skeleton className="h-6 w-48" />
-                    </CardHeader>
-                    <CardContent className="flex flex-nowrap overflow-x-auto gap-4 pt-0 pb-2">
-                        {[...Array(10)].map((_, i) => (
-                            <div key={i} className="flex flex-col items-center gap-1 flex-shrink-0 w-[90px]">
-                                <Skeleton className="h-10 w-10 rounded-full" />
-                                <Skeleton className="h-3 w-16" />
-                                <Skeleton className="h-3 w-12" /> {/* For login */}
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            )}
-            {!isLoadingTutors && tutorsError && (
-                <Card className="border-destructive">
-                    <CardContent className="pt-6">
-                        <div className="text-center">
-                            <p className="text-destructive font-medium">Failed to load tutors</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {tutorsError instanceof Error ? tutorsError.message : "An unexpected error occurred"}
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Existing Sticky Card (Search/Sort) */}
             <Card className="sticky top-4 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <CardHeader>
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -299,14 +268,22 @@ export default function Piscine() {
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <Skeleton className="h-6 w-32" />
-                            <Skeleton className="h-5 w-16" />
+                            <CardTitle className="text-lg">
+                                <Skeleton className="h-6 w-32" />
+                            </CardTitle>
+                            <div className="flex items-center gap-2">
+                                <Skeleton className="h-5 w-20 rounded" />
+                                <Skeleton className="h-5 w-16 rounded" />
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="divide-y">
                             {[...Array(8)].map((_, index) => (
-                                <div key={index} className="flex items-center gap-4 p-4">
+                                <div
+                                    key={index}
+                                    className="flex items-center gap-4 p-4"
+                                >
                                     <div className="flex items-center justify-center w-12 h-12 flex-shrink-0">
                                         <Skeleton className="h-8 w-8 rounded-full" />
                                     </div>
@@ -316,12 +293,22 @@ export default function Piscine() {
                                             <Skeleton className="h-5 w-32" />
                                             <Skeleton className="h-4 w-16" />
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                            <Skeleton className="h-3 w-24" />
-                                            <Skeleton className="h-3 w-20" />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                                             <Skeleton className="h-3 w-28" />
-                                            <Skeleton className="h-3 w-22" />
+                                            <Skeleton className="h-3 w-24" />
                                         </div>
+                                    </div>
+                                    <div className="hidden lg:block">
+                                        <div className="text-xs text-muted-foreground mb-1">
+                                            <Skeleton className="h-3 w-16" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1">
+                                            <Skeleton className="h-4 w-12" />
+                                            <Skeleton className="h-4 w-12" />
+                                        </div>
+                                    </div>
+                                    <div className="hidden sm:flex items-center">
+                                        <Skeleton className="h-8 w-20 rounded" />
                                     </div>
                                     <div className="sm:hidden">
                                         <Skeleton className="h-4 w-8" />
