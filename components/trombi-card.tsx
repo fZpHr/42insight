@@ -66,7 +66,7 @@ export function StudentCard({ student, poolUser, showingName, isPool, isGame }: 
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         loading="lazy"
                     />
-                    {(show || (!show && !showGuessInput)) && (
+                    {(show || (!show && !showGuessInput)) && !isGame && (
                         <div className="absolute bottom-2 left-2">
                             <div className={`bg-black/80 backdrop-blur-sm rounded-lg p-3 transition-all duration-300 ${!show ? 'opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-1' : 'opacity-100'
                                 }`}>

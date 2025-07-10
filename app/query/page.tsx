@@ -115,7 +115,7 @@ export default function Query() {
                                 type="text"
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
-                                placeholder="users/me"
+                                placeholder={`users/${user?.name || 'username'}`}
                                 className="flex-1 rounded-l-none"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && query.trim() && !isLoading) {

@@ -5,7 +5,7 @@ import { jwtVerify } from 'jose';
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
 
-  const protectedRoutes = ['/dashboard', '/exam-tracker', '/links', '/query', '/piscine','/trombinoscope', '/rankings', '/api', 'contribute'];
+  const protectedRoutes = ['/dashboard', '/exam-tracker', '/links', '/query', '/piscine','/trombinoscope', '/rankings', '/api', '/contribute'];
   const poolRestrictedRoutes = ['/query', '/rankings', '/trombinoscope', '/exam-tracker'];
   
   const isProtectedRoute = protectedRoutes.some(route => 
@@ -47,5 +47,8 @@ export const config = {
     '/exam-tracker/:path*',
     '/correction-slots/:path*',
     '/piscine/:path*',
+    '/links/:path*',
+    '/api/:path*',
+    '/contribute/:path*',
   ],
 };
