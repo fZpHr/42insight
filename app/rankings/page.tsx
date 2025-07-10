@@ -69,30 +69,39 @@ export default function Rankings() {
     })
 
     const sortStudents = (students: Student[], sortKey: keyof Student, direction: SortDirection) => {
-        return [...students].sort((a, b) => {
-            let aValue = a[sortKey]
-            let bValue = b[sortKey]
-
-            if (direction === "asc") {
-                return aValue < bValue ? -1 : aValue > bValue ? 1 : 0
-            } else {
-                return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
-            }
-        })
+      let effectiveDirection = direction
+      if (sortKey === "correctionPercentage") {
+        effectiveDirection = direction === "asc" ? "desc" : "asc"
+      }
+      return [...students].sort((a, b) => {
+        let aValue = a[sortKey]
+        let bValue = b[sortKey]
+        if (effectiveDirection === "asc") {
+          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0
+        } else {
+          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
+        }
+      })
     }
 
 const processedStudents = students
-? sortStudents(
-    students
+  ? sortStudents(
+      students
         .filter((student: Student) => student.name.toLowerCase().includes(searchTerm.toLowerCase()))
         .filter((student: Student) => {
-            if (selectedYear === "all") return true;
-            return student.year?.toString() === selectedYear;
-        }),
-    sortOptions.find((option) => option.value === sortBy)?.key || "level",
-    sortDirection,
-)
-: []
+          if (selectedYear === "all") return true;
+          return student.year?.toString() === selectedYear;
+        })
+        .filter(
+          (student: Student) =>
+            typeof student.correctionPositive === "number" &&
+            typeof student.correctionNegative === "number" &&
+            (student.correctionPositive + student.correctionNegative) >= 10
+        ),
+      sortOptions.find((option) => option.value === sortBy)?.key || "level",
+      sortDirection,
+    )
+  : []
 
     const visibleStudents = processedStudents.slice(0, visibleCount)
     const hasMore = visibleCount < processedStudents.length
