@@ -49,68 +49,68 @@ export default function Piscine() {
         staleTime: 10 * 60 * 1000,
     })
 
-    const {
-        data: tutors,
-        isLoading: isLoadingTutors,
-        error: tutorsError,
-    } = useQuery<Tutor[]>({
-        queryKey: ["tutors"],
-        queryFn: async () => {
-            return [
-                {
-                    "id": "tutor1",
-                    "name": "ael-atmi",
-                    "photoUrl": "https://cdn.intra.42.fr/users/5a3e3f739ad6d5a1a99643ef08d79904/ael-atmi.jpg",
-                },
-                {
-                    "id": "tutor2",
-                    "name": "alaualik",
-                    "photoUrl": "https://cdn.intra.42.fr/users/cdc094ee2c549eb2432ec950a68abe0f/alaualik.jpg",
-                },
-                {
-                    "id": "tutor3",
-                    "name": "antauber",
-                    "photoUrl": "https://cdn.intra.42.fr/users/f2073e9936df5d2defc8ad974b264573/antauber.jpg",
-                },
-                {
-                    "id": "tutor4",
-                    "name": "inowak--",
-                    "photoUrl": "https://cdn.intra.42.fr/users/e05b31f3505551717ddaa595c95fc769/inowak--.jpg",
-                },
-                {
-                    "id": "tutor5",
-                    "name": "pjurdana",
-                    "photoUrl": "https://cdn.intra.42.fr/users/c6063f96fb9cfdaa5cf853caf8a3bf84/pjurdana.jpg",
-                },
-                {
-                    "id": "tutor6",
-                    "name": "qumiraud",
-                    "photoUrl": "https://cdn.intra.42.fr/users/e4b1252ddab50488c02d18d23f1ec1e9/qumiraud.jpg",
-                },
-                {
-                    "id": "tutor7",
-                    "name": "lguiet",
-                    "photoUrl": "https://cdn.intra.42.fr/users/f45e68c95cf8fa6cdc8edd1e2749d804/lguiet.jpg",
-                },
-                {
-                    "id": "tutor8",
-                    "name": "stetrel",
-                    "photoUrl": "https://cdn.intra.42.fr/users/36ad63d30385ff7c4e2139f41a664913/stetrel.jpg",
-                },
-                {
-                    "id": "tutor9",
-                    "name": "fpetit",
-                    "photoUrl": "https://cdn.intra.42.fr/users/46f2a1c143571d2b9326de82e21cdf13/fpetit.jpg",
-                },
-                {
-                    "id": "tutor10",
-                    "name": "jenibaud",
-                    "photoUrl": "https://cdn.intra.42.fr/users/75d336f63bb7f3e7c2e7b3a0e0eec44d/jenibaud.jpg",
-                }
-            ]
-        },
-        staleTime: 10 * 60 * 1000,
-    })
+    // const {
+    //     data: tutors,
+    //     isLoading: isLoadingTutors,
+    //     error: tutorsError,
+    // } = useQuery<Tutor[]>({
+    //     queryKey: ["tutors"],
+    //     queryFn: async () => {
+    //         return [
+    //             {
+    //                 "id": "tutor1",
+    //                 "name": "ael-atmi",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/5a3e3f739ad6d5a1a99643ef08d79904/ael-atmi.jpg",
+    //             },
+    //             {
+    //                 "id": "tutor2",
+    //                 "name": "alaualik",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/cdc094ee2c549eb2432ec950a68abe0f/alaualik.jpg",
+    //             },
+    //             {
+    //                 "id": "tutor3",
+    //                 "name": "antauber",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/f2073e9936df5d2defc8ad974b264573/antauber.jpg",
+    //             },
+    //             {
+    //                 "id": "tutor4",
+    //                 "name": "inowak--",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/e05b31f3505551717ddaa595c95fc769/inowak--.jpg",
+    //             },
+    //             {
+    //                 "id": "tutor5",
+    //                 "name": "pjurdana",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/c6063f96fb9cfdaa5cf853caf8a3bf84/pjurdana.jpg",
+    //             },
+    //             {
+    //                 "id": "tutor6",
+    //                 "name": "qumiraud",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/e4b1252ddab50488c02d18d23f1ec1e9/qumiraud.jpg",
+    //             },
+    //             {
+    //                 "id": "tutor7",
+    //                 "name": "lguiet",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/f45e68c95cf8fa6cdc8edd1e2749d804/lguiet.jpg",
+    //             },
+    //             {
+    //                 "id": "tutor8",
+    //                 "name": "stetrel",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/36ad63d30385ff7c4e2139f41a664913/stetrel.jpg",
+    //             },
+    //             {
+    //                 "id": "tutor9",
+    //                 "name": "fpetit",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/46f2a1c143571d2b9326de82e21cdf13/fpetit.jpg",
+    //             },
+    //             {
+    //                 "id": "tutor10",
+    //                 "name": "jenibaud",
+    //                 "photoUrl": "https://cdn.intra.42.fr/users/75d336f63bb7f3e7c2e7b3a0e0eec44d/jenibaud.jpg",
+    //             }
+    //         ]
+    //     },
+    //     staleTime: 10 * 60 * 1000,
+    // })
 
     const sortStudents = (students: PoolUser[], sortKey: keyof PoolUser, direction: SortDirection) => {
         return [...students].sort((a, b) => {
@@ -204,7 +204,7 @@ export default function Piscine() {
 
     return (
         <div className="max-w-7xl mx-auto px-2 sm:px-4">
-            <Card className="sticky top-4 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <Card className="lg:sticky top-4 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <CardHeader>
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
@@ -426,14 +426,6 @@ export default function Piscine() {
                                                         </span>
                                                     </span>
                                                 </div>
-                                                {/* <div className="flex items-center gap-1">
-                                <span className="text-muted-foreground">
-                                Wallet:{" "}
-                                <span className={`font-medium ${sortBy === "wallet" ? "text-primary" : "text-foreground"}`}>
-                                    {student.wallet}₳
-                                </span>
-                                </span>
-                            </div> */}
                                             </div>
                                         </div>
                                         {student.examGrades && (
