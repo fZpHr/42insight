@@ -283,138 +283,138 @@ export default function Dashboard() {
       {/* Stats Grid */}
       {!isStaff && (
         <>
-        <Card className="w-full">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.map((stat, index) => {
-                const Icon = stat.icon
-                if (intraLoading || rankLoading) {
+          <Card className="w-full">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                {stats.map((stat, index) => {
+                  const Icon = stat.icon
+                  if (intraLoading || rankLoading) {
+                    return (
+                      <div key={index} className="flex flex-col items-center text-center space-y-1 sm:space-y-2">
+                        <Skeleton className="h-5 w-5 sm:h-6 sm:w-6 rounded" />
+                        <Skeleton className="h-2 w-8 sm:h-3 sm:w-12" />
+                        <Skeleton className="h-4 w-6 sm:h-5 sm:w-10" />
+                      </div>
+                    )
+                  }
                   return (
-                    <div key={index} className="flex flex-col items-center text-center space-y-1">
-                      <Skeleton className="h-6 w-6 rounded" />
-                      <Skeleton className="h-3 w-12" />
-                      <Skeleton className="h-5 w-10" />
+                    <div key={index} className="flex flex-col items-center text-center space-y-1 sm:space-y-2 min-w-0">
+                      <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+                      <p className="text-xs font-medium text-muted-foreground leading-tight">{stat.title}</p>
+                      <p className="text-lg sm:text-xl font-bold truncate w-full">{stat.value}</p>
                     </div>
                   )
-                }
-                return (
-                  <div key={index} className="flex flex-col items-center text-center space-y-1">
-                    <Icon className="h-6 w-6 text-primary" />
-                    <p className="text-xs font-medium text-muted-foreground">{stat.title}</p>
-                    <p className="text-xl font-bold">{stat.value}</p>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-      {/* Progress and Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Cursus Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Level Progress</span>
-                  <span className="text-muted-foreground">{levelProgress.toFixed(1)}%</span>
-                </div>
-                <Progress value={levelProgress} className="h-3" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Current Level: {currentCursus?.level?.toFixed(2) || "0.00"}
-                </p>
+                })}
               </div>
+            </CardContent>
+          </Card>
 
-              {currentCursus?.blackholed_at && (
-                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">Black Hole</span>
-                    <span className="text-destructive font-medium">
-                      {new Date(currentCursus.blackholed_at).toLocaleDateString()}
-                    </span>
+          {/* Progress and Actions */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5" />
+                  Cursus Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="font-medium">Level Progress</span>
+                      <span className="text-muted-foreground">{levelProgress.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={levelProgress} className="h-3" />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Current Level: {currentCursus?.level?.toFixed(2) || "0.00"}
+                    </p>
                   </div>
+
+                  {currentCursus?.blackholed_at && (
+                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium">Black Hole</span>
+                        <span className="text-destructive font-medium">
+                          {new Date(currentCursus.blackholed_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <QuickAction href="https://find-peers.codam.nl/" icon={Users}>
-              Find Study Partners
-            </QuickAction>
-            <QuickAction href="https://profile.intra.42.fr/slots" icon={Calendar}>
-              Book Evaluation Slot
-            </QuickAction>
-            <QuickAction href="https://profile.intra.42.fr/" icon={ExternalLink}>
-              Open Intranet
-            </QuickAction>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <QuickAction href="https://find-peers.codam.nl/" icon={Users}>
+                  Find Study Partners
+                </QuickAction>
+                <QuickAction href="https://profile.intra.42.fr/slots" icon={Calendar}>
+                  Book Evaluation Slot
+                </QuickAction>
+                <QuickAction href="https://profile.intra.42.fr/" icon={ExternalLink}>
+                  Open Intranet
+                </QuickAction>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Projects and Achievements */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Projects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-80 overflow-y-auto">
-              {recentProjects.length > 0 ? (
-                recentProjects.map((project, index) => <ProjectCard key={index} project={project} />)
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No recent projects</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Projects and Achievements */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Projects</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {recentProjects.length > 0 ? (
+                    recentProjects.map((project, index) => <ProjectCard key={index} project={project} />)
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">No recent projects</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Achievements</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-80 overflow-y-auto">
-              {recentAchievements.length > 0 ? (
-                recentAchievements.map((achievement, index) => (
-                  <AchievementCard key={index} achievement={achievement} />
-                ))
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No achievements yet</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Achievements</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {recentAchievements.length > 0 ? (
+                    recentAchievements.map((achievement, index) => (
+                      <AchievementCard key={index} achievement={achievement} />
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">No achievements yet</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Skills Section */}
-      {topSkills.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Skills</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {topSkills.map((skill, index) => (
-                <SkillProgress key={index} skill={skill} />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Skills Section */}
+          {topSkills.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Top Skills</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {topSkills.map((skill, index) => (
+                    <SkillProgress key={index} skill={skill} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
-      </>
-    )}
     </div>
   )
 }

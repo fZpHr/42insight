@@ -20,44 +20,44 @@ export default function Contribute() {
   return (
     <div className="max-w-7xl mx-auto px-4 space-y-6">
       <Card className="shadow-lg">
-        <div className="text-center space-y-3">
+        <div className="text-center space-y-3 px-2 py-4 sm:px-6">
           <h4 className="font-semibold text-lg">Have an idea or suggestion?</h4>
           <p className="text-muted-foreground text-sm">
-            Help us improve 42insight by sharing your feedback and feature requests
+        Help us improve 42insight by sharing your feedback and feature requests
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button
-              variant="outline"
-              size="sm"
-              className="min-w-[140px]"
-              asChild
-            >
-              <a
-                href="https://github.com/fzphr/42insight/issues/new?title=[ISSUE]&body=Describe%20your%20issue%20here...&labels=issue"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Github className="mr-2 h-4 w-4" />
-                Submit Issue
-              </a>
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              className="min-w-[140px]"
-              asChild
-            >
-              <a
-                href="https://github.com/fzphr/42insight/issues/new?title=[IDEA]&body=Describe%20your%20idea%20here...&labels=idea"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                💡 Share Idea
-              </a>
-            </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:justify-center w-full">
+        <Button
+          variant="outline"
+          size="sm"
+          className="min-w-[140px] w-full sm:w-auto"
+          asChild
+        >
+          <a
+            href="https://github.com/fzphr/42insight/issues/new?title=[ISSUE]&body=Describe%20your%20issue%20here...&labels=issue"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Github className="mr-2 h-4 w-4" />
+            Submit Issue
+          </a>
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          className="min-w-[140px] w-full sm:w-auto"
+          asChild
+        >
+          <a
+            href="https://github.com/fzphr/42insight/issues/new?title=[IDEA]&body=Describe%20your%20idea%20here...&labels=idea"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            💡 Share Idea
+          </a>
+        </Button>
           </div>
         </div>
-      </Card >
+      </Card>
 
       <Card className="shadow-lg">
         <CardHeader>

@@ -11,15 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { Student } from "@/types"
+import type { Student, SortOption } from "@/types"
 import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts"
-
-type SortOption = {
-    value: string
-    label: string
-    key: keyof Student
-}
-
 type SortDirection = "asc" | "desc"
 
 const sortOptions: SortOption[] = [

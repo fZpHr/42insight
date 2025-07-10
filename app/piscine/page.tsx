@@ -11,27 +11,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { PoolUser } from "@/types"
+import type { PoolUser, SortOption, Tutor } from "@/types"
 import Wave from 'react-wavify'
 
-type Tutor = {
-    id: string
-    name: string
-    photoUrl?: string
-}
-
-type SortOption = {
-    value: string
-    label: string
-    key: keyof PoolUser
-}
 type SortDirection = "asc" | "desc"
 
 const sortOptions: SortOption[] = [
     { value: "level", label: "Level", key: "level" },
-    { value: "wallet", label: "Wallet", key: "wallet" },
     { value: "correctionPoints", label: "Correction Points", key: "correctionPoints" },
-    { value: "correctionPercentage", label: "Correction Ratio", key: "correctionPercentage" },
 ]
 
 export default function Piscine() {
@@ -216,7 +203,7 @@ export default function Piscine() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 space-y-6">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4">
             {/* New Tutors Section */}
             {isLoadingTutors && (
                 <Card>
@@ -250,142 +237,64 @@ export default function Piscine() {
             {/* Existing Sticky Card (Search/Sort) */}
             <Card className="sticky top-4 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <CardHeader>
-                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
                             {userRank && (
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={scrollToUserPosition}
-                                    className="flex items-center gap-1 px-3 bg-transparent"
+                                    className="flex items-center gap-1 px-3 bg-transparent w-full sm:w-auto"
                                     title="Go to your position"
                                 >
                                     <Target className="h-4 w-4 text-muted-foreground" />
-                                    <span className="hidden sm:inline">#{userRank}</span>
+                                    <span className="sm:inline">{`#${userRank}`}</span>
                                 </Button>
                             )}
-                            <div className="relative w-full sm:w-auto">
+                            <div className="relative w-full">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search students..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 w-full sm:w-64"
+                                    className="pl-10 w-full"
                                 />
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:gap-2 sm:w-auto">
                             <div className="flex items-center gap-2 w-full sm:w-auto">
-                                <div className="flex items-center gap-2 flex-1 sm:flex-initial">
-                                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                                    <Select value={sortBy} onValueChange={handleSortChange}>
-                                        <SelectTrigger className="w-full sm:w-48">
-                                            <SelectValue placeholder="Sort by..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {sortOptions.map((option) => (
-                                                <SelectItem key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={toggleSortDirection}
-                                    className="flex items-center gap-1 px-3 bg-transparent"
-                                    title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
-                                >
-                                    {getSortIcon()}
-                                    <span className="hidden sm:inline">{sortDirection === "asc" ? "Asc" : "Desc"}</span>
-                                </Button>
+                                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                <Select value={sortBy} onValueChange={handleSortChange}>
+                                    <SelectTrigger className="w-full sm:w-48">
+                                        <SelectValue placeholder="Sort by..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {sortOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={toggleSortDirection}
+                                className="flex items-center gap-1 px-3 bg-transparent w-full sm:w-auto"
+                                title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
+                            >
+                                {getSortIcon()}
+                                <span className="sm:inline">{sortDirection === "asc" ? "Asc" : "Desc"}</span>
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>
             </Card>
 
+            {/* Padding between sticky card and leaderboard */}
+            <div className="h-4" />
 
-            {!isLoadingTutors && tutors && tutors.length > 0 && (
-                <Card className="relative overflow-hidden">
-                    <div className="absolute bottom-0 left-0 right-0 z-0 overflow-hidden">
-                        <Wave 
-                            mask="url(#mask)" 
-                            fill="#1277b0" 
-                            options={{
-                                height: 20,
-                                amplitude: 15,
-                                speed: 0.15,
-                                points: 5
-                            }}
-                        >
-                            <defs>
-                                <linearGradient id="gradient" gradientTransform="rotate(270)">
-                                    <stop offset="0" stopColor="white" />
-                                    <stop offset="0.5" stopColor="black" />
-                                </linearGradient>
-                                <mask id="mask">
-                                    <rect x="0" y="0" width="2000" height="200" fill="url(#gradient)" />
-                                </mask>
-                            </defs>
-                        </Wave>
-                    </div>
-                    <div className="relative z-10">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    <WavesLadder className="h-5 w-5" />
-                                    Maîtres-Nageurs
-                                </CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                            <div className="flex overflow-x-auto gap-3 pb-2">
-                                {tutors.map((tutor) => (
-                                    <div
-                                        key={tutor.id}
-                                        className="group flex flex-col items-center gap-2 p-3 rounded-lg border bg-card/80 backdrop-blur-sm hover:bg-accent/80 hover:backdrop-blur-md hover:border-accent-foreground/20 transition-all duration-200 cursor-pointer flex-shrink-0 w-[120px]"
-                                        onClick={() => {
-                                            toast.info(`Viewing ${tutor.name}'s profile`, {
-                                                duration: 2000,
-                                                position: "bottom-right"
-                                            })
-                                            window.open(`https://profile.intra.42.fr/users/${tutor.name}`, "_blank")
-                                        }}
-                                    >
-                                        <div className="relative">
-                                            <Avatar className="h-12 w-12 ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
-                                                <AvatarImage
-                                                    src={tutor.photoUrl || "/placeholder.svg"}
-                                                    alt={tutor.name}
-                                                    className="object-cover"
-                                                />
-                                                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                                    {tutor.name
-                                                        .split(" ")
-                                                        .map((n) => n[0])
-                                                        .join("")
-                                                        .toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5">
-                                                <User className="h-2.5 w-2.5" />
-                                            </div>
-                                        </div>
-                                        <div className="text-center space-y-1 min-w-0 w-full">
-                                            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                                                {tutor.name}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </div>
-                </Card>
-            )}
             {isLoading && (
                 <Card>
                     <CardHeader>
@@ -437,7 +346,7 @@ export default function Piscine() {
                 </Card>
             )}
             {!isLoading && processedStudents.length > 0 && (
-                <Card>
+                <Card >
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg">Leaderboard</CardTitle>
@@ -511,26 +420,12 @@ export default function Piscine() {
                                                 </Badge>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                                                {student.correctionPercentage !== 420 && (
+                                                {student.currentProjects !== 420 && (
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-muted-foreground">
-                                                            Correction:{" "}
-                                                            <span
-                                                                className={`font-medium ${sortBy === "correctionPercentage" ? "text-primary" : "text-foreground"
-                                                                    }`}
-                                                            >
-                                                                {student.correctionPercentage}%
+                                                            Current Projects:{" "}
+                                                                {student.currentProjects}
                                                             </span>
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {student.correctionPercentage !== 420 && (
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-muted-foreground">
-                                                            <span className="font-medium text-foreground">{student.correctionPositive}</span>
-                                                            <span className="mx-1">/</span>
-                                                            <span className="font-medium text-muted-foreground">{student.correctionNegative}</span>
-                                                        </span>
                                                     </div>
                                                 )}
                                                 <div className="flex items-center gap-1">
@@ -544,30 +439,29 @@ export default function Piscine() {
                                                         </span>
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-muted-foreground">
-                                                        Wallet:{" "}
-                                                        <span className={`font-medium ${sortBy === "wallet" ? "text-primary" : "text-foreground"}`}>
-                                                            {student.wallet}₳
-                                                        </span>
-                                                    </span>
-                                                </div>
+                                                {/* <div className="flex items-center gap-1">
+                                <span className="text-muted-foreground">
+                                Wallet:{" "}
+                                <span className={`font-medium ${sortBy === "wallet" ? "text-primary" : "text-foreground"}`}>
+                                    {student.wallet}₳
+                                </span>
+                                </span>
+                            </div> */}
                                             </div>
                                         </div>
                                         {student.examGrades && (
                                             <div className="hidden lg:block">
                                                 <div className="text-xs text-muted-foreground mb-1">Exam Grades</div>
-                                                <div className="grid grid-cols-2 gap-1">
-                                                    {Object.entries(student.examGrades || {}).map(([exam, grade]) => (
-                                                        <Badge
-                                                            key={exam}
-                                                            variant={grade > 0 ? "default" : "secondary"}
-                                                            className="text-xs px-1.5 py-0.5"
-                                                        >
-                                                            {exam.replace("exam", "E")}: {grade}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
+                                                <div className="grid grid-cols-2 gap-1"></div>
+                                                {Object.entries(student.examGrades || {}).map(([exam, grade]) => (
+                                                    <Badge
+                                                        key={exam}
+                                                        variant={grade > 0 ? "default" : "secondary"}
+                                                        className="text-xs px-1.5 py-0.5"
+                                                    >
+                                                        {exam.replace("exam", "E")}: {grade}
+                                                    </Badge>
+                                                ))}
                                             </div>
                                         )}
                                         <div className="hidden sm:flex items-center">

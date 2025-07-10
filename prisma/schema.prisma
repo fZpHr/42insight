@@ -40,6 +40,7 @@ model PoolUser {
   correctionPercentage Float    @default(0)
   activityData         Json     @default("{\"activities\":[]}")
   examGrades           Json     @default("{\"exam0\":0,\"exam1\":0,\"exam2\":0,\"exam3\":0}")
+  currentProjects      String   @db.LongText @default("")
   year                 Int
   wallet               Int
   isPoolUser           Boolean  @default(false)

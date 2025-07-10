@@ -5,6 +5,20 @@ interface ActivityData {
     lastUpdated: string
   }
 
+export type SortOption = {
+    value: string
+    label: string
+    key: keyof PoolUser
+}
+
+
+export type Tutor = {
+    id: string
+    name: string
+    photoUrl?: string
+}
+
+
 export interface Student { 
     id: number;
     name: string;
@@ -40,6 +54,7 @@ export interface PoolUser {
     year: number;
     wallet: number;
     activityData: any;
+    currentProjects: any;
     examGrades: any;
     isPoolUser: boolean;
 }
