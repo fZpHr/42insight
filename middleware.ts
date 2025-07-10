@@ -25,6 +25,11 @@ export async function middleware(request: NextRequest) {
       const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
       const { payload } = await jwtVerify(token, secret);
       
+      // if (!payload) {
+      //   return NextResponse.redirect(new URL('/', request.url));
+      // }
+
+      
       if (payload.isPoolUser) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
@@ -48,7 +53,6 @@ export const config = {
     '/correction-slots/:path*',
     '/piscine/:path*',
     '/links/:path*',
-    '/api/:path*',
     '/contribute/:path*',
   ],
 };
