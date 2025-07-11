@@ -50,10 +50,6 @@ export default function ExamTracker() {
     }
 
     const updateData = async () => {
-        if (!isToday()) {
-            setError("Today is not an exam day. Exams are held on Wednesdays and Thursdays.");
-            return;
-        }
         try {
             setIsUpdating(true);
             const response = await fetch("/api/current_exam");
@@ -78,10 +74,10 @@ export default function ExamTracker() {
     useEffect(() => {
         let interval: NodeJS.Timeout;
 
-        if (!isToday()) {
-            setError("Today is not an exam day. Exams are held on Wednesdays and Thursdays.");
-            return;
-        }
+        // if (!isToday()) {
+        //     setError("Today is not an exam day. Exams are held on Wednesdays and Thursdays.");
+        //     return;
+        // }
         updateData();
         interval = setInterval(() => {
             updateData();

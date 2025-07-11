@@ -166,8 +166,19 @@ export default function Dashboard() {
     error: intraError,
   } = useQuery({
     queryKey: ["userIntraInfo", user?.name],
-    queryFn: () => fetchUserIntraInfo(user?.name || ""),
+    queryFn: () => fetchUserIntraInfo(user?.name|| ""),
     enabled: !!user && !loading,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+  })
+
+
+  const {
+    data: staffInfo
+  } = useQuery({
+    queryKey: ["staffInfo"],
+    queryFn: () => fetch("/api/staff").then(res => res.json()),
+    enabled: !!user && !loading && isStaff,
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
   })
@@ -179,7 +190,7 @@ export default function Dashboard() {
   } = useQuery({
     queryKey: ["campusRank", user?.campus],
     queryFn: () => getCampusRank(user?.campus || ""),
-    enabled: !!user && !loading,
+    enabled: !!user && !loading && !isStaff,
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
   })
@@ -264,23 +275,52 @@ export default function Dashboard() {
             Welcome back, {userIntraInfo?.usual_full_name || user?.name}!
           </h1>
           <p className="text-muted-foreground text-lg">
-            {user?.campus || userIntraInfo?.campus?.[0]?.name} • {currentCursus?.cursus?.name || "Common Core"}
+            {user?.campus || userIntraInfo?.campus?.[0]?.name} • {isStaff && "Admin"}{!isStaff && (currentCursus?.cursus?.name || "Common Core")}
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
-            {currentCursus?.grade && (
-              <Badge variant="secondary" className="font-medium">
+            {!isStaff && (
+              <>
+              {currentCursus?.grade && (
+                <Badge variant="secondary" className="font-medium">
                 {currentCursus.grade}
+                </Badge>
+              )}
+              <Badge variant={userIntraInfo?.["active?"] ? "default" : "secondary"}>
+                {userIntraInfo?.["active?"] ? "Active" : "Inactive"}
               </Badge>
+              </>
             )}
-            <Badge variant={userIntraInfo?.["active?"] ? "default" : "secondary"}>
-              {userIntraInfo?.["active?"] ? "Active" : "Inactive"}
-            </Badge>
-            {userIntraInfo?.["staff?"] && <Badge variant="outline">Staff</Badge>}
+            {(userIntraInfo?.["staff?"] || isStaff)&& <Badge variant="outline">Staff</Badge>}
           </div>
         </div>
       </div>
-
-      {/* Stats Grid */}
+      
+      {/* Staff Info */}
+      {isStaff && staffInfo && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Staff Dashboard
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard title="Total Students" value={staffInfo.totalStudents} icon={Users} />
+              <StatCard title="Active Pool Users" value={staffInfo.activePoolUsers} icon={Users} />
+              <StatCard title="Average Level" value={staffInfo.averageLevel.toFixed(2)} icon={TrendingUp} />
+              <StatCard title="Students at Risk" value={staffInfo.studentsAtRisk} icon={AlertCircle} />
+            </div>
+          </CardContent>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <StatCard title="Top Performers" value={`${staffInfo.topPerformers.length}`} icon={Trophy} />
+              <StatCard title="Black Hole Soon" value={staffInfo.blackHoleSoon} icon={AlertCircle} />
+              <StatCard title="Inactive Students" value={staffInfo.inactiveStudents} icon={Users} />
+            </div>
+          </CardContent>
+        </Card>
+       )}
       {!isStaff && (
         <>
           <Card className="w-full">

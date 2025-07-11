@@ -36,7 +36,7 @@ export function StudentCard({ student, poolUser, showingName, isPool, isGame }: 
 
     const handleGuessSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        const correct = guess.toLowerCase().trim() === student.name.toLowerCase().trim()
+        const correct = guess.toLowerCase().trim() === student.name.toLowerCase().trim() || guess.toLowerCase().trim() === poolUser.firstName.toLowerCase().trim()
         setIsCorrect(correct)
         setTimeout(() => {
             setShowGuessInput(false)
