@@ -24,6 +24,14 @@ interface Student {
 
 function getExamName(examId: string) {
     switch (examId) {
+        case '1301':
+            return 'C Piscine Exam 00'
+        case '1302':
+            return 'C Piscine Exam 01'
+        case '1303':
+            return 'C Piscine Exam 02'
+        case '1304':
+            return 'C Piscine Exam Final'
         case '1324':
             return 'Exam Rank 06'
         case '1323':
