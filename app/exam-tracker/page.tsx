@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 
 interface Student {
     id: number
@@ -46,52 +47,33 @@ function getExamName(examId: string) {
 }
 
 export default function ExamTracker() {
-    const [students, setStudents] = useState<Student[]>([])
-    const [isUpdating, setIsUpdating] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-
 
     const isToday = (): boolean => {
         const today = new Date();
         const dayOfWeek = today.getDay();
-        return dayOfWeek === 3 || dayOfWeek === 4;
+        return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
     }
 
-    const updateData = async () => {
-        try {
-            setIsUpdating(true);
+    const { data: students = [], isLoading, error } = useQuery({
+        queryKey: ['current_exam'],
+        queryFn: async () => {
+            
             const response = await fetch("/api/current_exam");
-            if (response.ok) {
-                const data = await response.json();
-                const uniqueData = Array.isArray(data)
-                    ? data
-                        .filter((student: Student, index: number, self: Student[]) =>
-                            index === self.findIndex((s) => s.id === student.id)
-                        )
-                        .sort((a: Student, b: Student) => b.grade - a.grade)
-                    : data;
-                
-                setStudents(uniqueData);
+            if (!response.ok) {
+                throw new Error('Failed to fetch students');
             }
-            setIsUpdating(false);
-        } catch (error) {
-            console.error('Error fetching students:', error)
-        }
-    }
-
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-
-        // if (!isToday()) {
-        //     setError("Today is not an exam day. Exams are held on Wednesdays and Thursdays.");
-        //     return;
-        // }
-        updateData();
-        interval = setInterval(() => {
-            updateData();
-        }, 10000);
-        return () => clearInterval(interval);
-    }, []);
+            const data = await response.json();
+            return Array.isArray(data)
+                ? data
+                    .filter((student: Student, index: number, self: Student[]) =>
+                        index === self.findIndex((s) => s.id === student.id)
+                    )
+                    .sort((a: Student, b: Student) => b.grade - a.grade)
+                : data;
+        },
+        refetchInterval: 360000,
+        enabled: isToday(),
+    })
 
 
     const getGradeBadgeColor = (grade: number) => {
@@ -121,7 +103,7 @@ export default function ExamTracker() {
                         </Alert>
                     )}
 
-                    {isUpdating && students.length === 0 && (
+                    {isLoading && students.length === 0 && (
                         <Table className="mt-5">
                             <TableHeader>
                                 <TableRow>
@@ -163,7 +145,7 @@ export default function ExamTracker() {
                         </Table>
                     )}
 
-                    {students.length === 0 && !isUpdating && !error && (
+                    {students.length === 0 && !isLoading && !error && (
                         <Alert variant="default" className="mt-5">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>No students found</AlertTitle>
@@ -175,47 +157,54 @@ export default function ExamTracker() {
                         <>
                             <p><strong>Total Students:</strong> {students.length}</p>
                             <p><strong>Average Grade:</strong> {averageGrade.toFixed(2)}%</p>
-                            <Table className="mt-5">
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Student</TableHead>
-                                        <TableHead>Grade</TableHead>
-                                        <TableHead>Exam</TableHead>
-                                        <TableHead>Last push</TableHead>
-                                        <TableHead>Try</TableHead>
-                                        <TableHead>Intra</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {students.map((student) => (
-                                        <TableRow key={student.id}>
-                                            <TableCell className="font-medium">
-                                                <div className="flex items-center space-x-3">
-                                                    <Avatar className="w-10 h-10">
-                                                        <AvatarImage src={student.photo} alt={student.name} style={{ objectFit: 'cover' }} />
-                                                        <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                                    </Avatar>
-                                                    <span>{student.name}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge className={getGradeBadgeColor(student.grade || 0)}>
-                                                    {student.grade !== undefined ? `${student.grade}%` : 'N/A'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>{getExamName(student.examId)}</TableCell>
-                                            <TableCell>{new Date(student.lastUpdate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
-                                            <TableCell>{student.occurence}</TableCell>
-                                            <TableCell>
-                                                <Link href={`https://profile.intra.42.fr/users/${student.name}`} target="_blank" className="flex items-center text-blue-500 hover:underline">
-                                                    View Profile
-                                                    <ExternalLink className="ml-1 h-4 w-4" />
-                                                </Link>
-                                            </TableCell>
+                            <div className="mt-4 mb-6"></div>
+                            <div className="overflow-x-auto">
+                                <Table className="min-w-full">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="min-w-[200px]">Student</TableHead>
+                                            <TableHead className="min-w-[100px]">Grade</TableHead>
+                                            {students?.examId && (
+                                                <TableHead className="min-w-[150px] hidden sm:table-cell">Exam</TableHead>
+                                            )}
+                                            <TableHead className="min-w-[120px] hidden md:table-cell">Last push</TableHead>
+                                            <TableHead className="min-w-[60px] hidden lg:table-cell">Try</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {students.map((student) => (
+                                            <TableRow key={student.id}>
+                                                <TableCell className="font-medium">
+                                                    <div className="flex items-center space-x-3">
+                                                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                                                            <AvatarImage src={student.photo} alt={student.name} style={{ objectFit: 'cover' }} />
+                                                            <AvatarFallback className="text-xs sm:text-sm">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                        </Avatar>
+                                                        <span className="truncate">{student.name}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge className={getGradeBadgeColor(student.grade || 0)}>
+                                                        {student.grade !== undefined ? `${student.grade}%` : 'N/A'}
+                                                    </Badge>
+                                                </TableCell>
+                                                {students?.examId && (
+                                                    <TableCell className="hidden sm:table-cell">{getExamName(student.examId)}</TableCell>
+                                                )}
+                                                <TableCell className="hidden md:table-cell">{new Date(student.lastUpdate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                                                <TableCell className="hidden lg:table-cell">{student.occurence}</TableCell>
+                                                <TableCell>
+                                                    <Link href={`https://profile.intra.42.fr/users/${student.name}`} target="_blank" className="flex items-center text-blue-500 hover:underline">
+                                                        <span className="hidden sm:inline">View Profile</span>
+                                                        <span className="sm:hidden">Profile</span>
+                                                        <ExternalLink className="ml-1 h-4 w-4 flex-shrink-0" />
+                                                    </Link>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </>
                     )}
                 </CardContent>
