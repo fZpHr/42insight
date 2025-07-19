@@ -39,23 +39,41 @@ export default function Home() {
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <h1 className="text-3xl font-bold text-center sm:text-left">
-          Welcome to 42 Insight
-        </h1>
-        <Button
-          onClick={handleLogin}
-          className="w-full bg-[#00BABC] hover:bg-[#00A3A5] text-white"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Logging in...
-            </>
-          ) : (
-            'Login with 42'
-          )}
-        </Button>
+        <div className="text-center sm:text-left space-y-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-[#00BABC] to-[#0066CC] bg-clip-text text-transparent">
+            42 Insight
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            <div className="relative inline-block group">
+              <span className="hover:text-[#00BABC] transition-colors cursor-default">One for All</span>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                <div className="w-[480px] h-[269px] overflow-hidden rounded">
+                  <iframe src="https://giphy.com/embed/57NztNfDPBz9BC2nAm" width="100%" height="100%" frameBorder="0" className="giphy-embed scale-110" allowFullScreen></iframe>
+                </div>
+              </div>
+            </div> website for 42 Angoulême students
+          </p>
+        </div>
+        <div className="flex flex-col items-center gap-4 w-full">
+          <Button
+            onClick={handleLogin}
+            className="w-full bg-[#00BABC] hover:bg-[#00A3A5] text-white"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Logging in...
+              </>
+            ) : (
+              "Login with 42"
+            )}
+          </Button>
+          <a href="https://github.com/fzphr/42insight/issues/new?title=[ISSUE]&body=Describe%20your%20issue%20here...&labels=issue"
+            target="_blank" className="text-sm text-muted-foreground underline hover:text-foreground transition-colors">
+            Report an issue
+          </a>
+        </div>
       </main>
     </div>
   );
