@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { TanstackProvider } from "@/lib/tanstack-provider";
 import { useSidebar } from "@/components/ui/sidebar"
 import useAuthCheck from "@/hooks/useAuthCheck";
+import { Analytics } from '@vercel/analytics/next';
 
 
 const geistSans = Geist({
@@ -38,6 +39,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
         <div className="flex-1 p-4">
           {children}
+          <Analytics />
         </div>
         <Toaster />
       </main>
