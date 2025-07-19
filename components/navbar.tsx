@@ -51,7 +51,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "@/components/ui/sidebar"
 
 
-
 const navigationData = {
     navMain: [
         {
@@ -192,6 +191,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         }
     }
 
+    const isToday = (): boolean => {
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
+    }
+
     const signOut = () => {
         document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         window.location.href = '/';
@@ -271,11 +276,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                             </Link>
                                         </SidebarMenuButton>
                                         {item.badge && (
-                                            <SidebarMenuBadge>
-                                                <Badge variant={getBadgeVariant(item.badge)} className="text-xs">
-                                                    {item.badge}
-                                                </Badge>
-                                            </SidebarMenuBadge>
+                                            item.badge === "Live" && isToday() && (
+                                                <SidebarMenuBadge>
+                                                    <Badge variant={getBadgeVariant(item.badge)} className="text-xs">
+                                                        {item.badge}
+                                                    </Badge>
+                                                </SidebarMenuBadge>
+                                            ) || 
+                                            item.badge === "Active" && (
+                                                <SidebarMenuBadge>
+                                                    <Badge variant={getBadgeVariant(item.badge)} className="text-xs">
+                                                        {item.badge}
+                                                    </Badge>
+                                                </SidebarMenuBadge>
+                                            )
                                         )}
                                         {item.items && (
                                             <SidebarMenuSub>
@@ -340,10 +354,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             )}
                             {!open && (
                                 <Button variant="ghost" size="icon" asChild className="h-8 w-8">
-                                    <a href="/contribute" rel="noopener noreferrer">
+                                    <Link href="/contribute" rel="noopener noreferrer">
                                         <Github className="h-4 w-4" />
                                         <span className="sr-only">GitHub</span>
-                                    </a>
+                                    </Link>
                                 </Button>
                             )}
                         </div>

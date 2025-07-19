@@ -157,6 +157,89 @@ function LoadingDashboard() {
   )
 }
 
+
+type Skill = {
+  id: number;
+  name: string;
+  level: number;
+};
+
+type SkillBarProps = {
+  skills: Skill[];
+  maxLevel?: number;
+};
+
+export function SkillBar({
+  skills,
+  maxLevel = 21,
+  title = "Top Skills",
+}: SkillBarProps) {
+  if (!skills.length) return null;
+
+  // Find the main skill (highest level)
+  const mainSkill = skills.reduce((prev, curr) =>
+    curr.level > prev.level ? curr : prev
+  );
+
+  // Emoji mapping function
+  const getSkillEmoji = (skillName: string) => {
+    const name = skillName.toLowerCase();
+    if (name.includes("network") || name.includes("system")) return "🌐";
+    if (name.includes("rigor")) return "⚡";
+    if (name.includes("web")) return "🕸️";
+    if (name.includes("object-oriented") || name.includes("oop")) return "🧩";
+    if (name.includes("group") || name.includes("interpersonal")) return "👥";
+    if (name.includes("imperative") || name.includes("programming")) return "💻";
+    return "⚙️";
+  };
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+      <CardTitle className="text-lg md:text-xl">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
+        <div className="flex flex-col items-center text-center min-w-0 lg:min-w-[100px]">
+          <span className="text-2xl md:text-3xl mb-1">{getSkillEmoji(mainSkill.name)}</span>
+          <span className="text-sm md:text-base font-bold text-foreground">
+            {mainSkill.name}
+          </span>
+          <span className="text-xs md:text-sm font-semibold text-muted-foreground mt-1">
+            {mainSkill.level.toFixed(2)}
+          </span>
+        </div>
+        
+        {/* Divider */}
+        <div className="w-full h-px lg:w-px lg:h-32 bg-border" />
+        
+        {/* Other Skills */}
+        <div className="flex items-end justify-center lg:justify-start gap-2 md:gap-4 flex-1 py-2 lg:py-4 overflow-x-auto">
+        {skills.filter(skill => skill.id !== mainSkill.id).map((skill) => {
+          const height = Math.max(20, Math.min(80, (skill.level / maxLevel) * 100));
+          return (
+          <div key={skill.id} className="flex flex-col items-center min-w-[3rem] md:min-w-[5rem]">
+            <span className="text-xs md:text-sm font-semibold text-foreground mb-1">
+            {skill.level.toFixed(2)}
+            </span>
+            <div
+            className="w-3 md:w-4 rounded-full bg-primary mb-1 transition-all"
+            style={{ height: `${height}px` }}
+            title={skill.name}
+            />
+            <span className="text-base md:text-lg">
+            {getSkillEmoji(skill.name)}
+            </span>
+          </div>
+          );
+        })}
+        </div>
+      </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const { user, loading, fetchUserIntraInfo, getCampusRank, isStaff } = useAuth()
 
@@ -256,6 +339,8 @@ export default function Dashboard() {
   const recentAchievements = userIntraInfo?.achievements?.slice(0, 10) || []
   const topSkills = currentCursus?.skills?.slice(0, 6) || []
 
+  
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header Section */}
@@ -263,7 +348,7 @@ export default function Dashboard() {
         <Avatar className="h-20 w-20 ring-2 ring-border">
           <AvatarImage
             className="h-full w-full object-cover"
-            src={userIntraInfo?.image?.link || user?.photoUrl}
+            src={user?.photoUrl || userIntraInfo?.image?.link}
             alt={`${user?.name}'s avatar`}
           />
           <AvatarFallback className="text-lg font-semibold">
@@ -272,7 +357,7 @@ export default function Dashboard() {
         </Avatar>
         <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back, {userIntraInfo?.usual_full_name || user?.name}!
+            Welcome back, {user?.name}!
           </h1>
           <p className="text-muted-foreground text-lg">
             {user?.campus || userIntraInfo?.campus?.[0]?.name} • {isStaff && "Admin"}{!isStaff && (currentCursus?.cursus?.name || "Common Core")}
@@ -351,7 +436,7 @@ export default function Dashboard() {
 
           {/* Progress and Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5" />
@@ -383,7 +468,11 @@ export default function Dashboard() {
                   )}
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
+                      {/* Skills Section */}
+          {topSkills.length > 0 && (
+            <SkillBar skills={topSkills} />
+          )}
 
             <Card>
               <CardHeader>
@@ -438,21 +527,6 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Skills Section */}
-          {topSkills.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Skills</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {topSkills.map((skill, index) => (
-                    <SkillProgress key={index} skill={skill} />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </>
       )}
     </div>

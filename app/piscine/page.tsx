@@ -443,7 +443,7 @@ export default function Piscine() {
                                                 ))}
                                             </div>
                                         )}
-                                        <div className="hidden sm:flex items-center">
+                                        <div className="flex items-center">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -458,13 +458,8 @@ export default function Piscine() {
                                                 title={`View ${student.name}'s profile`}
                                             >
                                                 <Eye className="h-4 w-4" />
-                                                <span className="text-xs">Profile</span>
+                                                <span className="text-xs hidden sm:inline">Profile</span>
                                             </Button>
-                                        </div>
-                                        <div className="sm:hidden">
-                                            <Badge variant="outline" className="text-xs">
-                                                #{position}
-                                            </Badge>
                                         </div>
                                     </div>
                                 )

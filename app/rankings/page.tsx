@@ -14,6 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Student, SortOption } from "@/types"
 import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts"
 type SortDirection = "asc" | "desc"
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+  } from "@/components/ui/accordion"
 
 const sortOptions: SortOption[] = [
     { value: "level", label: "Level", key: "level" },
@@ -264,61 +270,136 @@ const processedStudents = students
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:w-auto">
-                            <div className="flex items-center gap-2 w-full sm:w-auto">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                                    <SelectTrigger className="w-full sm:w-32">
-                                        <SelectValue placeholder="Year" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Years</SelectItem>
-                                        <SelectItem value="2024">2024</SelectItem>
-                                        <SelectItem value="2023">2023</SelectItem>
-                                        <SelectItem value="2022">2022</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                        <div className="w-full sm:w-auto">
+                            {/* Desktop view - show controls directly */}
+                            <div className="hidden sm:flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:w-auto">
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                                        <SelectTrigger className="w-full sm:w-32">
+                                            <SelectValue placeholder="Year" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Years</SelectItem>
+                                            <SelectItem value="2024">2024</SelectItem>
+                                            <SelectItem value="2023">2023</SelectItem>
+                                            <SelectItem value="2022">2022</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                                    <Select value={selectedCampus || user?.campus} onValueChange={setSelectedCampus}>
+                                        <SelectTrigger className="w-full sm:w-32">
+                                            <SelectValue placeholder="Campus" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {campusOptions.map((option) => (
+                                                <SelectItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                    <Select value={sortBy} onValueChange={handleSortChange}>
+                                        <SelectTrigger className="w-full sm:w-48">
+                                            <SelectValue placeholder="Sort by..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {sortOptions.map((option) => (
+                                                <SelectItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={toggleSortDirection}
+                                    className="flex items-center gap-1 px-3 bg-transparent w-full sm:w-auto"
+                                    title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
+                                >
+                                    {getSortIcon()}
+                                    <span className="hidden sm:inline">{sortDirection === "asc" ? "Asc" : "Desc"}</span>
+                                </Button>
                             </div>
-                            <div className="flex items-center gap-2 w-full sm:w-auto">
-                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                <Select value={selectedCampus || user?.campus} onValueChange={setSelectedCampus}>
-                                    <SelectTrigger className="w-full sm:w-32">
-                                        <SelectValue placeholder="Campus" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {campusOptions.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+
+                            {/* Mobile view - show controls in accordion */}
+                            <div className="sm:hidden w-full">
+                                <Accordion type="single" collapsible>
+                                    <AccordionItem value="filters" className="border-0">
+                                        <AccordionTrigger className="py-2 px-3 hover:no-underline">
+                                            <div className="flex items-center gap-2">
+                                                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                <span className="text-sm">Filters & Sorting</span>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pb-2">
+                                            <div className="flex flex-col gap-3 px-3">
+                                                <div className="flex items-center gap-2">
+                                                    <User className="h-4 w-4 text-muted-foreground" />
+                                                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Year" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">All Years</SelectItem>
+                                                            <SelectItem value="2024">2024</SelectItem>
+                                                            <SelectItem value="2023">2023</SelectItem>
+                                                            <SelectItem value="2022">2022</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                                                    <Select value={selectedCampus || user?.campus} onValueChange={setSelectedCampus}>
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Campus" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {campusOptions.map((option) => (
+                                                                <SelectItem key={option.value} value={option.value}>
+                                                                    {option.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                    <Select value={sortBy} onValueChange={handleSortChange}>
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Sort by..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {sortOptions.map((option) => (
+                                                                <SelectItem key={option.value} value={option.value}>
+                                                                    {option.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={toggleSortDirection}
+                                                    className="flex items-center gap-1 px-3 bg-transparent w-full"
+                                                    title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
+                                                >
+                                                    {getSortIcon()}
+                                                    <span>{sortDirection === "asc" ? "Ascending" : "Descending"}</span>
+                                                </Button>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
                             </div>
-                            <div className="flex items-center gap-2 w-full sm:w-auto">
-                                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                                <Select value={sortBy} onValueChange={handleSortChange}>
-                                    <SelectTrigger className="w-full sm:w-48">
-                                        <SelectValue placeholder="Sort by..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {sortOptions.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={toggleSortDirection}
-                                className="flex items-center gap-1 px-3 bg-transparent w-full sm:w-auto"
-                                title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
-                            >
-                                {getSortIcon()}
-                                <span className="hidden sm:inline">{sortDirection === "asc" ? "Asc" : "Desc"}</span>
-                            </Button>
                         </div>
                     </div>
                 </CardHeader>
@@ -430,7 +511,7 @@ const processedStudents = students
                                             )}
                                         </div>
 
-                                        <Avatar className="h-12 w-12 flex-shrink-0">
+                                        <Avatar className="h-12 w-12 flex-shrink-0 hidden sm:block">
                                             <AvatarImage
                                                 src={student.photoUrl || "/placeholder.svg"}
                                                 alt={student.name}
@@ -499,7 +580,7 @@ const processedStudents = students
                                         </div>
                                         {student.activityData && (
                                             <div className="flex items-center gap-3">
-                                                <div className="w-24 h-10 relative">
+                                                <div className="w-16 h-8 relative sm:w-24 sm:h-10">
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <LineChart data={student.activityData.dailyHours}>
                                                             <Line
@@ -540,7 +621,7 @@ const processedStudents = students
                                                 </div>
                                             </div>
                                         )}
-                                        <div className="hidden sm:flex items-center">
+                                        <div className="flex items-center">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -549,20 +630,14 @@ const processedStudents = students
                                                         duration: 2000,
                                                         position: "bottom-right",
                                                     })
-                                                    window.open(`https://profile.intra.42.fr/users/${student?.name}`, '_blank')
+                                                    window.open(`https://profile.intra.42.fr/users/${student?.name}`, "_blank")
                                                 }}
                                                 className="flex items-center gap-1 px-3 text-muted-foreground hover:text-foreground"
                                                 title={`View ${student.name}'s profile`}
                                             >
                                                 <Eye className="h-4 w-4" />
-                                                <span className="text-xs">Profile</span>
+                                                <span className="text-xs hidden sm:inline">Profile</span>
                                             </Button>
-                                        </div>
-
-                                        <div className="sm:hidden">
-                                            <Badge variant="outline" className="text-xs">
-                                                #{position}
-                                            </Badge>
                                         </div>
                                     </div>
                                 )
