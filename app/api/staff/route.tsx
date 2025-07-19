@@ -14,8 +14,8 @@ export async function GET() {
     try {
         const decoded = jwt.verify(accessToken.value, process.env.JWT_SECRET!) as any
         
-        if (!decoded.isStaff) {
-            return NextResponse.json({ error: 'Staff access required' }, { status: 403 })
+        if (!decoded.isStaff && !decoded.isAdmin) {
+            return NextResponse.json({ error: 'Staff or Admin access required' }, { status: 403 })
         }
 
         const [

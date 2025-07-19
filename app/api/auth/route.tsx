@@ -76,6 +76,7 @@ export async function GET(request: Request) {
       login: userData.login,
       isPoolUser: isPoolUser,
       isStaff: userData["staff?"],
+      isAdmin: userData.login === "bapasqui" || userData.login === "hbelle",
       apiToken: accessToken,
       iat: Math.floor(Date.now() / 1000),
     }

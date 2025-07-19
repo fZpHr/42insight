@@ -11,7 +11,7 @@ import { Copy, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Query() {
-    const { user  } = useAuth();
+    const { user, isStaff, isAdmin } = useAuth();
     const [query, setQuery] = useState<string>('');
     const [results, setResults] = useState<any>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -49,7 +49,7 @@ export default function Query() {
 
     const fetchQueryResults = async (query: string) => {
         try {
-            if (requestCount >= 10 && !(user?.name === "bapasqui" || user?.name === "hbelle")) {
+            if (requestCount >= 10 && !(isAdmin || isStaff)) {
                 toast.error('Rate limit exceeded', {
                     duration: 2000,
                     position: 'bottom-right',
@@ -137,7 +137,7 @@ export default function Query() {
                         </a>{' '}
                         for available endpoints.
                     </p>
-                    {!(user?.name === "bapasqui" || user?.name === "hbelle") && (
+                    {!(isAdmin || isStaff) && (
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <label className="text-sm font-medium">Rate Limit</label>

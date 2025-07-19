@@ -31,10 +31,12 @@ export async function GET() {
             const userData = await userResponse.json()
             return NextResponse.json({
                 userId: userData.id,
-                login: userData.login,
+                name: userData.login,
                 photoUrl: userData.image?.versions?.small || '',
                 isPoolUser: false,
                 isStaff: true,
+                level: 1000,
+                campus: userData.campus?.[0]?.name || '',
             })
         }
 
@@ -58,7 +60,10 @@ export async function GET() {
         }
 
         await prisma.$disconnect()
-        return NextResponse.json(dbUser)
+        return NextResponse.json({
+            ...dbUser,
+            isAdmin: decoded.isAdmin || false
+        })
     } catch (error) {
         console.error('Error fetching user data:', error)
         return NextResponse.json(

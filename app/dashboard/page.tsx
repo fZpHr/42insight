@@ -11,8 +11,8 @@ import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useQuery } from "@tanstack/react-query"
-import { Trophy, Users, Calendar, Target, ExternalLink, TrendingUp, AlertCircle, BookOpen, Award } from "lucide-react"
-import { useMemo } from "react"
+import { Trophy, Users, Calendar, Target, ExternalLink, TrendingUp, AlertCircle, Award, ChevronUp, ChevronDown } from "lucide-react"
+import { useMemo, useState } from "react"
 
 interface StatCardProps {
   title: string
@@ -241,7 +241,8 @@ export function SkillBar({
 }
 
 export default function Dashboard() {
-  const { user, loading, fetchUserIntraInfo, getCampusRank, isStaff } = useAuth()
+  const { user, loading, fetchUserIntraInfo, getCampusRank, isStaff, isAdmin } = useAuth()
+  const [showStaffDashboard, setShowStaffDashboard] = useState(false)
 
   const {
     data: userIntraInfo,
@@ -261,7 +262,7 @@ export default function Dashboard() {
   } = useQuery({
     queryKey: ["staffInfo"],
     queryFn: () => fetch("/api/staff").then(res => res.json()),
-    enabled: !!user && !loading && isStaff,
+    enabled: !!user && !loading && (isStaff || isAdmin),
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
   })
@@ -363,6 +364,7 @@ export default function Dashboard() {
             {user?.campus || userIntraInfo?.campus?.[0]?.name} • {isStaff && "Admin"}{!isStaff && (currentCursus?.cursus?.name || "Common Core")}
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
+            {isAdmin && <Badge variant="outline" className="bg-cyan-400">Admin</Badge>}
             {!isStaff && (
               <>
               {currentCursus?.grade && (
@@ -381,29 +383,43 @@ export default function Dashboard() {
       </div>
       
       {/* Staff Info */}
-      {isStaff && staffInfo && (
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Staff Dashboard
-            </CardTitle>
+      {(isStaff || isAdmin) && staffInfo && (
+        <Card className="mt-4 relative">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Staff Dashboard
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowStaffDashboard(!showStaffDashboard)}
+                className="h-8 w-8 p-0"
+              >
+                {showStaffDashboard ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </div>
           </CardHeader>
+          {showStaffDashboard && (
+            <>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard title="Total Students" value={staffInfo.totalStudents} icon={Users} />
-              <StatCard title="Active Pool Users" value={staffInfo.activePoolUsers} icon={Users} />
-              <StatCard title="Average Level" value={staffInfo.averageLevel.toFixed(2)} icon={TrendingUp} />
-              <StatCard title="Students at Risk" value={staffInfo.studentsAtRisk} icon={AlertCircle} />
+              <StatCard title="Total Students" value={staffInfo?.totalStudents || 0} icon={Users} />
+              <StatCard title="Active Pool Users" value={staffInfo?.activePoolUsers || 0} icon={Users} />
+              <StatCard title="Average Level" value={staffInfo?.averageLevel?.toFixed(2) || "0.00"} icon={TrendingUp} />
+              <StatCard title="Students at Risk" value={staffInfo?.studentsAtRisk || 0} icon={AlertCircle} />
             </div>
           </CardContent>
           <CardContent className="pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <StatCard title="Top Performers" value={`${staffInfo.topPerformers.length}`} icon={Trophy} />
-              <StatCard title="Black Hole Soon" value={staffInfo.blackHoleSoon} icon={AlertCircle} />
-              <StatCard title="Inactive Students" value={staffInfo.inactiveStudents} icon={Users} />
+              <StatCard title="Top Performers" value={`${staffInfo?.topPerformers?.length || 0}`} icon={Trophy} />
+              <StatCard title="Black Hole Soon" value={staffInfo?.blackHoleSoon || 0} icon={AlertCircle} />
+              <StatCard title="Inactive Students" value={staffInfo?.inactiveStudents || 0} icon={Users} />
             </div>
           </CardContent>
+          </>
+          )}
         </Card>
        )}
       {!isStaff && (

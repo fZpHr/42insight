@@ -8,6 +8,7 @@ export interface AuthContextProps {
     loading?: boolean;
     isPoolUser?: boolean;
     isStaff?: boolean;
+    isAdmin?: boolean;
     isAuthenticated: () => Promise<boolean>;
     fetchCampusStudents: (campus: string) => Promise<Student[]>;
     fetchQueryResults: (query: string) => Promise<any>;
@@ -23,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isPoolUser, setIsPoolUser] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
     const [isStaff, setIsStaff] = useState<boolean>(false);
+    const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
 
     const isAuthenticated = async () => {
@@ -167,6 +169,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     setUser(data);
                     setIsPoolUser(data.isPoolUser || false);
                     setIsStaff(data.isStaff || false);
+                    setIsAdmin(data.isAdmin || false);
                 } else {
                     setUser(null);
                 }
@@ -182,7 +185,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, loading, isAuthenticated, fetchCampusStudents, fetchQueryResults, fetchUserIntraInfo, fetchPoolStudents, isPoolUser, isStaff, getCampusRank }}>
+        <AuthContext.Provider value={{ user, loading, isAuthenticated, fetchCampusStudents, fetchQueryResults, isAdmin, fetchUserIntraInfo, fetchPoolStudents, isPoolUser, isStaff, getCampusRank }}>
             {children}
         </AuthContext.Provider>
     );

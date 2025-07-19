@@ -30,7 +30,7 @@ export async function GET(
             throw new Error("Not authorized")
         }
 
-        if (decoded.login !== "bapasqui" && decoded.login !== "hbelle") {
+        if (decoded.isAdmin || decoded.isStaff) {
             const count = await redis.get(decoded.login + RATE_KEY)
             if (count && parseInt(String(count)) >= RATE_LIMIT) {
             return NextResponse.json(
