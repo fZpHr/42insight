@@ -17,8 +17,14 @@
             pkgs.nodePackages.typescript-language-server
           ];
           shellHook = ''
-                npm install
-                echo "42INSIGHT DEV-SHELL"
+                pnpm install
+                clear
+                if [ -f package.json ] && [ -f .env ]; then
+                        echo "Running database migration..."
+                        pnpm prisma migrate
+                else 
+                        echo "⚠️  .env file not found! Please copy env-example to .env and fill in your credentials."
+                fi
           '';
         };
       }
