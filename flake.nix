@@ -15,13 +15,16 @@
             pkgs.nodePackages.pnpm
             pkgs.nodePackages.typescript
             pkgs.nodePackages.typescript-language-server
+            pkgs.openssl
+            pkgs.prisma-engines
           ];
           shellHook = ''
                 pnpm install
                 clear
                 if [ -f package.json ] && [ -f .env ]; then
                         echo "Running database migration..."
-                        pnpm prisma migrate
+                        pnpm prisma generate
+                        #pnpm prisma migrate
                 else 
                         echo "⚠️  .env file not found! Please copy env-example to .env and fill in your credentials."
                 fi
