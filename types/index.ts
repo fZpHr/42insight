@@ -36,6 +36,7 @@ export interface Student {
     blackholeTimer: number;
     campus?: string;
     relation: any;
+    work: boolean;
 }
 
 

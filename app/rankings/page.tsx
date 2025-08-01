@@ -1,7 +1,7 @@
 "use client"
 import { toast } from "sonner"
 import { useQuery } from "@tanstack/react-query"
-import { Search, Trophy, Medal, Award, User, ArrowUpDown, ArrowUp, ArrowDown, MapPin, Target, Eye } from "lucide-react"
+import { Search, Trophy, Medal, Award, User, ArrowUpDown, ArrowUp, ArrowDown, MapPin, Target, Eye, Briefcase } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,8 +24,9 @@ import {
 const sortOptions: SortOption[] = [
     { value: "level", label: "Level", key: "level" },
     { value: "wallet", label: "Wallet", key: "wallet" },
-    { value: "correctionPoints", label: "Correction Points", key: "correctionPoints" },
-    { value: "correctionPercentage", label: "Correction Ratio", key: "correctionPercentage" },
+    { value: "correctionPoints", label: "Correction points", key: "correctionPoints" },
+    { value: "correctionPercentage", label: "Correction ratio (crash / validation)", key: "correctionPercentage" },
+    { value: "work", label: "Alternance", key: "work" },
 ]
 
 export default function Rankings() {
@@ -98,13 +99,25 @@ const processedStudents = students
           if (selectedYear === "all") return true;
           return student.year?.toString() === selectedYear;
         })
-        .filter(
-          (student: Student) =>
-            typeof student.correctionPositive === "number" &&
-            typeof student.correctionNegative === "number" &&
-            (student.correctionPositive + student.correctionNegative) >= 10
-        ),
-      sortOptions.find((option) => option.value === sortBy)?.key || "level",
+        .filter((student: Student) => {
+          // Filtre pour n'afficher que les étudiants en "work" si l'option est sélectionnée
+          if (sortBy === "work") {
+            return !!student.work;
+          }
+          return true;
+        })
+        .filter((student: Student) => {
+          if (sortBy === 'correctionPercentage') {
+            return (
+              typeof student.correctionPositive === "number" &&
+              typeof student.correctionNegative === "number" &&
+              (student.correctionPositive + student.correctionNegative) >= 10
+            );
+          }
+          return true;
+        }),
+      // Si on filtre par "work", on trie par niveau par défaut. Sinon, on utilise le tri sélectionné.
+      sortBy === "work" ? "level" : (sortOptions.find((option) => option.value === sortBy)?.key || "level"),
       sortDirection,
     )
   : []
@@ -482,6 +495,9 @@ const processedStudents = students
                                 const position = sortDirection === "desc" ? index + 1 : processedStudents.length - index
                                 const isCurrentUser = student.id === user?.id
 
+                                // DEBUG: Log pour vérifier la valeur de 'work'
+                                console.log(`Student: ${student.name}, work value: ${student.work}, typeof: ${typeof student.work}`);
+
                                 return (
                                     <div
                                         key={student.id}
@@ -532,6 +548,12 @@ const processedStudents = students
                                                     {student.name}
                                                     {isCurrentUser && <span className="text-xs text-muted-foreground ml-1">(You)</span>}
                                                 </h3>
+                                                {/* Affiche l'icône uniquement si 'work' est true (ou 1) */}
+                                                {student.work && (
+                                                    <span title="En alternance">
+                                                        <Briefcase className="h-4 w-4 flex-shrink-0 text-green-500" />
+                                                    </span>
+                                                )}
                                                 <Badge variant="outline" className="text-xs">
                                                     Level {student.level}
                                                 </Badge>
