@@ -496,7 +496,7 @@ const processedStudents = students
                                 const isCurrentUser = student.id === user?.id
 
                                 // DEBUG: Log pour vérifier la valeur de 'work'
-                                console.log(`Student: ${student.name}, work value: ${student.work}, typeof: ${typeof student.work}`);
+                                // console.log(`Student: ${student.name}, work value: ${student.work}, typeof: ${typeof student.work}`);
 
                                 return (
                                     <div
