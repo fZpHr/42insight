@@ -3,13 +3,19 @@ import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
 import Fast42 from "@codam/fast42"
 
-const api = await new Fast42([
-    {
-      client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
-      client_secret: process.env.CLIENT_SECRET_NEXT1!,
-    }
-  ]).init()
+let api: Fast42 | null = null;
 
+const getApi = async () => {
+    if (!api) {
+        api = await new Fast42([
+            {
+                client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
+                client_secret: process.env.CLIENT_SECRET_NEXT1!,
+            }
+        ]).init();
+    }
+    return api;
+}
 
 export async function GET(
     request: Request,
@@ -24,14 +30,15 @@ export async function GET(
         )
     }
     try {
-        const decoded = jwt.verify(accessToken.value, process.env.JWT_SECRET) as any
+        const decoded = jwt.verify(accessToken.value, process.env.JWT_SECRET!) as any
         const login = params.login;
         if (!decoded) {
             throw new Error("Not authorized")
         }
         console.log("Fetching user data for login:", login)
 
-        const data = await api.get(`/users/${login}`)
+        const apiClient = await getApi();
+        const data = await apiClient.get(`/users/${login}`)
         const user = await data.json()
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
