@@ -92,7 +92,7 @@ const navigationData = {
             items: [
                 {
                     title: "Piscine Ranking",
-                    url: "/piscine",
+                    url: "/piscine/rankings",
                     icon: Waves,
                     badge: "Active",
                     description: "Piscine progress and rankings",

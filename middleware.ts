@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
 
   const protectedRoutes = ['/dashboard', '/exam-tracker', '/links', '/query', '/piscine','/trombinoscope', '/rankings', '/api', '/contribute'];
-  const poolRestrictedRoutes = ['/query', '/rankings', '/trombinoscope', '/exam-tracker'];
+  const poolRestrictedRoutes = ['/query', '/rankings', '/trombinoscope', '/exam-tracker', '/piscine/rankings'];
   
   const isProtectedRoute = protectedRoutes.some(route => 
     request.nextUrl.pathname.startsWith(route)

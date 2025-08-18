@@ -84,7 +84,7 @@ export async function GET(request: Request) {
     const jwtToken = jwt.sign(
       jwtPayload,
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '1h' }
     )
     const response = NextResponse.redirect(redirectUri + "/dashboard")
     
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60, // 1 hour
     })
     return response
   } catch (error) {
