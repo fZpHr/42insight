@@ -297,6 +297,15 @@ const processedStudents = students
                                             <SelectItem value="2024">2024</SelectItem>
                                             <SelectItem value="2023">2023</SelectItem>
                                             <SelectItem value="2022">2022</SelectItem>
+                                            <SelectItem value="2021">2021</SelectItem>
+                                            <SelectItem value="2020">2020</SelectItem>
+                                            <SelectItem value="2019">2019</SelectItem>
+                                            <SelectItem value="2018">2018</SelectItem>
+                                            <SelectItem value="2017">2017</SelectItem>
+                                            <SelectItem value="2016">2016</SelectItem>
+                                            <SelectItem value="2015">2015</SelectItem>
+                                            <SelectItem value="2014">2014</SelectItem>
+                                            <SelectItem value="2013">2013</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -365,6 +374,15 @@ const processedStudents = students
                                                             <SelectItem value="2024">2024</SelectItem>
                                                             <SelectItem value="2023">2023</SelectItem>
                                                             <SelectItem value="2022">2022</SelectItem>
+                                                            <SelectItem value="2021">2021</SelectItem>
+                                                            <SelectItem value="2020">2020</SelectItem>
+                                                            <SelectItem value="2019">2019</SelectItem>
+                                                            <SelectItem value="2018">2018</SelectItem>
+                                                            <SelectItem value="2017">2017</SelectItem>
+                                                            <SelectItem value="2016">2016</SelectItem>
+                                                            <SelectItem value="2015">2015</SelectItem>
+                                                            <SelectItem value="2014">2014</SelectItem>
+                                                            <SelectItem value="2013">2013</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
