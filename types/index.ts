@@ -11,6 +11,12 @@ export type SortOption = {
     key: keyof PoolUser
 }
 
+export type StudentSortOption = {
+    value: string
+    label: string
+    key: keyof Student
+}
+
 
 export type Tutor = {
     id: string
@@ -36,7 +42,7 @@ export interface Student {
     blackholeTimer: number;
     campus?: string;
     relation: any;
-    work: boolean;
+    work: number;
 }
 
 

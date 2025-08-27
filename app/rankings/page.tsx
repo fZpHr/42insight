@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { Student, SortOption } from "@/types"
+import type { Student, StudentSortOption } from "@/types"
 import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts"
 type SortDirection = "asc" | "desc"
 import {
@@ -21,12 +21,13 @@ import {
     AccordionTrigger,
   } from "@/components/ui/accordion"
 
-const sortOptions: SortOption[] = [
+const sortOptions: StudentSortOption[] = [
     { value: "level", label: "Level", key: "level" },
     { value: "wallet", label: "Wallet", key: "wallet" },
     { value: "correctionPoints", label: "Correction points", key: "correctionPoints" },
     { value: "correctionPercentage", label: "Correction ratio (crash / validation)", key: "correctionPercentage" },
-    { value: "work", label: "Alternance", key: "work" },
+    { value: "internship", label: "En stage", key: "work" },
+    { value: "work_study", label: "En alternance", key: "work" },
 ]
 
 export default function Rankings() {
@@ -92,34 +93,41 @@ export default function Rankings() {
     }
 
 const processedStudents = students
-  ? sortStudents(
-      students
-        .filter((student: Student) => student.name.toLowerCase().includes(searchTerm.toLowerCase()))
-        .filter((student: Student) => {
-          if (selectedYear === "all") return true;
-          return student.year?.toString() === selectedYear;
-        })
-        .filter((student: Student) => {
-          // Filtre pour n'afficher que les étudiants en "work" si l'option est sélectionnée
-          if (sortBy === "work") {
-            return !!student.work;
-          }
-          return true;
-        })
-        .filter((student: Student) => {
-          if (sortBy === 'correctionPercentage') {
-            return (
-              typeof student.correctionPositive === "number" &&
-              typeof student.correctionNegative === "number" &&
-              (student.correctionPositive + student.correctionNegative) >= 10
-            );
-          }
-          return true;
-        }),
-      // Si on filtre par "work", on trie par niveau par défaut. Sinon, on utilise le tri sélectionné.
-      sortBy === "work" ? "level" : (sortOptions.find((option) => option.value === sortBy)?.key || "level"),
-      sortDirection,
-    )
+  ? (() => {
+      console.log(`Current sortBy value: ${sortBy}`);
+      return sortStudents(
+        students
+          .filter((student: Student) => student.name.toLowerCase().includes(searchTerm.toLowerCase()))
+          .filter((student: Student) => {
+            if (selectedYear === "all") return true;
+            return student.year?.toString() === selectedYear;
+          })
+          .filter((student: Student) => {
+            if (sortBy === "internship") {
+              console.log(`Filtering for internship - Student ${student.name}: work = ${student.work}, type = ${typeof student.work}`);
+              return student.work === 1;
+            }
+            if (sortBy === "work_study") {
+              console.log(`Filtering for work_study - Student ${student.name}: work = ${student.work}, type = ${typeof student.work}`);
+              return student.work === 2;
+            }
+            return true;
+          })
+          .filter((student: Student) => {
+            if (sortBy === 'correctionPercentage') {
+              return (
+                typeof student.correctionPositive === "number" &&
+                typeof student.correctionNegative === "number" &&
+                (student.correctionPositive + student.correctionNegative) >= 10
+              );
+            }
+            return true;
+          }),
+        // Si on filtre par "work", on trie par niveau par défaut. Sinon, on utilise le tri sélectionné.
+        (sortBy === "internship" || sortBy === "work_study") ? "level" : (sortOptions.find((option) => option.value === sortBy)?.key || "level"),
+        sortDirection,
+      )
+    })()
   : []
 
     const visibleStudents = processedStudents.slice(0, visibleCount)
@@ -566,10 +574,14 @@ const processedStudents = students
                                                     {student.name}
                                                     {isCurrentUser && <span className="text-xs text-muted-foreground ml-1">(You)</span>}
                                                 </h3>
-                                                {/* Affiche l'icône uniquement si 'work' est true (ou 1) */}
-                                                {student.work && (
-                                                    <span title="En alternance">
+                                                {student.work === 1 && (
+                                                    <span title="En stage">
                                                         <Briefcase className="h-4 w-4 flex-shrink-0 text-green-500" />
+                                                    </span>
+                                                )}
+                                                {student.work === 2 && (
+                                                    <span title="En alternance">
+                                                        <Briefcase className="h-4 w-4 flex-shrink-0 text-blue-500" />
                                                     </span>
                                                 )}
                                                 <Badge variant="outline" className="text-xs">
