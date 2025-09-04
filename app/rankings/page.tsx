@@ -118,7 +118,7 @@ const processedStudents = students
               return (
                 typeof student.correctionPositive === "number" &&
                 typeof student.correctionNegative === "number" &&
-                (student.correctionPositive + student.correctionNegative) >= 10
+                (student.correctionPositive + student.correctionNegative) >= 15
               );
             }
             return true;
