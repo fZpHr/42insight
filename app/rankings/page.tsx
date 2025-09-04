@@ -25,7 +25,7 @@ const sortOptions: StudentSortOption[] = [
     { value: "level", label: "Level", key: "level" },
     { value: "wallet", label: "Wallet", key: "wallet" },
     { value: "correctionPoints", label: "Correction points", key: "correctionPoints" },
-    { value: "correctionPercentage", label: "Correction ratio (crash / validation)", key: "correctionPercentage" },
+    { value: "correctionPercentage", label: "Correction ratio (validation / KO)", key: "correctionPercentage" },
     { value: "internship", label: "En stage", key: "work" },
     { value: "work_study", label: "En alternance", key: "work" },
 ]
