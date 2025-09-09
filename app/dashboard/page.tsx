@@ -13,6 +13,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useQuery } from "@tanstack/react-query"
 import { Trophy, Users, Calendar, Target, ExternalLink, TrendingUp, AlertCircle, Award, ChevronUp, ChevronDown } from "lucide-react"
 import { useMemo, useState } from "react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface StatCardProps {
   title: string
@@ -228,7 +233,14 @@ export function SkillBar({
             title={skill.name}
             />
             <span className="text-base md:text-lg">
-            {getSkillEmoji(skill.name)}
+              <Tooltip>
+                  <TooltipTrigger >
+                  {getSkillEmoji(skill.name)}
+                  </TooltipTrigger>
+                  <TooltipContent className="text-sm">
+                    {skill.name}
+                  </TooltipContent>
+                </Tooltip>
             </span>
           </div>
           );
