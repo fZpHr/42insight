@@ -47,7 +47,7 @@ function getExamName(examId: string) {
 }
 
 export default function ExamTracker() {
-
+    
     const isToday = (): boolean => {
         const today = new Date();
         const dayOfWeek = today.getDay();
@@ -100,10 +100,10 @@ export default function ExamTracker() {
                 </CardHeader>
                 <CardContent>
                     {error && (
-                        <Alert variant="destructive" className="mb-6">
+                        <Alert variant="destructive">
                             <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>{error}</AlertDescription>
+                            <AlertTitle className="font-bold">Error</AlertTitle>
+                            <AlertDescription className="text-muted-foreground">{error instanceof Error ? error.message : String(error)}</AlertDescription>
                         </Alert>
                     )}
 
