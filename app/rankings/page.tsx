@@ -315,14 +315,14 @@ export default function Rankings() {
             </div>
         );
     }
-
-    // const debouncedSearch = debounce(
-    //     (searchTerm: string) => setSearchTerm(searchTerm),
-    //     {
-    //       wait: 500, // Wait 500ms after last keystroke
-    //     }
-    //   )
-
+    
+    const debouncedSearch = useMemo(
+        () =>
+          debounce((term: string) => {
+            setSearchTerm(term);
+          }, { wait: 400 }),
+        []
+      );
 
     return (
         <div className="max-w-7xl mx-auto px-4 space-y-6">
@@ -346,8 +346,7 @@ export default function Rankings() {
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search students..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => debouncedSearch(e.target.value)}
                                     className="pl-10 w-full"
                                 />
                             </div>
