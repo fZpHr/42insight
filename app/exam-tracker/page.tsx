@@ -47,7 +47,7 @@ function getExamName(examId: string) {
 }
 
 export default function ExamTracker() {
-
+    
     const isToday = (): boolean => {
         const today = new Date();
         const dayOfWeek = today.getDay();
@@ -80,6 +80,10 @@ export default function ExamTracker() {
         if (grade >= 90) return 'bg-green-500'
         if (grade >= 80) return 'bg-blue-500'
         if (grade >= 70) return 'bg-yellow-500'
+        if (grade >= 60) return 'bg-orange-500'
+        if (grade >= 50) return 'bg-purple-500'
+        if (grade >= 40) return 'bg-pink-500'
+        if (grade >= 30) return 'bg-indigo-500'
         return 'bg-red-500'
     }
 
@@ -92,14 +96,14 @@ export default function ExamTracker() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
-                    <p className="text-muted-foreground">Data is updated every 5 min</p> 
+                    <p className="text-muted-foreground">Data is updated every 10 min</p> 
                 </CardHeader>
                 <CardContent>
                     {error && (
-                        <Alert variant="destructive" className="mb-6">
+                        <Alert variant="destructive">
                             <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>{error}</AlertDescription>
+                            <AlertTitle className="font-bold">Error</AlertTitle>
+                            <AlertDescription className="text-muted-foreground">{error instanceof Error ? error.message : String(error)}</AlertDescription>
                         </Alert>
                     )}
 

@@ -1,8 +1,8 @@
 "use client"
 import { toast } from "sonner"
 import { useQuery } from "@tanstack/react-query"
-import { Search, Trophy, Medal, Award, User, ArrowUpDown, ArrowUp, ArrowDown, Target, Eye, WavesLadder } from "lucide-react"
-import { useState, useRef } from "react"
+import { Search, Trophy, Medal, Award, User, ArrowUpDown, ArrowUp, ArrowDown, Target, Eye } from "lucide-react"
+import { useState, useRef, useMemo } from "react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,8 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { PoolUser, SortOption, Tutor } from "@/types"
-import Wave from 'react-wavify'
+import type { PoolUser, SortOption } from "@/types"
+import { debounce } from '@tanstack/pacer'
 
 type SortDirection = "asc" | "desc"
 
@@ -26,7 +26,6 @@ export default function Piscine() {
     const [searchTerm, setSearchTerm] = useState("")
     const [sortBy, setSortBy] = useState<string>("level")
     const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
-    const [highlightUser, setHighlightUser] = useState(false)
     const userRowRef = useRef<HTMLDivElement>(null)
 
     const {
@@ -49,69 +48,6 @@ export default function Piscine() {
         staleTime: 10 * 60 * 1000,
     })
 
-    // const {
-    //     data: tutors,
-    //     isLoading: isLoadingTutors,
-    //     error: tutorsError,
-    // } = useQuery<Tutor[]>({
-    //     queryKey: ["tutors"],
-    //     queryFn: async () => {
-    //         return [
-    //             {
-    //                 "id": "tutor1",
-    //                 "name": "ael-atmi",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/5a3e3f739ad6d5a1a99643ef08d79904/ael-atmi.jpg",
-    //             },
-    //             {
-    //                 "id": "tutor2",
-    //                 "name": "alaualik",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/cdc094ee2c549eb2432ec950a68abe0f/alaualik.jpg",
-    //             },
-    //             {
-    //                 "id": "tutor3",
-    //                 "name": "antauber",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/f2073e9936df5d2defc8ad974b264573/antauber.jpg",
-    //             },
-    //             {
-    //                 "id": "tutor4",
-    //                 "name": "inowak--",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/e05b31f3505551717ddaa595c95fc769/inowak--.jpg",
-    //             },
-    //             {
-    //                 "id": "tutor5",
-    //                 "name": "pjurdana",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/c6063f96fb9cfdaa5cf853caf8a3bf84/pjurdana.jpg",
-    //             },
-    //             {
-    //                 "id": "tutor6",
-    //                 "name": "qumiraud",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/e4b1252ddab50488c02d18d23f1ec1e9/qumiraud.jpg",
-    //             },
-    //             {
-    //                 "id": "tutor7",
-    //                 "name": "lguiet",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/f45e68c95cf8fa6cdc8edd1e2749d804/lguiet.jpg",
-    //             },
-    //             {
-    //                 "id": "tutor8",
-    //                 "name": "stetrel",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/36ad63d30385ff7c4e2139f41a664913/stetrel.jpg",
-    //             },
-    //             {
-    //                 "id": "tutor9",
-    //                 "name": "fpetit",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/46f2a1c143571d2b9326de82e21cdf13/fpetit.jpg",
-    //             },
-    //             {
-    //                 "id": "tutor10",
-    //                 "name": "jenibaud",
-    //                 "photoUrl": "https://cdn.intra.42.fr/users/75d336f63bb7f3e7c2e7b3a0e0eec44d/jenibaud.jpg",
-    //             }
-    //         ]
-    //     },
-    //     staleTime: 10 * 60 * 1000,
-    // })
-
     const sortStudents = (students: PoolUser[], sortKey: keyof PoolUser, direction: SortDirection) => {
         return [...students].sort((a, b) => {
             const aValue = a[sortKey]
@@ -124,17 +60,28 @@ export default function Piscine() {
         })
     }
 
-    const processedStudents = students
-        ? sortStudents(
-            students.filter((student: PoolUser) => student.name.toLowerCase().includes(searchTerm.toLowerCase())),
-            sortOptions.find((option) => option.value === sortBy)?.key || "level",
-            sortDirection,
-        )
-        : []
+    const sortedStudents = useMemo(() => {
+        return students ? sortStudents(students, sortOptions.find((option) => option.value === sortBy)?.key || "level", sortDirection) : []
+    }, [students, sortBy, sortDirection])
 
-    const userPosition = processedStudents.findIndex((student: PoolUser) => student.id === user?.id)
-    const userRank =
-        userPosition !== -1 ? (sortDirection === "desc" ? userPosition + 1 : processedStudents.length - userPosition) : null
+    const studentsWithRanks = useMemo(() => {
+        return sortedStudents.map((student, index) => ({
+            ...student,
+            rank: sortDirection === "desc" ? index + 1 : sortedStudents.length - index
+        }))
+    }, [sortedStudents, sortDirection])
+
+    const processedStudents = useMemo(() => {
+        return searchTerm 
+            ? studentsWithRanks.filter(student => 
+                student.name.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            : studentsWithRanks
+    }, [studentsWithRanks, searchTerm])
+
+    const userRank = useMemo(() => {
+        return studentsWithRanks.find(student => student.id === user?.id)?.rank || null
+    }, [studentsWithRanks, user])
 
     const scrollToUserPosition = () => {
         if (userRowRef.current) {
@@ -185,6 +132,16 @@ export default function Piscine() {
         }
     }
 
+    const debouncedSearch = useMemo(
+        () =>
+          debounce((term: string) => {
+            setSearchTerm(term);
+          }, { wait: 400 }),
+        []
+      );
+
+      
+
     if (error) {
         return (
             <div className="max-w-7xl mx-auto px-4">
@@ -224,8 +181,7 @@ export default function Piscine() {
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search students..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => debouncedSearch(e.target.value)}
                                     className="pl-10 w-full"
                                 />
                             </div>
@@ -261,7 +217,6 @@ export default function Piscine() {
                 </CardHeader>
             </Card>
 
-            {/* Padding between sticky card and leaderboard */}
             <div className="h-4" />
 
             {isLoading && (
@@ -333,7 +288,7 @@ export default function Piscine() {
                 </Card>
             )}
             {!isLoading && processedStudents.length > 0 && (
-                <Card >
+                <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg">Leaderboard</CardTitle>
@@ -351,18 +306,16 @@ export default function Piscine() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="divide-y">
-                            {processedStudents.map((student: PoolUser, index: number) => {
-                                const position = sortDirection === "desc" ? index + 1 : processedStudents.length - index
+                            {processedStudents.map((student: PoolUser & { rank: number }) => {
+                                const position = student.rank
                                 const isCurrentUser = student.id === user?.id
                                 return (
                                     <div
                                         key={student.id}
                                         ref={isCurrentUser ? userRowRef : null}
-                                        className={`flex items-center gap-4 p-4 transition-all duration-200 hover:bg-muted/50 ${isCurrentUser && highlightUser
-                                            ? "bg-primary/10 border-l-4 border-primary"
-                                            : isCurrentUser
-                                                ? "bg-muted/30"
-                                                : ""
+                                        className={`flex items-center gap-4 p-4 transition-all duration-200 hover:bg-muted/50 ${isCurrentUser
+                                            ? "bg-muted/30"
+                                            : ""
                                             }`}
                                     >
                                         <div className="flex items-center justify-center w-12 h-12 flex-shrink-0">
@@ -411,8 +364,8 @@ export default function Piscine() {
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-muted-foreground">
                                                             Current Projects:{" "}
-                                                                {student.currentProjects}
-                                                            </span>
+                                                            {student.currentProjects}
+                                                        </span>
                                                     </div>
                                                 )}
                                                 <div className="flex items-center gap-1">
@@ -431,16 +384,17 @@ export default function Piscine() {
                                         {student.examGrades && (
                                             <div className="hidden lg:block">
                                                 <div className="text-xs text-muted-foreground mb-1">Exam Grades</div>
-                                                <div className="grid grid-cols-2 gap-1"></div>
-                                                {Object.entries(student.examGrades || {}).map(([exam, grade]) => (
-                                                    <Badge
-                                                        key={exam}
-                                                        variant={grade > 0 ? "default" : "secondary"}
-                                                        className="text-xs px-1.5 py-0.5"
-                                                    >
-                                                        {exam.replace("exam", "E")}: {grade}
-                                                    </Badge>
-                                                ))}
+                                                <div className="grid grid-cols-2 gap-1">
+                                                    {Object.entries(student.examGrades || {}).map(([exam, grade]) => (
+                                                        <Badge
+                                                            key={exam}
+                                                            variant={grade > 0 ? "default" : "secondary"}
+                                                            className="text-xs px-1.5 py-0.5"
+                                                        >
+                                                            {exam.replace("exam", "E")}: {grade}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                         <div className="flex items-center">
