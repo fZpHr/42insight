@@ -22,7 +22,6 @@ export default function Home() {
     checkAuth();
   }, [isAuthenticated]);
 
-
   const handleLogin = async () => {
     startLoadingAnimation(async () => {
       document.body.style.cursor = 'wait';
