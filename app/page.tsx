@@ -34,7 +34,7 @@ export default function Home() {
       loginUrl.searchParams.set('redirect_uri', process.env.NEXT_PUBLIC_REDIRECT_URI + '/api/auth');
       loginUrl.searchParams.set('response_type', 'code');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      router.push(loginUrl.toString());
+      window.location.href = loginUrl.toString();
     });
   }
 
