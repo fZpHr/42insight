@@ -21,45 +21,6 @@ const sortOptions: SortOption[] = [
     { value: "correctionPoints", label: "Correction Points", key: "correctionPoints" },
 ]
 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-
-function ProjectChipsWithTooltip({ projects, max = 4 }: { projects: string[]; max?: number }) {
-  const shown = projects.slice(0, max)
-  const remaining = projects.length - shown.length
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex flex-wrap gap-1">
-        {shown.map(p => (
-          <Badge key={p} variant="secondary" className="px-2 py-0.5 text-xs">
-            {p}
-          </Badge>
-        ))}
-      </div>
-      {remaining > 0 && (
-        <TooltipProvider delayDuration={150}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="outline" className="px-2 py-0.5 text-xs cursor-default">
-                +{remaining} more
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs">
-              <div className="flex flex-wrap gap-1">
-                {projects.slice(shown.length).map(p => (
-                  <Badge key={p} variant="secondary" className="px-2 py-0.5 text-xs">
-                    {p}
-                  </Badge>
-                ))}
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-    </div>
-  )
-}
-
-
 export default function Piscine() {
     const { user, fetchPoolStudents } = useAuth()
     const [searchTerm, setSearchTerm] = useState("")
