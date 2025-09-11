@@ -195,14 +195,14 @@ export default function Query() {
                         <CardHeader className="relative">
                             <Button
                                 variant="outline"
-                                className="!absolute top-2 right-2"
+                                className="!absolute right-2"
                                 onClick={() => copyToClipboard(JSON.stringify(results, null, 2))}
                             >
                                 <Copy className="h-4 w-4" />
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            <ScrollArea className="h-200 w-full">
+                            <ScrollArea className="top-2 h-200 w-full">
                                 <pre className="text-sm">
                                     {JSON.stringify(results, null, 2)}
                                 </pre>
