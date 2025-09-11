@@ -71,7 +71,7 @@ export default function ExamTracker() {
                     .sort((a: Student, b: Student) => b.grade - a.grade)
                 : data;
         },
-        refetchInterval: 360000,
+        refetchInterval: 600000,
         enabled: isToday(),
     })
 
@@ -168,9 +168,7 @@ export default function ExamTracker() {
                                         <TableRow>
                                             <TableHead className="min-w-[200px]">Student</TableHead>
                                             <TableHead className="min-w-[100px]">Grade</TableHead>
-                                            {students?.examId && (
-                                                <TableHead className="min-w-[150px] hidden sm:table-cell">Exam</TableHead>
-                                            )}
+                                            <TableHead className="min-w-[150px] hidden sm:table-cell">Exam</TableHead>
                                             <TableHead className="min-w-[120px] hidden md:table-cell">Last push</TableHead>
                                             <TableHead className="min-w-[60px] hidden lg:table-cell">Try</TableHead>
                                         </TableRow>
@@ -192,7 +190,7 @@ export default function ExamTracker() {
                                                         {student.grade !== undefined ? `${student.grade}%` : 'N/A'}
                                                     </Badge>
                                                 </TableCell>
-                                                {students?.examId && (
+                                                {student?.examId && (
                                                     <TableCell className="hidden sm:table-cell">{getExamName(student.examId)}</TableCell>
                                                 )}
                                                 <TableCell className="hidden md:table-cell">{new Date(student.lastUpdate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
