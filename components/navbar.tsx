@@ -4,12 +4,10 @@ import type * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { RainbowButton } from "@/components/magicui/rainbow-button";
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import {
     Users,
     LinkIcon,
     FileText,
-    Clock,
     Trophy,
     Home,
     Waves,
@@ -42,7 +40,6 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
@@ -68,23 +65,19 @@ const navigationData = {
                     icon: Trophy,
                     description: "Student performance rankings",
                 },
-            ],
-        },
-        {
-            title: "Students & Community",
-            items: [
                 {
                     title: "Trombinoscope",
                     url: "/trombinoscope",
                     icon: Users,
                     description: "Student photo gallery",
                 },
-                // {
-                //     title: "Relation tree",
-                //     url: "/relation-tree",
-                //     icon: Map,
-                //     description: "Visualize student relationships",
-                // }
+                {
+                    title: "Exam Tracker",
+                    url: "/exam-tracker",
+                    icon: FileText,
+                    badge: "Live",
+                    description: "Real-time exam grade tracking",
+                },
             ],
         },
         {
@@ -106,24 +99,6 @@ const navigationData = {
             ],
         },
         {
-            title: "Evaluation System",
-            items: [
-                // {
-                //     title: "Correction Slots",
-                //     url: "/correction-slots",
-                //     icon: Clock,
-                //     description: "Manage your correction availability",
-                // },
-                {
-                    title: "Exam Tracker",
-                    url: "/exam-tracker",
-                    icon: FileText,
-                    badge: "Live",
-                    description: "Real-time exam grade tracking",
-                },
-            ],
-        },
-        {
             title: "Resources",
             items: [
                 {
@@ -136,7 +111,7 @@ const navigationData = {
                     title: "Query",
                     url: "/query",
                     icon: Database,
-                    description: "Search the 42 API",
+                    description: "Query 42 API",
                 }
             ],
         },

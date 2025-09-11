@@ -394,7 +394,6 @@ export default function Dashboard() {
         </div>
       </div>
       
-      {/* Staff Info */}
       {(isStaff || isAdmin) && staffInfo && (
         <Card className="mt-4 relative">
           <CardHeader className="pb-2">

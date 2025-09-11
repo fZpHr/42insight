@@ -30,17 +30,17 @@ export async function GET(
             throw new Error("Not authorized")
         }
 
-        if (decoded.isAdmin || decoded.isStaff) {
+        if (!(decoded.isAdmin || decoded.isStaff)) {
             const count = await redis.get(decoded.login + RATE_KEY)
             if (count && parseInt(String(count)) >= RATE_LIMIT) {
-            return NextResponse.json(
-                { error: 'Rate limit exceeded' },
-                { status: 429 }
-            )
+                return NextResponse.json(
+                    { error: 'Rate limit exceeded' },
+                    { status: 429 }
+                )
             }
+            await redis.incr(decoded.login + RATE_KEY)
+            await redis.expire(decoded.login + RATE_KEY, 3600)
         }
-        await redis.incr(decoded.login + RATE_KEY)
-        await redis.expire(decoded.login + RATE_KEY, 3600)
 
         const apiPath = params.path.join('/')
         const searchParams = request.nextUrl.searchParams.toString()
