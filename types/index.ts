@@ -45,6 +45,17 @@ export interface Student {
     work: number;
 }
 
+export interface ExamStudent {
+    id: number
+    name: string
+    photo: string
+    grade: number
+    lastUpdate: Date
+    examId: string
+    occurence: number
+    isToday: boolean
+}
+
 
 export interface PoolUser {
     id: number;

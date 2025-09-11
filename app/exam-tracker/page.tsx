@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -11,17 +10,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { ExamStudent } from "@/types"
 
-interface Student {
-    id: number
-    name: string
-    photo: string
-    grade: number
-    lastUpdate: Date
-    examId: string
-    occurence: number
-    isToday: boolean
-}
 
 function getExamName(examId: string) {
     switch (examId) {
@@ -65,10 +55,10 @@ export default function ExamTracker() {
             const data = await response.json();
             return Array.isArray(data)
                 ? data
-                    .filter((student: Student, index: number, self: Student[]) =>
+                    .filter((student: ExamStudent, index: number, self: ExamStudent[]) =>
                         index === self.findIndex((s) => s.id === student.id)
                     )
-                    .sort((a: Student, b: Student) => b.grade - a.grade)
+                    .sort((a: ExamStudent, b: ExamStudent) => b.grade - a.grade)
                 : data;
         },
         refetchInterval: 600000,
@@ -174,7 +164,7 @@ export default function ExamTracker() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {students.map((student) => (
+                                        {students.map((student: ExamStudent) => (
                                             <TableRow key={student.id}>
                                                 <TableCell className="font-medium">
                                                     <div className="flex items-center space-x-3">
