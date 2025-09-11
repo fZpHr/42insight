@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner"
 import { Copy, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { addToLocalStorage, getFromLocalStorage } from '@/utils/localStorage';
 
 export default function Query() {
     const { user, isStaff, isAdmin } = useAuth();
@@ -71,6 +72,7 @@ export default function Query() {
             setIsLoading(false);
             setResults(data);
             refetchRateLimit();
+            addToLocalStorage('lastQuery', query);
             return data;
         } catch (error) {
             setIsLoading(false)
@@ -165,6 +167,26 @@ export default function Query() {
                             'Send'
                         )}
                     </Button>
+                    {/* <div className="text-sm text-muted-foreground">
+                        <h3>Query history</h3>
+                        <ul className="list-disc list-inside">
+                            {getFromLocalStorage('lastQuery') && (
+                                <li>
+                                    <button
+                                        className="text-blue-500 hover:underline"
+                                        onClick={() => {
+                                            const lastQuery = getFromLocalStorage('lastQuery');
+                                            if (lastQuery) {
+                                                fetchQueryResults(lastQuery);
+                                            }
+                                        }}
+                                    >
+                                        {getFromLocalStorage('lastQuery')}
+                                    </button>
+                                </li>
+                            )}
+                        </ul>
+                    </div> */}
                 </CardContent>
             </Card>
 
