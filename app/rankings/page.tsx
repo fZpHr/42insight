@@ -135,17 +135,39 @@ export default function Rankings() {
         return sortStudents(students, sortKey, sortDirection);
     }, [students, sortBy, sortDirection]);
 
-    const globalRankById = useMemo(() => {
-        const map = new Map<string | number, number>();
-        const n = baselineSortedStudents.length;
+    const rankingStudents = useMemo(() => {
+        if (!baselineSortedStudents) return [];
+        return baselineSortedStudents
+            .filter((student: Student) => {
+                if (selectedYear === "all") return true;
+                return student.year?.toString() === selectedYear;
+            })
+            .filter((student: Student) => {
+                if (sortBy === "internship") return student.work === 1;
+                if (sortBy === "work_study") return student.work === 2;
+                return true;
+            })
+            .filter((student: Student) => {
+                if (sortBy === "correctionPercentage") {
+                    return (
+                        typeof student.correctionPositive === "number" &&
+                        typeof student.correctionNegative === "number" &&
+                        student.correctionPositive + student.correctionNegative >= 15
+                    );
+                }
+                return true;
+            });
+    }, [baselineSortedStudents, selectedYear, sortBy]);
 
-        baselineSortedStudents.forEach((student, idx) => {
+    const rankById = useMemo(() => {
+        const map = new Map<string | number, number>();
+        const n = rankingStudents.length;
+        rankingStudents.forEach((student, idx) => {
             const rank = sortDirection === "desc" ? idx + 1 : n - idx;
             map.set(student.id, rank);
         });
-
         return map;
-    }, [baselineSortedStudents, sortDirection]);
+    }, [rankingStudents, sortDirection]);
 
     const processedStudents = useMemo(() => {
         if (!baselineSortedStudents) return [];
@@ -193,7 +215,7 @@ export default function Rankings() {
         }
     };
 
-    const userRank = user?.id != null ? globalRankById.get(user.id) ?? null : null;
+    const userRank = user?.id != null ? rankById.get(user.id) ?? null : null;
 
     useEffect(() => {
         if (!observerRef.current || !hasMore) {
@@ -591,7 +613,7 @@ export default function Rankings() {
                     <CardContent className="p-0">
                         <div className="divide-y">
                             {visibleStudents.map((student: Student) => {
-                                const position = globalRankById.get(student.id) ?? 0;
+                                const position = rankById.get(student.id) ?? 0;
                                 const isCurrentUser = student.id === user?.id;
 
                                 return (
