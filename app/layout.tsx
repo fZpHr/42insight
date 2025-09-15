@@ -1,17 +1,16 @@
 "use client";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from '@/contexts/AuthContext';
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { ThemeProvider } from "@/components/theme-provider"
-import { usePathname } from "next/navigation"
+import { AuthProvider } from "@/contexts/AuthContext";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeProvider } from "@/components/theme-provider";
+import { usePathname } from "next/navigation";
 import "./globals.css";
 import { AppSidebar } from "@/components/navbar";
-import { Toaster } from "@/components/ui/sonner"
+import { Toaster } from "@/components/ui/sonner";
 import { TanstackProvider } from "@/lib/tanstack-provider";
-import { useSidebar } from "@/components/ui/sidebar"
+import { useSidebar } from "@/components/ui/sidebar";
 import useAuthCheck from "@/hooks/useAuthCheck";
-import { Analytics } from '@vercel/analytics/next';
-
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,27 +23,29 @@ const geistMono = Geist_Mono({
 });
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
-  useAuthCheck()
-  const pathname = usePathname()
-  const { open } = useSidebar()
+  useAuthCheck();
+  const pathname = usePathname();
+  const { open } = useSidebar();
 
   return (
     <>
-      <div className={pathname === "/" ? "hidden" : "block"}><AppSidebar /></div>
+      <div className={pathname === "/" ? "hidden" : "block"}>
+        <AppSidebar />
+      </div>
       <main className="flex flex-1 flex-col" suppressHydrationWarning>
         <div className={pathname === "/" ? "hidden" : "block"}>
           <div className="top-0 z-10 flex h-14 shrink-0 items-center bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
             <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
           </div>
         </div>
-        <div className="flex-1 p-4">
+        <div className="flex-1">
           {children}
           <Analytics />
         </div>
         <Toaster />
       </main>
     </>
-  )
+  );
 }
 
 export default function RootLayout({
@@ -65,7 +66,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             <TanstackProvider>
-              <SidebarProvider>
+              <SidebarProvider defaultOpen={false}>
                 <LayoutContent>{children}</LayoutContent>
               </SidebarProvider>
             </TanstackProvider>
