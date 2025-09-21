@@ -1,100 +1,114 @@
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import jwt from 'jsonwebtoken'
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 
 type ApiClient = {
-    get: (path: string) => Promise<Response>;
+  get: (path: string) => Promise<Response>;
 };
 
 let apiClient: ApiClient | null = null;
 
 const getApiClient = async (): Promise<ApiClient> => {
-    if (apiClient) {
-        return apiClient;
+  if (apiClient) {
+    return apiClient;
+  }
+
+  console.log("INFO: Creating new 42 API client...");
+  const clientId = process.env.NEXT_PUBLIC_CLIENT_ID!;
+  const clientSecret = process.env.CLIENT_SECRET_NEXT1!;
+
+  try {
+    const tokenResponse = await fetch("https://api.intra.42.fr/oauth/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorBody = await tokenResponse.text();
+      console.error("FATAL: Failed to get 42 API token.", {
+        status: tokenResponse.status,
+        body: errorBody,
+      });
+      throw new Error(`API Authentication failed: ${tokenResponse.statusText}`);
     }
 
-    console.log("INFO: Creating new 42 API client...");
-    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID!;
-    const clientSecret = process.env.CLIENT_SECRET_NEXT1!;
-
-    try {
-        const tokenResponse = await fetch("https://api.intra.42.fr/oauth/token", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                'grant_type': 'client_credentials',
-                'client_id': clientId,
-                'client_secret': clientSecret,
-            })
-        });
-
-        if (!tokenResponse.ok) {
-            const errorBody = await tokenResponse.text();
-            console.error("FATAL: Failed to get 42 API token.", { status: tokenResponse.status, body: errorBody });
-            throw new Error(`API Authentication failed: ${tokenResponse.statusText}`);
-        }
-
-        const tokenData = await tokenResponse.json();
-        const accessToken = tokenData.access_token;
-
-        if (!accessToken) {
-            throw new Error("Access token was not found in the API response.");
-        }
-
-        console.log("INFO: 42 API client created and authenticated successfully.");
-
-        // On crée notre client personnalisé avec le token obtenu
-        apiClient = {
-            get: (path: string) => {
-                return fetch(`https://api.intra.42.fr/v2${path}`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-            }
-        };
-
-        return apiClient;
-
-    } catch (error) {
-        // Si une erreur survient, on s'assure que le client n'est pas mis en cache dans un état invalide
-        apiClient = null;
-        console.error("ERROR in getApiClient:", error);
-        throw error; // Propage l'erreur
-    }
-}
-
-export async function GET(
-    request: Request,
-    { params }: { params: { login: string } }
-) {
-    const login = params.login;
-    const cookieStore = cookies()
-    const accessToken = cookieStore.get('token')
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
 
     if (!accessToken) {
-        return NextResponse.json({ error: 'Access token is required' }, { status: 401 });
+      throw new Error("Access token was not found in the API response.");
     }
 
-    try {
-        const decoded = jwt.verify(accessToken.value, process.env.JWT_SECRET!) as any;
-        if (!decoded) {
-            throw new Error("Not authorized");
-        }
-        
-        const client = await getApiClient();
-        const response = await client.get(`/users/${login}`);
-        
-        if (!response.ok) {
-            return NextResponse.json({ error: `Failed to fetch from 42 API: ${response.statusText}` }, { status: response.status });
-        }
+    console.log("INFO: 42 API client created and authenticated successfully.");
 
-        const user = await response.json();
-        return NextResponse.json(user);
+    // On crée notre client personnalisé avec le token obtenu
+    apiClient = {
+      get: (path: string) => {
+        return fetch(`https://api.intra.42.fr/v2${path}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      },
+    };
 
-    } catch (error: any) {
-        console.error(`[FATAL ERROR] in /api/users/${login}/intra:`, error.message);
-        return NextResponse.json({ 
-            error: 'Failed to fetch user due to an internal server error.',
-            details: error.message 
-        }, { status: 500 });
+    return apiClient;
+  } catch (error) {
+    // Si une erreur survient, on s'assure que le client n'est pas mis en cache dans un état invalide
+    apiClient = null;
+    console.error("ERROR in getApiClient:", error);
+    throw error; // Propage l'erreur
+  }
+};
+
+export async function GET(
+  request: Request,
+  context: { params: { login: string } },
+) {
+  const { params } = await Promise.resolve(context);
+  const login = params.login;
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("token");
+
+  if (!accessToken) {
+    return NextResponse.json(
+      { error: "Access token is required" },
+      { status: 401 },
+    );
+  }
+
+  try {
+    const decoded = jwt.verify(
+      accessToken.value,
+      process.env.JWT_SECRET!,
+    ) as any;
+    if (!decoded) {
+      throw new Error("Not authorized");
     }
+
+    const client = await getApiClient();
+    const response = await client.get(`/users/${login}`);
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: `Failed to fetch from 42 API: ${response.statusText}` },
+        { status: response.status },
+      );
+    }
+
+    const user = await response.json();
+    return NextResponse.json(user);
+  } catch (error: any) {
+    console.error(`[FATAL ERROR] in /api/users/${login}/intra:`, error.message);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch user due to an internal server error.",
+        details: error.message,
+      },
+      { status: 500 },
+    );
+  }
 }

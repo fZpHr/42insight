@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { TransparentBadge } from "@/components/TransparentBadge";
+import { Bug, Activity } from "lucide-react";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
@@ -33,7 +34,7 @@ export default function Home() {
       loginUrl.searchParams.set("client_id", clientId);
       loginUrl.searchParams.set(
         "redirect_uri",
-        (process.env.NEXT_PUBLIC_REDIRECT_URI ?? "") + "/api/auth",
+        process.env.NEXT_PUBLIC_REDIRECT_URI + "/api/auth",
       );
       loginUrl.searchParams.set("response_type", "code");
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -73,13 +74,24 @@ export default function Home() {
                 "Login with 42 Intra"
               )}
             </Button>
-            <a
-              href="https://github.com/fzphr/42insight/issues/new?title=[ISSUE]&body=Describe%20your%20issue%20here...&labels=issue"
-              target="_blank"
-              className="text-sm text-muted-foreground underline hover:text-foreground transition-colors"
-            >
-              Report an issue
-            </a>
+            <div className="flex gap-4">
+              <a
+                href="https://github.com/fzphr/42insight/issues/new?title=[ISSUE]&body=Describe%20your%20issue%20here...&labels=issue"
+                target="_blank"
+                className="text-sm text-muted-foreground underline hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Bug className="h-3 w-3" />
+                Report an issue
+              </a>
+              <a
+                href="https://monitor.bapasqui.duckdns.org/status/42insight"
+                target="_blank"
+                className="text-sm text-muted-foreground underline hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Activity className="h-3 w-3" />
+                Service Status
+              </a>
+            </div>
           </div>
         </main>
 
@@ -91,7 +103,7 @@ export default function Home() {
               target="_blank"
               className="underline hover:text-foreground transition-colors"
             >
-              Zeph
+              fZpHr
             </a>{" "}
             and{" "}
             <a

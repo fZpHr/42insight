@@ -16,6 +16,8 @@ import {
   Database,
   WavesLadder,
   Calendar,
+  Activity,
+  LayoutGrid,
 } from "lucide-react";
 
 import {
@@ -58,7 +60,7 @@ const navigationData = {
         {
           title: "Dashboard",
           url: "/dashboard",
-          icon: Home,
+          icon: LayoutGrid,
           description: "Main dashboard overview",
         },
         {
@@ -153,6 +155,21 @@ const restrictednavigationData = {
     },
   ],
 };
+
+const bottomLinks = [
+  {
+    title: "Monitor",
+    url: "https://monitor.bapasqui.duckdns.org/status/42insight",
+    icon: Activity,
+    description: "Monitor all related services",
+  },
+  {
+    title: "Contribute",
+    url: "/contribute",
+    icon: Github,
+    description: "Contribute to the project",
+  },
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
@@ -349,48 +366,49 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         {/* Social Links */}
         <SidebarMenu>
-          <SidebarMenuItem>
-            <div className="flex items-center justify-center space-x-2 py-2">
-              {open && (
-                <RainbowButton asChild>
-                  <Link href="/contribute" rel="noopener noreferrer">
-                    Contribute
-                  </Link>
-                </RainbowButton>
-              )}
-              {!open && (
-                <Button variant="ghost" size="icon" asChild className="h-8 w-8">
-                  <Link href="/contribute" rel="noopener noreferrer">
-                    <Github className="h-4 w-4" />
-                    <span className="sr-only">GitHub</span>
-                  </Link>
-                </Button>
-              )}
-            </div>
-            {!open && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-                    <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-                    <span className="sr-only">Toggle theme</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setTheme("light")}>
-                    Light
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme("dark")}>
-                    Dark
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme("system")}>
-                    System
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </SidebarMenuItem>
+          {bottomLinks.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === item.url}
+                tooltip={item.description}
+              >
+                <Link href={item.url}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
+        <SidebarMenuItem key="Dark Mode">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                asChild
+                isActive={false}
+                tooltip="Toggle theme"
+              >
+                <Button variant="outline" size="icon">
+                  <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+                  <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+                  <span className="sr-only">Toggle theme</span>
+                </Button>
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setTheme("light")}>
+                Light
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>
+                Dark
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("system")}>
+                System
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
