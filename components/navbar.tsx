@@ -18,6 +18,7 @@ import {
   Calendar,
   Activity,
   LayoutGrid,
+  Regex,
 } from "lucide-react";
 
 import {
@@ -51,6 +52,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 const navigationData = {
   navMain: [
@@ -202,61 +204,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="border-b border-sidebar-border bg-sidebar/50 backdrop-blur-sm">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center justify-between">
-              {/* {open && (
-                                <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
-                            )} */}
-              <SidebarMenuButton size="lg" asChild className="flex-1">
-                <div>
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-gray-800 to-black text-sidebar-primary-foreground">
-                    <img
-                      src={user?.photoUrl || "/default-avatar.png"}
-                      alt="User Avatar"
-                      className="h-8 w-8 rounded-lg object-cover"
-                    />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{user?.name}</span>
-                    <span className="truncate text-xs text-sidebar-foreground/70">
-                      Level {user?.level} • {user?.campus}
-                    </span>
-                  </div>
-                </div>
-              </SidebarMenuButton>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuAction showOnHover>
-                  <MoreHorizontal />
-                  <span className="sr-only">More</span>
-                </SidebarMenuAction>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
-                align="end"
-                sideOffset={4}
-              >
-                {/* <DropdownMenuItem asChild>
-                                    <Link href="/dashboard/profile">
-                                        <User className="mr-2 h-4 w-4" />
-                                        View Profile
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href="/dashboard/settings">
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        Settings
-                                    </Link>
-                                </DropdownMenuItem> */}
-                <DropdownMenuItem onClick={signOut}>
-                  <span className="text-destructive">Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {open && (
+              <div className="flex items-center overflow-hidden justify-between gap-3 px-2 py-1">
+                <span className="font-bold text-lg truncate">42Insight</span>
+                <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
+              </div>
+            )}
+            {!open && (
+              <div className="flex items-center justify-center gap-2 overflow-hidden">
+                <span className="font-bold text-lg truncate">42</span>
+              </div>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -409,6 +370,62 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarMenuItem>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex items-center justify-between">
+              {/* {open && (
+                                <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
+                            )} */}
+              <SidebarMenuButton size="lg" asChild className="flex-1">
+                <div>
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-gray-800 to-black text-sidebar-primary-foreground">
+                    <img
+                      src={user?.photoUrl || "/default-avatar.png"}
+                      alt="User Avatar"
+                      className="h-8 w-8 rounded-lg object-cover"
+                    />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">{user?.name}</span>
+                    <span className="truncate text-xs text-sidebar-foreground/70">
+                      Level {user?.level} • {user?.campus}
+                    </span>
+                  </div>
+                </div>
+              </SidebarMenuButton>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuAction showOnHover>
+                  <MoreHorizontal />
+                  <span className="sr-only">More</span>
+                </SidebarMenuAction>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                side="bottom"
+                align="end"
+                sideOffset={4}
+              >
+                {/* <DropdownMenuItem asChild>
+                                    <Link href="/dashboard/profile">
+                                        <User className="mr-2 h-4 w-4" />
+                                        View Profile
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/dashboard/settings">
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        Settings
+                                    </Link>
+                                </DropdownMenuItem> */}
+                <DropdownMenuItem onClick={signOut}>
+                  <span className="text-destructive">Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

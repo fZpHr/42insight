@@ -34,9 +34,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       </div>
       <main className="flex flex-1 flex-col" suppressHydrationWarning>
         <div className={pathname === "/" ? "hidden" : "block"}>
-          <div className="top-0 z-10 flex h-14 shrink-0 items-center bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
-            <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
-          </div>
+          <div className="top-0 z-10 flex h-10 shrink-0 items-center bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4"></div>
         </div>
         <div className="flex-1">
           {children}
