@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useEffect, useTransition, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -11,7 +11,7 @@ import { Bug, Activity } from "lucide-react";
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
-  const [loading, startLoadingAnimation] = useTransition();
+  const [loader, setLoader] = useState<boolean>(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -24,22 +24,21 @@ export default function Home() {
   }, [isAuthenticated, router]);
 
   const handleLogin = async () => {
-    startLoadingAnimation(async () => {
-      document.body.style.cursor = "wait";
-      const loginUrl = new URL("https://api.intra.42.fr/oauth/authorize");
-      const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
-      if (!clientId) {
-        throw new Error("NEXT_PUBLIC_CLIENT_ID is not defined");
-      }
-      loginUrl.searchParams.set("client_id", clientId);
-      loginUrl.searchParams.set(
-        "redirect_uri",
-        process.env.NEXT_PUBLIC_REDIRECT_URI + "/api/auth",
-      );
-      loginUrl.searchParams.set("response_type", "code");
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      window.location.href = loginUrl.toString();
-    });
+    setLoader(true);
+    document.body.style.cursor = "wait";
+    const loginUrl = new URL("https://api.intra.42.fr/oauth/authorize");
+    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
+    if (!clientId) {
+      throw new Error("NEXT_PUBLIC_CLIENT_ID is not defined");
+    }
+    loginUrl.searchParams.set("client_id", clientId);
+    loginUrl.searchParams.set(
+      "redirect_uri",
+      process.env.NEXT_PUBLIC_REDIRECT_URI + "/api/auth",
+    );
+    loginUrl.searchParams.set("response_type", "code");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    window.location.href = loginUrl.toString();
   };
 
   return (
@@ -63,9 +62,9 @@ export default function Home() {
             <Button
               onClick={handleLogin}
               className="w-full bg-white hover:bg-gray-100 text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
-              disabled={loading}
+              disabled={loader}
             >
-              {loading ? (
+              {loader ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Logging in...

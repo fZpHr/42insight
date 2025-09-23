@@ -25,15 +25,16 @@ const geistMono = Geist_Mono({
 function LayoutContent({ children }: { children: React.ReactNode }) {
   useAuthCheck();
   const pathname = usePathname();
+  const isLanding = pathname === "/";
   const { open } = useSidebar();
 
   return (
     <>
-      <div className={pathname === "/" ? "hidden" : "block"}>
+      <div className={isLanding ? "hidden" : "block"}>
         <AppSidebar />
       </div>
       <main className="flex flex-1 flex-col" suppressHydrationWarning>
-        <div className={pathname === "/" ? "hidden" : "block"}>
+        <div className={isLanding ? "hidden" : "block"}>
           <div className="flex items-center overflow-hidden justify-between gap-3 px-2 py-1 pt-3">
             {!open && (
               <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
