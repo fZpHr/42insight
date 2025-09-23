@@ -259,3 +259,67 @@ export interface UserIntraInfo {
     updated_at: string;
   }>;
 }
+
+export type SubscriberItem = {
+  id: number;
+  event_id: number;
+  user_id: number;
+  user: {
+    id: number;
+    email: string;
+    login: string;
+    first_name: string;
+    last_name: string;
+    usual_full_name: string;
+    usual_first_name: string | null;
+    url: string;
+    phone: string;
+    displayname: string;
+    kind: string;
+    image: {
+      link: string;
+      versions: {
+        large: string;
+        medium: string;
+        small: string;
+        micro: string;
+      };
+    };
+    "staff?": boolean;
+    correction_point: number;
+    pool_month: string;
+    pool_year: string;
+    location: string | null;
+    wallet: number;
+    anonymize_date: string;
+    data_erasure_date: string;
+    created_at: string;
+    updated_at: string;
+    alumnized_at: string | null;
+    "alumni?": boolean;
+    "active?": boolean;
+  };
+  event: {
+    id: number;
+    name: string;
+    description: string;
+    location: string;
+    kind: string;
+    max_people: number;
+    nbr_subscribers: number;
+    begin_at: string;
+    end_at: string;
+    campus_ids: number[];
+    cursus_ids: number[];
+    created_at: string;
+    updated_at: string;
+    prohibition_of_cancellation: string | null;
+    waitlist: {
+      id: number;
+      waitlistable_id: number;
+      waitlistable_type: string;
+      created_at: string;
+      updated_at: string;
+    };
+  };
+};

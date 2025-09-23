@@ -22,6 +22,8 @@ export interface AuthContextProps {
   fetchPoolStudents: () => Promise<PoolUser[]>;
   getCampusRank: (campus: string) => Promise<any>;
   getCampusEvents: (campus_name: string) => Promise<any>;
+  getEventsFeedback: (campus_name: string, event_id: string) => Promise<any>;
+  getEventsSubscribers: (campus_name: string, event_id: string) => Promise<any>;
 }
 
 export const AuthContext = createContext<AuthContextProps | null>(null);
@@ -138,6 +140,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const getEventsFeedback = async (campus_name: string, event_id: string) => {
+    try {
+      const response = await fetch(
+        `/api/events/${campus_name}/${event_id}/feedbacks`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch campus events");
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching campus events:", error);
+      return [];
+    }
+  };
+
+  const getEventsSubscribers = async (
+    campus_name: string,
+    event_id: string,
+  ) => {
+    try {
+      const response = await fetch(
+        `/api/events/${campus_name}/${event_id}/subscribers`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch campus events");
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching campus events:", error);
+      return [];
+    }
+  };
+
   const fetchQueryResults = async (query: string) => {
     try {
       const cookies = parseCookies();
@@ -229,6 +266,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isStaff,
         getCampusRank,
         getCampusEvents,
+        getEventsFeedback,
+        getEventsSubscribers,
       }}
     >
       {children}

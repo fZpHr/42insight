@@ -107,8 +107,8 @@ export async function GET(
       );
     }
 
-    const user = await response.json();
-    return NextResponse.json(user);
+    const events = await response.json();
+    return NextResponse.json(events);
   } catch (error: any) {
     console.error(
       `[FATAL ERROR] in /api/campus/${params.campus_name}/intra:`,
@@ -116,7 +116,7 @@ export async function GET(
     );
     return NextResponse.json(
       {
-        error: "Failed to fetch user due to an internal server error.",
+        error: "Failed to fetch events due to an internal server error.",
         details: error.message,
       },
       { status: 500 },
