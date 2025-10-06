@@ -29,8 +29,21 @@ import { PoolUser } from "@/types";
 const INITIAL_LOAD = 20;
 const LOAD_MORE = 10;
 
+
+const fetchPoolStudents = async (): Promise<PoolUser[]> => {
+  try {
+    const response = await fetch("/api/users/pool");
+    if (!response.ok) {
+      throw new Error("Failed to fetch pool students");
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error fetching pool students:", error);
+    return [];
+  }
+};
+
 export default function Trombinoscope() {
-  const { user, fetchPoolStudents } = useAuth();
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [showingName, setShowingName] = useState(true);
   const [gameMode, setGameMode] = useState(false);

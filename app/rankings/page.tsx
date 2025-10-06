@@ -39,6 +39,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { debounce } from "@tanstack/pacer";
+import { useSession } from "next-auth/react";
 
 const sortOptions: StudentSortOption[] = [
   { value: "level", label: "Level", key: "level" },
@@ -57,10 +58,23 @@ const sortOptions: StudentSortOption[] = [
   { value: "work_study", label: "En alternance", key: "work" },
 ];
 
+  const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
+    try {
+      console.log("Fetching students for campus:", campus);
+      const response = await fetch(`/api/users/campus/${campus}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch students");
+      }
+      return response.json();
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      throw error;
+    }
+  };
+
 type SortDirection = "asc" | "desc";
 
 export default function Rankings() {
-  const { user, fetchCampusStudents } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<string>("level");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -71,6 +85,9 @@ export default function Rankings() {
   const [visibleCount, setVisibleCount] = useState(20);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string>("all");
+  const { data: session, status } = useSession();
+  const user = session?.user;
+
 
   const campusOptions = [
     { value: "Nice", label: "Nice" },

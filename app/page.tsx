@@ -4,42 +4,21 @@ import { useEffect, useTransition, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { unauthorized, useRouter } from "next/navigation";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { Bug, Activity } from "lucide-react";
+import { signIn, signOut, useSession } from "next-auth/react";
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
+  const { data: session } = useSession();
+  const [loader, setLoader] = useState(false);
   const router = useRouter();
-  const [loader, setLoader] = useState<boolean>(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const authenticated = await isAuthenticated();
-      if (authenticated) {
-        router.push("/dashboard");
-      }
-    };
-    checkAuth();
-  }, [isAuthenticated, router]);
-
-  const handleLogin = async () => {
-    setLoader(true);
-    document.body.style.cursor = "wait";
-    const loginUrl = new URL("https://api.intra.42.fr/oauth/authorize");
-    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
-    if (!clientId) {
-      throw new Error("NEXT_PUBLIC_CLIENT_ID is not defined");
+    if (session && session.user) {
+      router.push("/dashboard");
     }
-    loginUrl.searchParams.set("client_id", clientId);
-    loginUrl.searchParams.set(
-      "redirect_uri",
-      process.env.NEXT_PUBLIC_REDIRECT_URI + "/api/auth",
-    );
-    loginUrl.searchParams.set("response_type", "code");
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    window.location.href = loginUrl.toString();
-  };
+  }, [session, loader, router]);
 
   return (
     <div className="relative">
@@ -60,7 +39,7 @@ export default function Home() {
           </div>
           <div className="flex flex-col items-center gap-4 w-full">
             <Button
-              onClick={handleLogin}
+              onClick={() => signIn("42-school")}
               className="w-full bg-white hover:bg-gray-100 text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
               disabled={loader}
             >

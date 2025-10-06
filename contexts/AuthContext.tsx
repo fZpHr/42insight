@@ -16,7 +16,6 @@ export interface AuthContextProps {
   isStaff?: boolean;
   isAdmin?: boolean;
   isAuthenticated: () => Promise<boolean>;
-  fetchCampusStudents: (campus: string) => Promise<Student[]>;
   fetchQueryResults: (query: string) => Promise<any>;
   fetchUserIntraInfo: (login: string) => Promise<UserIntraInfo | null>;
   fetchPoolStudents: () => Promise<PoolUser[]>;

@@ -16,11 +16,60 @@ import { TransparentBadge } from "@/components/TransparentBadge";
 import { SubscribersButton } from "@/components/SubscribersButton";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { MapPin, User, Calendar } from "lucide-react";
+import { useSession } from "next-auth/react";
+
+const getCampusEvents = async (campus_name: string) => {
+  try {
+    const response = await fetch(`/api/events/${campus_name}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch campus events");
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching campus events:", error);
+    return [];
+  }
+};
+
+const getEventsFeedback = async (campus_name: string, event_id: string) => {
+  try {
+    const response = await fetch(
+      `/api/events/${campus_name}/${event_id}/feedbacks`,
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch campus events");
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching campus events:", error);
+    return [];
+  }
+};
+
+const getEventsSubscribers = async (
+  campus_name: string,
+  event_id: string,
+) => {
+  try {
+    const response = await fetch(
+      `/api/events/${campus_name}/${event_id}/subscribers`,
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch campus events");
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching campus events:", error);
+    return [];
+  }
+};
 
 export default function EventsPage() {
-  const { getCampusEvents, getEventsFeedback, user, getEventsSubscribers } =
-    useAuth();
-  const campus = user?.campus;
+  const { data: session } = useSession();
+  const campus = session?.user?.campus
 
   const {
     data: events = [],
