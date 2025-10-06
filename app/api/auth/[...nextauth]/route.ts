@@ -60,9 +60,18 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
 
-    async redirect({ baseUrl }) {
-      return `${baseUrl}/dashboard`;
-    },
+    async redirect({ url, baseUrl }) {
+        if (url.includes('/signout') || url === baseUrl) {
+          return baseUrl;
+        }
+        if (url.startsWith("/")) {
+          return `${baseUrl}${url}`;
+        }
+        if (new URL(url).origin === baseUrl) {
+          return url;
+        }
+        return `${baseUrl}/dashboard`;
+      },
   },
 };
 

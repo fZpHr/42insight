@@ -18,7 +18,17 @@ export default function Home() {
     if (session && session.user) {
       router.push("/dashboard");
     }
+    else {
+      router.push("/");
+    }
   }, [session, loader, router]);
+
+  const handleLogin = async () => {
+    setLoader(true);
+    document.body.style.cursor = "wait";
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    signIn("42-school");
+  };
 
   return (
     <div className="relative">
@@ -39,7 +49,7 @@ export default function Home() {
           </div>
           <div className="flex flex-col items-center gap-4 w-full">
             <Button
-              onClick={() => signIn("42-school")}
+              onClick={handleLogin}
               className="w-full bg-white hover:bg-gray-100 text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
               disabled={loader}
             >

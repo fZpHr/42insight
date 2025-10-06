@@ -54,6 +54,7 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useSession } from "next-auth/react";
+import { signOut } from "next-auth/react"
 
 const navigationData = {
   navMain: [
@@ -199,9 +200,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
   };
 
-  const signOut = () => {
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    window.location.href = "/";
+  const signOutfunc = async () => {
+    await signOut({ 
+      callbackUrl: '/',
+      redirect: true 
+    });
   };
 
   return (
@@ -421,7 +424,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                         Settings
                                     </Link>
                                 </DropdownMenuItem> */}
-                <DropdownMenuItem onClick={signOut}>
+                <DropdownMenuItem onClick={signOutfunc}>
                   <span className="text-destructive">Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
