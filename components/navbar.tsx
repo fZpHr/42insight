@@ -98,7 +98,6 @@ const navigationData = {
           title: "Piscine Ranking",
           url: "/piscine/rankings",
           icon: Waves,
-          badge: "Active",
           description: "Piscine progress and rankings",
         },
         {
