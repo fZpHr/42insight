@@ -14,19 +14,16 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    if (session && session.user) {
+    if (session) {
       router.push("/dashboard");
     }
-    else {
-      router.push("/");
-    }
-  }, [session, loader, router]);
+  }, [session, router]);
 
   const handleLogin = async () => {
     setLoader(true);
     document.body.style.cursor = "wait";
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    signIn("42-school");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    signIn("42-school", { callbackUrl: `${window.location.origin}/dashboard` });
   };
 
   return (

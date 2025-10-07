@@ -66,9 +66,9 @@ const getApiClient = async (): Promise<ApiClient> => {
 
 export async function GET(
   request: Request,
-  context: { params: { login: string } },
+  context: { params: Promise<{ login: string }> },
 ) {
-  const { params } = await Promise.resolve(context);
+  const params = await context.params;
   const login = params.login;
   const session = await getServerSession(authOptions)
   if (!session || !session.user) {
