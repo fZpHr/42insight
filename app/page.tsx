@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useTransition, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { unauthorized, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { Bug, Activity } from "lucide-react";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 
 export default function Home() {
   const { data: session } = useSession();

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getServerSession } from "next-auth";
 
 type ApiClient = {
   get: (path: string) => Promise<Response>;
@@ -70,25 +70,15 @@ export async function GET(
 ) {
   const { params } = await Promise.resolve(context);
   const login = params.login;
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("token");
-
-  if (!accessToken) {
-    return NextResponse.json(
-      { error: "Access token is required" },
-      { status: 401 },
-    );
+  const session = await getServerSession(authOptions)
+  if (!session || !session.user) {
+      return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+      )
   }
 
   try {
-    const decoded = jwt.verify(
-      accessToken.value,
-      process.env.JWT_SECRET!,
-    ) as any;
-    if (!decoded) {
-      throw new Error("Not authorized");
-    }
-
     const client = await getApiClient();
     const response = await client.get(`/users/${login}`);
 

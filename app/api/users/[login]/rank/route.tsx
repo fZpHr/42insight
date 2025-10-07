@@ -1,29 +1,21 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
 import { Student } from "@/types";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function GET(
   _request: Request,
   context: { params: { login: string } },
 ) {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("token");
-  if (!accessToken) {
-    return NextResponse.json(
-      { error: "Access token is required" },
-      { status: 401 },
-    );
-  }
-  try {
-    const decoded = jwt.verify(accessToken.value, process.env.JWT_SECRET!) as {
-      name: string;
-    };
-    if (!decoded) {
-      throw new Error("Not authorized");
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
+        return NextResponse.json(
+            { error: 'Unauthorized' },
+            { status: 401 }
+        )
     }
-    // Await params if necessary (for dynamic route segments in Next.js App Router)
+  try {
     const params = await context.params;
     const login = params.login;
 

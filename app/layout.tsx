@@ -1,6 +1,5 @@
 "use client";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { usePathname } from "next/navigation";
@@ -70,13 +69,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
             <TanstackProvider>
               <SidebarProvider defaultOpen={false}>
                 <LayoutContent>{children}</LayoutContent>
               </SidebarProvider>
             </TanstackProvider>
-          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

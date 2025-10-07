@@ -3,19 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
 import { StudentCard } from "@/components/trombi-card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import useAuthCheck from "@/hooks/useAuthCheck";
 import { Eye, EyeClosed, Star, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {

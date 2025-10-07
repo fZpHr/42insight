@@ -3,7 +3,6 @@
 import type * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { RainbowButton } from "@/components/magicui/rainbow-button";
 import {
   Users,
   LinkIcon,
@@ -18,7 +17,6 @@ import {
   Calendar,
   Activity,
   LayoutGrid,
-  Regex,
 } from "lucide-react";
 
 import {
@@ -48,7 +46,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
