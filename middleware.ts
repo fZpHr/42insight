@@ -13,13 +13,13 @@ export default withAuth(
     const token = req.nextauth.token
     const pathname = req.nextUrl.pathname
 
-    if (token?.role === "pisciners") {
+    if (token?.role === "pisciner") {
       const isRestrictedRoute = poolRestrictedRoutes.some(route => 
         pathname.startsWith(route)
       )
       
       if (isRestrictedRoute) {
-        return NextResponse.redirect(new URL("/dashboard", req.url))
+        return NextResponse.redirect(new URL("/error/forbidden", req.url))
       }
     }
 

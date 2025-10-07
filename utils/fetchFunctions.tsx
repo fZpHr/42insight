@@ -1,5 +1,4 @@
 import { UserIntraInfo } from "@/types";
-import { useSession } from "next-auth/react";
 
 export const fetchUserIntraInfo = async (
     login: string,
