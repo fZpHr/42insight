@@ -30,7 +30,12 @@ export const authOptions: NextAuthOptions = {
   ],
   
   secret: process.env.JWT_SECRET,
-  
+  pages: {
+    signIn: "/",
+    signOut: "/",
+    error: "/?error=1",
+  },
+
   callbacks: {
     async jwt({ token, user, account, profile }) {
       if (user) {

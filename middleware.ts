@@ -1,74 +1,46 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { withAuth } from "next-auth/middleware"
+import { NextResponse } from "next/server"
 
-export async function middleware(request: NextRequest) {
-  // const token = request.cookies.get("token")?.value;
+const poolRestrictedRoutes = [
+  "/query",
+  "/rankings",
+  "/trombinoscope",
+  "/piscine/rankings",
+]
 
-  // const protectedRoutes = [
-  //   "/dashboard",
-  //   "/exam-tracker",
-  //   "/links",
-  //   "/query",
-  //   "/piscine",
-  //   "/trombinoscope",
-  //   "/rankings",
-  //   "/api",
-  //   "/contribute",
-  //   "/events",
-  // ];
-  // const poolRestrictedRoutes = [
-  //   "/query",
-  //   "/rankings",
-  //   "/trombinoscope",
-  //   "/exam-tracker",
-  //   "/piscine/rankings",
-  // ];
+export default withAuth(
+  function middleware(req) {
+    const token = req.nextauth.token
+    const pathname = req.nextUrl.pathname
 
-  // const isProtectedRoute = protectedRoutes.some((route) =>
-  //   request.nextUrl.pathname.startsWith(route),
-  // );
+    if (token?.role === "pisciners") {
+      const isRestrictedRoute = poolRestrictedRoutes.some(route => 
+        pathname.startsWith(route)
+      )
+      
+      if (isRestrictedRoute) {
+        return NextResponse.redirect(new URL("/dashboard", req.url))
+      }
+    }
 
-  // if (isProtectedRoute && !token) {
-  //   return NextResponse.redirect(new URL("/", request.url));
-  // }
+    return NextResponse.next()
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token
+    },
+  }
+)
 
-  // const isPoolRestrictedRoute = poolRestrictedRoutes.some((route) =>
-  //   request.nextUrl.pathname.startsWith(route),
-  // );
-
-  // if (isPoolRestrictedRoute && token) {
-  //   try {
-  //     const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
-  //     const { payload } = await jwtVerify(token, secret);
-
-  //     // if (!payload) {
-  //     //   return NextResponse.redirect(new URL('/', request.url));
-  //     // }
-
-  //     if (payload.isPoolUser) {
-  //       return NextResponse.redirect(new URL("/dashboard", request.url));
-  //     }
-  //   } catch (error) {
-  //     console.error("JWT verification failed:", error);
-  //     return NextResponse.redirect(new URL("/", request.url));
-  //   }
-  // }
-
-  return NextResponse.next();
-}
-
-export const config = {
+export const config = { 
   matcher: [
-    "/",
-    "/dashboard/:path*",
-    "/query/:path*",
-    "/rankings/:path*",
-    "/trombinoscope/:path*",
-    "/exam-tracker/:path*",
-    "/correction-slots/:path*",
-    "/piscine/:path*",
-    "/links/:path*",
-    "/contribute/:path*",
-  ],
-};
+    "/dashboard/:path*", 
+    "/trombinoscope/:path*", 
+    "/query/:path*", 
+    "/rankings/:path*", 
+    "/exam-tracker/:path*", 
+    "/piscine/:path*", 
+    "/links/:path*", 
+    "/contribute/:path*"
+  ] 
+}
