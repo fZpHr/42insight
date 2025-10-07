@@ -41,6 +41,12 @@ export const config = {
     "/exam-tracker/:path*", 
     "/piscine/:path*", 
     "/links/:path*", 
-    "/contribute/:path*"
+    "/contribute/:path*",
+    "/api/proxy/:path*",
+    "/api/rate_limit/:path*",
+    "/api/current_exam/:path*",
+    "/api/user/:path*",
+    "/api/staff/:path*",
+    "/api/events/:path*",
   ] 
 }
