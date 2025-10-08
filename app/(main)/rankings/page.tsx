@@ -90,7 +90,7 @@ export default function Rankings() {
 
   const campusOptions = [
     { value: "Nice", label: "Nice" },
-    { value: "Angoulême", label: "Angoulême" },
+    { value: "Angouleme", label: "Angoulême" },
   ];
 
   const {

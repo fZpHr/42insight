@@ -18,7 +18,7 @@ export const authOptions: NextAuthOptions = {
           email: profile.email,
           image: profile.image?.link,
           login: profile.login,
-          campus: profile.campus?.[0]?.name ?? null,
+          campus: profile.campus?.[1]?.name ?? profile.campus?.[0]?.name ?? null,
           cursus: cursusName,
           correction_point: profile.correction_point ?? 0,
           wallet: profile.wallet ?? 0,

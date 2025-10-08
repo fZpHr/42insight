@@ -1,15 +1,8 @@
 "use client";
 import { Geist, Geist_Mono } from "next/font/google";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
-import { usePathname } from "next/navigation";
 import "./globals.css";
-import { AppSidebar } from "@/components/navbar";
-import { Toaster } from "@/components/ui/sonner";
-import { TanstackProvider } from "@/lib/tanstack-provider";
-import { useSidebar } from "@/components/ui/sidebar";
-import { SessionProvider } from "next-auth/react"
-import { Analytics } from "@vercel/analytics/next";
+import { SessionProvider } from "next-auth/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,38 +13,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-function LayoutContent(
-  { children, session }: { children: React.ReactNode; session?: any }
-) {
-  const pathname = usePathname();
-  const isLanding = pathname === "/";
-  const { open } = useSidebar();
-
-  return (
-    <SessionProvider session={session}>
-      <>
-        <div className={isLanding ? "hidden" : "block"}>
-          <AppSidebar />
-        </div>
-        <main className="flex flex-1 flex-col" suppressHydrationWarning>
-          <div className={isLanding ? "hidden" : "block"}>
-            <div className="flex items-center overflow-hidden justify-between gap-3 px-2 py-1 pt-3">
-              {!open && (
-                <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
-              )}
-            </div>
-          </div>
-          <div className="flex-1">
-            {children}
-            <Analytics />
-          </div>
-          <Toaster />
-        </main>
-      </>
-    </SessionProvider>
-  );
-}
 
 export default function RootLayout({
   children,
@@ -69,11 +30,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-            <TanstackProvider>
-              <SidebarProvider defaultOpen={false}>
-                <LayoutContent>{children}</LayoutContent>
-              </SidebarProvider>
-            </TanstackProvider>
+            <SessionProvider>
+                  {children}
+            </SessionProvider>
         </ThemeProvider>
       </body>
     </html>

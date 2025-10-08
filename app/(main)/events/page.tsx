@@ -168,12 +168,12 @@ export default function EventsPage() {
                       {event.location}
                     </div>
                   )}
-                  {event.nbr_subscribers && (
+                    {event.nbr_subscribers != null && (
                     <div className="flex items-center text-sm text-muted-foreground">
                       <User className="w-4 h-4 mr-2" />
-                      {event.nbr_subscribers} / {event.max_people}
+                      {event.nbr_subscribers} / {event.max_people ? event.max_people : "∞"}{" "}
                     </div>
-                  )}
+                    )}
                 </CardContent>
                 <CardFooter className="flex justify-between mt-auto">
                   <SubscribersButton

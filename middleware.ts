@@ -46,7 +46,7 @@ export const config = {
     "/api/proxy/:path*",
     "/api/rate_limit/:path*",
     "/api/current_exam/:path*",
-    "/api/user/:path*",
+    "/api/users/:path*",
     "/api/staff/:path*",
     "/api/events/:path*",
   ] 
