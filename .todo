@@ -1,0 +1,4 @@
+- [ ] Implement webhook endpoint to update the database directly instead of rebuilding the website every time
+- [ ] Make the flow better (animation, cleaner UI)
+- [ ] Implement all missing features from panbagnat
+- [ ] Implement all promised features from the roadmap
