@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
 import { StudentCard } from "@/components/trombi-card";
 import {
   Select,
@@ -15,7 +14,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import useAuthCheck from "@/hooks/useAuthCheck";
 import { Eye, EyeClosed, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,13 +22,29 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSession } from "next-auth/react";
+import { Student } from "@/types";
 
 const INITIAL_LOAD = 20;
 const LOAD_MORE = 10;
 
+const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
+  try {
+    console.log("Fetching students for campus:", campus);
+    const response = await fetch(`/api/users/campus/${campus}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch students");
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    throw error;
+  }
+};
+
 export default function Trombinoscope() {
-  useAuthCheck();
-  const { user, fetchCampusStudents, isAdmin, isStaff } = useAuth();
+    const { data: session, status } = useSession();
+    const user = session?.user;
   const [selectedCampus, setSelectedCampus] = useState<string>(
     user?.campus || "",
   );
@@ -142,7 +156,7 @@ export default function Trombinoscope() {
                 {user?.campus === "Nice" && <Star className="h-4 w-4 mr-1" />}
                 Nice
               </SelectItem>
-              {(isAdmin || isStaff) && (
+              {(user?.role == "admin" || user?.role == "staff" ) && (
                 <>
                   <SelectItem value="amsterdam">Amsterdam</SelectItem>
                   <SelectItem value="paris">Paris</SelectItem>

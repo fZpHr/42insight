@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { cookies } from 'next/headers'
 import Fast42 from "@codam/fast42"
-import jwt from 'jsonwebtoken'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 let api: Fast42 | null = null;
 
@@ -20,22 +20,17 @@ const getApi = async () => {
 
 export async function GET(
     _request: Request,
-    { params }: { params: { campus_name: string } }
+    { params }: { params: Promise<{ campus_name: string }> }
 ) {
-    const campus_name = params.campus_name;
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('token')
-    if (!accessToken) {
+    const { campus_name } = await params
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
         return NextResponse.json(
-            { error: 'Access token is required' },
+            { error: 'Unauthorized' },
             { status: 401 }
         )
     }
     try {
-        const decoded = jwt.verify(accessToken.value, process.env.JWT_SECRET!) as any
-        if (!decoded) {
-            throw new Error("Not authorized")
-        }
         const students = await prisma.student.findMany({
             where: { campus: campus_name }
         })

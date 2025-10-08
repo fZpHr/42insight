@@ -14,7 +14,6 @@ import {
   Eye,
 } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import type { PoolUser, SortOption } from "@/types";
 import { debounce } from "@tanstack/pacer";
+import { useSession } from "next-auth/react";
 
 type SortDirection = "asc" | "desc";
 
@@ -42,12 +42,27 @@ const sortOptions: SortOption[] = [
   },
 ];
 
+const fetchPoolStudents = async (): Promise<PoolUser[]> => {
+  try {
+    const response = await fetch("/api/users/pool");
+    if (!response.ok) {
+      throw new Error("Failed to fetch pool students");
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error fetching pool students:", error);
+    return [];
+  }
+};
+
+
 export default function Piscine() {
-  const { user, fetchPoolStudents } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<string>("level");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const userRowRef = useRef<HTMLDivElement>(null);
+  const { data: session, status } = useSession();
+  const user = session?.user;
 
   const {
     data: students,

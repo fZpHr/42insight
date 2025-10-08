@@ -3,19 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
 import { StudentCard } from "@/components/trombi-card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import useAuthCheck from "@/hooks/useAuthCheck";
 import { Eye, EyeClosed, Star, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,8 +20,21 @@ import { PoolUser } from "@/types";
 const INITIAL_LOAD = 20;
 const LOAD_MORE = 10;
 
+
+const fetchPoolStudents = async (): Promise<PoolUser[]> => {
+  try {
+    const response = await fetch("/api/users/pool");
+    if (!response.ok) {
+      throw new Error("Failed to fetch pool students");
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error fetching pool students:", error);
+    return [];
+  }
+};
+
 export default function Trombinoscope() {
-  const { user, fetchPoolStudents } = useAuth();
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [showingName, setShowingName] = useState(true);
   const [gameMode, setGameMode] = useState(false);

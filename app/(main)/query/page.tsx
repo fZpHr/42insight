@@ -8,23 +8,20 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Copy, Loader2 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import { addToLocalStorage, getFromLocalStorage } from "@/utils/localStorage";
+import { useSession } from "next-auth/react";
 
 export default function Query() {
-  const { user, isStaff, isAdmin } = useAuth();
+  const { data: session } = useSession();
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const fetchRateLimit = async (): Promise<number> => {
-    const token = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("token="))
-      ?.split("=")[1];
 
+  const user = session?.user;
+  const fetchRateLimit = async (): Promise<number> => {
     const response = await fetch(`/api/rate_limit`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${session?.accessToken}` },
     });
 
     if (!response.ok) {
@@ -57,7 +54,7 @@ export default function Query() {
 
   const fetchQueryResults = async (query: string) => {
     try {
-      if (requestCount >= 10 && !(isAdmin || isStaff)) {
+      if (requestCount >= 10) {
         toast.error("Rate limit exceeded", {
           duration: 2000,
           position: "bottom-right",
@@ -65,12 +62,8 @@ export default function Query() {
         return;
       }
       setIsLoading(true);
-      const token = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("token="))
-        ?.split("=")[1];
       const response = await fetch(`/api/proxy/${encodeURIComponent(query)}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
       });
       if (!response.ok) {
         throw new Error("Failed to fetch query results");
@@ -149,7 +142,7 @@ export default function Query() {
               </a>{" "}
               for available endpoints.
             </p>
-            {!(isAdmin || isStaff) && (
+            {/* {!(isAdmin || isStaff) && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium">Rate Limit</label>
@@ -164,7 +157,7 @@ export default function Query() {
                   />
                 </div>
               </div>
-            )}
+            )} */}
             <Button
               onClick={() => fetchQueryResults(query)}
               className="w-full"

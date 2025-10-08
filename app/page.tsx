@@ -1,44 +1,29 @@
 "use client";
 
 import { useEffect, useTransition, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { Bug, Activity } from "lucide-react";
+import { signIn, useSession } from "next-auth/react";
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
+  const { data: session } = useSession();
+  const [loader, setLoader] = useState(false);
   const router = useRouter();
-  const [loader, setLoader] = useState<boolean>(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const authenticated = await isAuthenticated();
-      if (authenticated) {
-        router.push("/dashboard");
-      }
-    };
-    checkAuth();
-  }, [isAuthenticated, router]);
+    if (session) {
+      router.push("/dashboard");
+    }
+  }, [session, router]);
 
   const handleLogin = async () => {
     setLoader(true);
     document.body.style.cursor = "wait";
-    const loginUrl = new URL("https://api.intra.42.fr/oauth/authorize");
-    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
-    if (!clientId) {
-      throw new Error("NEXT_PUBLIC_CLIENT_ID is not defined");
-    }
-    loginUrl.searchParams.set("client_id", clientId);
-    loginUrl.searchParams.set(
-      "redirect_uri",
-      process.env.NEXT_PUBLIC_REDIRECT_URI + "/api/auth",
-    );
-    loginUrl.searchParams.set("response_type", "code");
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    window.location.href = loginUrl.toString();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    signIn("42-school", { callbackUrl: `${window.location.origin}/dashboard` });
   };
 
   return (

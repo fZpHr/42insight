@@ -1,8 +1,6 @@
 "use client";
 
 import type React from "react";
-
-import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +28,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TransparentBadge } from "@/components/TransparentBadge";
+import { useSession } from "next-auth/react";
+import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
 
 interface StatCardProps {
   title: string;
@@ -237,10 +237,8 @@ export function SkillBar({
             </span>
           </div>
 
-          {/* Divider */}
           <div className="w-full h-px lg:w-px lg:h-32 bg-border" />
 
-          {/* Other Skills */}
           <div className="flex items-end justify-center lg:justify-start gap-2 md:gap-4 flex-1 py-2 lg:py-4 overflow-x-auto">
             {skills
               .filter((skill) => skill.id !== mainSkill.id)
@@ -283,8 +281,11 @@ export function SkillBar({
 }
 
 export default function Dashboard() {
-  const { user, loading, fetchUserIntraInfo, getCampusRank, isStaff, isAdmin } =
-    useAuth();
+  const { data: session } = useSession();
+  const user = session?.user;
+  const isStaff = session?.user?.role?.includes("staff");
+  const isAdmin = session?.user?.role?.includes("admin");
+  const [loading, setLoading] = useState(false);
   const [showStaffDashboard, setShowStaffDashboard] = useState(false);
 
   const {
@@ -293,7 +294,7 @@ export default function Dashboard() {
     error: intraError,
   } = useQuery({
     queryKey: ["userIntraInfo", user?.name],
-    queryFn: () => fetchUserIntraInfo(user?.name || ""),
+    queryFn: () => fetchUserIntraInfo(user?.login || ""),
     enabled: !!user && !loading,
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
@@ -310,10 +311,9 @@ export default function Dashboard() {
   const {
     data: campusRank,
     isLoading: rankLoading,
-    error: rankError,
   } = useQuery({
     queryKey: ["campusRank", user?.campus],
-    queryFn: () => getCampusRank(user?.campus || ""),
+    queryFn: () => getCampusRank(user?.campus || "", user?.login || ""),
     enabled: !!user && !loading && !isStaff,
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
@@ -370,7 +370,7 @@ export default function Dashboard() {
     );
   }
 
-  if (intraError || rankError) {
+  if (intraError) {
     return (
       <div className="container mx-auto p-6">
         <Alert variant="destructive">
@@ -395,7 +395,7 @@ export default function Dashboard() {
         <Avatar className="h-20 w-20 ring-2 ring-border">
           <AvatarImage
             className="h-full w-full object-cover"
-            src={user?.photoUrl || userIntraInfo?.image?.link}
+            src={user?.image || userIntraInfo?.image?.link}
             alt={`${user?.name}'s avatar`}
           />
           <AvatarFallback className="text-lg font-semibold">

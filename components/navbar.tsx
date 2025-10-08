@@ -3,7 +3,6 @@
 import type * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { RainbowButton } from "@/components/magicui/rainbow-button";
 import {
   Users,
   LinkIcon,
@@ -18,7 +17,6 @@ import {
   Calendar,
   Activity,
   LayoutGrid,
-  Regex,
 } from "lucide-react";
 
 import {
@@ -48,11 +46,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useSession } from "next-auth/react";
+import { signOut } from "next-auth/react"
 
 const navigationData = {
   navMain: [
@@ -99,7 +98,6 @@ const navigationData = {
           title: "Piscine Ranking",
           url: "/piscine/rankings",
           icon: Waves,
-          badge: "Active",
           description: "Piscine progress and rankings",
         },
         {
@@ -175,8 +173,9 @@ const bottomLinks = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const { user, isPoolUser } = useAuth();
   const { setTheme } = useTheme();
+  const { data: session, status } = useSession();
+  const user = session?.user;
   const { open } = useSidebar();
 
   const getBadgeVariant = (badge: string) => {
@@ -197,9 +196,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
   };
 
-  const signOut = () => {
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    window.location.href = "/";
+  const signOutfunc = async () => {
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, `=;expires=${new Date(0).toUTCString()};path=/`);
+    });
+    await signOut({ 
+      callbackUrl: '/',
+      redirect: true 
+    });
   };
 
   return (
@@ -225,7 +231,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         {/* Main Navigation */}
 
-        {!isPoolUser &&
+        {user?.role != "pisciner" &&
           navigationData.navMain.map((group) => (
             <SidebarGroup key={group.title}>
               <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
@@ -287,7 +293,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarGroup>
           ))}
 
-        {isPoolUser &&
+        {user?.role == "pisciner" &&
           restrictednavigationData.navMain.map((group) => (
             <SidebarGroup key={group.title}>
               <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
@@ -380,7 +386,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <div>
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-gray-800 to-black text-sidebar-primary-foreground">
                     <img
-                      src={user?.photoUrl || "/default-avatar.png"}
+                      src={user?.image || "/default-avatar.png"}
                       alt="User Avatar"
                       className="h-8 w-8 rounded-lg object-cover"
                     />
@@ -419,7 +425,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                         Settings
                                     </Link>
                                 </DropdownMenuItem> */}
-                <DropdownMenuItem onClick={signOut}>
+                <DropdownMenuItem onClick={signOutfunc}>
                   <span className="text-destructive">Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

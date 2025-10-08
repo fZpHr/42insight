@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { Redis } from "@upstash/redis";
-import jwt from 'jsonwebtoken'
+import { NextResponse } from 'next/server'
+import { Redis } from "@upstash/redis"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
 const redis = new Redis({
     url: process.env.REDIS_URL,
@@ -10,27 +10,21 @@ const redis = new Redis({
 
 const RATE_KEY = "rate_limit"
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { path: string[] } }
-) {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('token')
-    if (!accessToken) {
+export async function GET() {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || !session.user) {
         return NextResponse.json(
-            { error: 'Access token is required' },
+            { error: 'Unauthorized' },
             { status: 401 }
         )
     }
+
     try {
-        const decoded = jwt.verify(accessToken.value, process.env.JWT_SECRET) as any
-        if (!decoded) {
-            throw new Error("Not authorized")
-        }
-        const count = await redis.get(decoded.login + RATE_KEY)
-        return NextResponse.json(count)
+        const count = await redis.get(session.user.name + RATE_KEY)
+        return NextResponse.json(count || 0)
     } catch (error) {
-        console.error('Proxy error:', error)
+        console.error('Rate limit error:', error)
         return NextResponse.json(
             { error: 'Failed to fetch the current rate_limit' },
             { status: 500 }

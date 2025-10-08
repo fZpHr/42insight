@@ -1,25 +1,20 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { cookies } from 'next/headers'
-import jwt from 'jsonwebtoken'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../../auth/[...nextauth]/route'
 
 export async function GET(
     request: Request,
     { params }: { params: { login: string } }
 ) {
-    const cookieStore = cookies()
-    const accessToken = cookieStore.get('token')
-    if (!accessToken) {
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
         return NextResponse.json(
-            { error: 'Access token is required' },
+            { error: 'Unauthorized' },
             { status: 401 }
         )
     }
     try {
-        const decoded = jwt.verify(accessToken.value, process.env.JWT_SECRET) as any
-        if (!decoded) {
-            throw new Error("Not authorized")
-        }
         const user = await prisma.student.findFirst({
             where: { name: params.login }
         })

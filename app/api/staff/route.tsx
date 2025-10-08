@@ -1,23 +1,27 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import prisma from '@/lib/prisma'
-import jwt from 'jsonwebtoken'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../auth/[...nextauth]/route'
 
 export async function GET() {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('token')
-
-    if (!accessToken) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
+        return NextResponse.json(
+            { error: 'Unauthorized' },
+            { status: 401 }
+        )
     }
 
     try {
-        const decoded = jwt.verify(accessToken.value, process.env.JWT_SECRET!) as any
-        
-        if (!decoded.isStaff && !decoded.isAdmin) {
+        const user = session.user
+        if (user.role != "admin" && user.role != "staff") {
             return NextResponse.json({ error: 'Staff or Admin access required' }, { status: 403 })
         }
 
+        const campus = user.campus
+        if (!campus) {
+            return NextResponse.json({ error: 'User campus not found' }, { status: 404 })
+        }
         const [
             totalStudents,
             activePoolUsers,
@@ -25,20 +29,25 @@ export async function GET() {
             studentsAtRisk,
             topPerformers
         ] = await Promise.all([
-            prisma.student.count(),
+            prisma.student.count({ where: { campus: campus } }),
             prisma.poolUser.count(),
-            prisma.student.aggregate({ _avg: { level: true } }),
-            prisma.student.count({ 
-                where: { 
-                    blackholeTimer: { 
+            prisma.student.aggregate({
+                _avg: { level: true },
+                where: { campus: campus }
+            }),
+            prisma.student.count({
+                where: {
+                    campus: campus,
+                    blackholeTimer: {
                         lte: 30 // Students with 30 days or less
-                    } 
-                } 
+                    }
+                }
             }),
             prisma.student.findMany({
                 orderBy: { level: 'desc' },
                 take: 10,
-                select: { name: true, level: true, campus: true }
+                select: { name: true, level: true, campus: true },
+                where: { campus: campus }
             })
         ])
 
