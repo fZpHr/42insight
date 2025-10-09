@@ -103,7 +103,6 @@ export default function ExamTracker() {
                                 <TableRow>
                                     <TableHead>Student</TableHead>
                                     <TableHead>Grade</TableHead>
-                                    <TableHead>Exam</TableHead>
                                     <TableHead>Last Update</TableHead>
                                     <TableHead>Try</TableHead>
                                     <TableHead>Intra</TableHead>
@@ -158,7 +157,6 @@ export default function ExamTracker() {
                                         <TableRow>
                                             <TableHead className="min-w-[200px]">Student</TableHead>
                                             <TableHead className="min-w-[100px]">Grade</TableHead>
-                                            <TableHead className="min-w-[150px] hidden sm:table-cell">Exam</TableHead>
                                             <TableHead className="min-w-[120px] hidden md:table-cell">Last push</TableHead>
                                             <TableHead className="min-w-[60px] hidden lg:table-cell">Try</TableHead>
                                         </TableRow>
@@ -172,7 +170,15 @@ export default function ExamTracker() {
                                                             <AvatarImage src={student.photo} alt={student.name} style={{ objectFit: 'cover' }} />
                                                             <AvatarFallback className="text-xs sm:text-sm">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                                         </Avatar>
-                                                        <span className="truncate">{student.name}</span>
+                                                        <div className="min-w-0">
+                                                            <p className="truncate font-medium" title={student.name}>{student.name}</p>
+                                                            <p
+                                                                className="truncate text-sm text-muted-foreground"
+                                                                title={getExamName(student.examId) ?? `Exam ${student.examId}`}
+                                                            >
+                                                                {getExamName(student.examId) ?? `Exam ${student.examId}`}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
@@ -180,15 +186,10 @@ export default function ExamTracker() {
                                                         {student.grade !== undefined ? `${student.grade}%` : 'N/A'}
                                                     </Badge>
                                                 </TableCell>
-                                                {student?.examId && (
-                                                    <TableCell className="hidden sm:table-cell">{getExamName(student.examId)}</TableCell>
-                                                )}
                                                 <TableCell className="hidden md:table-cell">{new Date(student.lastUpdate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
                                                 <TableCell className="hidden lg:table-cell">{student.occurence}</TableCell>
                                                 <TableCell>
-                                                    <Link href={`https://profile.intra.42.fr/users/${student.name}`} target="_blank" className="flex items-center text-blue-500 hover:underline">
-                                                        <span className="hidden sm:inline">View Profile</span>
-                                                        <span className="sm:hidden">Profile</span>
+                                                    <Link href={`https://profile.intra.42.fr/users/${student.name}`} target="_blank" className="flex items-center text-muted-foreground   hover:underline">
                                                         <ExternalLink className="ml-1 h-4 w-4 flex-shrink-0" />
                                                     </Link>
                                                 </TableCell>
