@@ -231,7 +231,7 @@ export default function Rankings() {
     }
   };
 
-  const userRank = user?.id != null ? (rankById.get(user.id) ?? null) : null;
+  const userRank = user?.id != null ? (rankById.get(Number(user.id)) ?? null) : null;
 
   useEffect(() => {
     if (!observerRef.current || !hasMore) {
@@ -260,7 +260,7 @@ export default function Rankings() {
 
   const scrollToUserPosition = () => {
     const userPosition = processedStudents.findIndex(
-      (student: Student) => student.id === user?.id,
+      (student: Student) => String(student.id) === user?.id,
     );
     if (userPosition === -1) return;
     if (userPosition >= visibleCount) {
@@ -652,7 +652,7 @@ export default function Rankings() {
             <div className="divide-y">
               {visibleStudents.map((student: Student) => {
                 const position = rankById.get(student.id) ?? 0;
-                const isCurrentUser = student.id === user?.id;
+                const isCurrentUser = Number(student.id) === Number(user?.id);
 
                 return (
                   <div
