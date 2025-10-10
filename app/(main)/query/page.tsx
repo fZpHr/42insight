@@ -120,7 +120,7 @@ export default function Query() {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={`users/${user?.name || "username"}`}
+                  placeholder={`users/${user?.login || "username"}`}
                   className="flex-1 rounded-l-none"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && query.trim() && !isLoading) {
@@ -196,26 +196,26 @@ export default function Query() {
         </Card>
 
         {results && (
-          <Card>
-            <CardHeader className="relative">
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-end space-y-0 pb-2">
               <Button
-                variant="outline"
-                className="!absolute top-2 right-2"
-                onClick={() =>
-                  copyToClipboard(JSON.stringify(results, null, 2))
-                }
+              variant="outline"
+              size="sm"
+              onClick={() =>
+              copyToClipboard(JSON.stringify(results, null, 2))
+              }
               >
-                <Copy className="h-4 w-4" />
+              <Copy className="h-4 w-4" />
               </Button>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-200 w-full">
-                <pre className="text-sm">
-                  {JSON.stringify(results, null, 2)}
-                </pre>
+              <ScrollArea className="h-[570px] w-full">
+              <pre className="text-sm">
+                {JSON.stringify(results, null, 2)}
+              </pre>
               </ScrollArea>
             </CardContent>
-          </Card>
+            </Card>
         )}
       </div>
     </div>

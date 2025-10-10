@@ -79,6 +79,7 @@ export function FeedbackButton({
         className={buttonClassName ?? "flex items-center text-sm"}
         onClick={onOpen}
       >
+        <StarIcon className="w-4 h-4 mr-2" />
         Feedbacks
       </Button>
 
@@ -106,16 +107,16 @@ export function FeedbackButton({
             <div className="space-y-3">
               <div className="text-sm font-medium">
                 <div className="flex items-center">
-                  {[1, 2, 3, 4, 5].map((star) => (
+                    {[1, 2, 3, 4, 5].map((star) => (
                     <StarIcon
                       key={star}
                       className={`w-4 h-4 ${
-                        star <= (avgRating || 0)
-                          ? "fill-green-400 text-green-400"
-                          : "text-gray-300"
+                      star <= (avgRating || 0)
+                        ? "fill-[#77767b] text-[#77767b]"
+                        : "text-gray-300"
                       }`}
                     />
-                  ))}
+                    ))}
                   <span className="ml-2 font-semibold">
                     {avgRating?.toFixed(1)}/5
                   </span>
@@ -128,7 +129,7 @@ export function FeedbackButton({
                     <li key={idx} className="text-sm">
                       <div className="font-medium flex justify-between items-center">
                         <span>{f.user.login}</span>
-                        <span className="text-xs  text-green-400">
+                        <span className="text-xs text-[#77767b]">
                           {f.rating}/5
                         </span>
                       </div>

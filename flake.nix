@@ -18,17 +18,18 @@
             pkgs.openssl
             pkgs.prisma-engines
           ];
-          shellHook = ''
-                pnpm install
-                clear
-                if [ -f package.json ] && [ -f .env ]; then
-                        echo "Running database migration..."
-                        pnpm prisma generate
-                        #pnpm prisma migrate
-                else 
-                        echo "⚠️  .env file not found! Please copy env-example to .env and fill in your credentials."
-                fi
-          '';
+            shellHook = ''
+              export PS1='\[\e[38;5;48;3m\]nix-shell\[\e[0m\]: \W \$> '
+              pnpm install
+              clear
+              if [ -f package.json ] && [ -f .env ]; then
+                  echo "Running database migration..."
+                  pnpm prisma generate
+                  #pnpm prisma migrate
+              else 
+                  echo "⚠️  .env file not found! Please copy env-example to .env and fill in your credentials."
+              fi
+            '';
         };
       }
     );

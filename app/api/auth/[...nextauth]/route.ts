@@ -9,8 +9,8 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.CLIENT_SECRET_NEXT1!,
 
       profile(profile) {
-        const cursusName = profile.cursus_users?.[1]?.cursus?.name ?? profile.cursus_users?.[0]?.cursus?.name ?? null;
-        const isPisciner = cursusName === "C Piscine";
+        const cursusName = profile.cursus_users?.[1]?.cursus?.name ?? profile.cursus_users?.[0]?.cursus?.name ?? "no-cursus";
+        const isPisciner = cursusName === "C Piscine" && profile.staff === false;
         
         return {
           id: profile.id.toString(),
@@ -18,12 +18,12 @@ export const authOptions: NextAuthOptions = {
           email: profile.email,
           image: profile.image?.link,
           login: profile.login,
-          campus: profile.campus?.[1]?.name ?? profile.campus?.[0]?.name ?? null,
+          campus: profile.campus?.[1]?.name ?? profile.campus?.[0]?.name ?? "no-campus",
           cursus: cursusName,
           correction_point: profile.correction_point ?? 0,
           wallet: profile.wallet ?? 0,
           level: profile.cursus_users?.[1]?.level ?? profile.cursus_users?.[0]?.level,
-          role: profile.login === "bapasqui" || profile.login === "hbelle" ? "admin" : profile.staff ? "staff" : "student",
+          role: profile.login === "bapasqui" || profile.login === "hbelle" ? "admin" : profile.staff ? "staff" : isPisciner ? "pisciner" : "student",
         };
       },
     }),

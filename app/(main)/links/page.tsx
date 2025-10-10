@@ -20,6 +20,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const links = [
   {
@@ -88,26 +89,29 @@ const links = [
 
 export default function UsefulLinks() {
   return (
-    <div className="max-w-7xl mx-auto px-4 space-y-6 py-3">
+    <div className="max-w-7xl mx-auto px-4 space-y-6 py-8">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {links.map((link) => (
-          <Card key={link.title}>
+          <Card key={link.title} className="hover:shadow-lg transition-shadow">
             <CardHeader>
-              <CardTitle className="flex items-center text-lg">
-                <link.icon className="mr-2 h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <link.icon className="h-5 w-5 text-primary" />
                 {link.title}
               </CardTitle>
-              <CardDescription>{link.description}</CardDescription>
+              <CardDescription className="line-clamp-2">
+                {link.description}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Link
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline flex items-center"
               >
-                Visit {link.title}
-                <ExternalLink className="ml-2 h-3 w-3" />
+                <Button className="w-full group" variant="default">
+                  <span>Visit Site</span>
+                  <ExternalLink className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
               </Link>
             </CardContent>
           </Card>
