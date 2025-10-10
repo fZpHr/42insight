@@ -83,13 +83,13 @@ const navigationData = {
           badge: "Live",
           description: "Real-time exam grade tracking",
         },
-        {
-          title: "Relations",
-          url: "/relations",
-          icon: Workflow,
-          badge: "Active",
-          description: "Visualize your connections",
-        }
+        // {
+        //   title: "Relations",
+        //   url: "/relations",
+        //   icon: Workflow,
+        //   badge: "Active",
+        //   description: "Visualize your connections",
+        // }
       ],
     },
     {
@@ -230,13 +230,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <span className="font-bold text-lg truncate">42</span>
               </div>
             )}
+
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Main Navigation */}
-
         {user?.role != "pisciner" &&
           navigationData.navMain.map((group) => (
             <SidebarGroup key={group.title}>

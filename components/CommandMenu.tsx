@@ -71,11 +71,11 @@ export function CommandMenu() {
                 </CommandGroup>
                 <CommandSeparator />
                 <CommandGroup heading="Piscine">
-                    <CommandItem onSelect={() => { setOpen(false); Router.push("/pool-rankings") }}>
+                    <CommandItem onSelect={() => { setOpen(false); Router.push("/piscine/rankings") }}>
                         <Waves className="mr-2 h-4 w-4" />
                         <span>Pool-Rankings</span>
                     </CommandItem>
-                    <CommandItem onSelect={() => { setOpen(false); Router.push("/pool-trombinoscope") }}>
+                    <CommandItem onSelect={() => { setOpen(false); Router.push("/piscine/trombinoscope") }}>
                         <Waves className="mr-2 h-4 w-4" />
                         <span>Pool-Trombinoscope</span>
                     </CommandItem>

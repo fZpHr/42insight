@@ -10,7 +10,7 @@ export const authOptions: NextAuthOptions = {
 
       profile(profile) {
         const cursusName = profile.cursus_users?.[1]?.cursus?.name ?? profile.cursus_users?.[0]?.cursus?.name ?? "no-cursus";
-        const isPisciner = cursusName === "C Piscine";
+        const isPisciner = cursusName === "C Piscine" && profile.staff === false;
         
         return {
           id: profile.id.toString(),
