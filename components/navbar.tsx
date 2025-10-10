@@ -17,6 +17,7 @@ import {
   Calendar,
   Activity,
   LayoutGrid,
+  Workflow,
 } from "lucide-react";
 
 import {
@@ -49,7 +50,6 @@ import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react"
 
@@ -84,11 +84,12 @@ const navigationData = {
           description: "Real-time exam grade tracking",
         },
         {
-          title: "Events",
-          url: "/events",
-          icon: Calendar,
-          description: "Upcoming events and schedules",
-        },
+          title: "Relations",
+          url: "/relations",
+          icon: Workflow,
+          badge: "Active",
+          description: "Visualize your connections",
+        }
       ],
     },
     {
@@ -116,6 +117,12 @@ const navigationData = {
           url: "/links",
           icon: LinkIcon,
           description: "Quick access to important resources",
+        },
+        {
+          title: "Events",
+          url: "/events",
+          icon: Calendar,
+          description: "Upcoming events and schedules",
         },
         {
           title: "Query",
@@ -216,7 +223,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {open && (
               <div className="flex items-center overflow-hidden justify-between gap-3 px-2 py-1">
                 <span className="font-bold text-lg truncate">42Insight</span>
-                <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
               </div>
             )}
             {!open && (
