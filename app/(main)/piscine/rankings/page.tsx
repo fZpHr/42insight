@@ -128,7 +128,7 @@ export default function Piscine() {
 
   const userRank = useMemo(() => {
     return (
-      studentsWithRanks.find((student) => student.id === user?.id)?.rank || null
+      studentsWithRanks.find((student) => student.id === Number(user?.id))?.rank || null
     );
   }, [studentsWithRanks, user]);
 
@@ -368,7 +368,7 @@ export default function Piscine() {
             <div className="divide-y">
               {processedStudents.map((student: PoolUser & { rank: number }) => {
                 const position = student.rank;
-                const isCurrentUser = student.id === user?.id;
+                const isCurrentUser = student.id === Number(user?.id);
                 return (
                   <div
                     key={student.id}
