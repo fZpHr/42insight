@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
           correction_point: profile.correction_point ?? 0,
           wallet: profile.wallet ?? 0,
           level: profile.cursus_users?.[1]?.level ?? profile.cursus_users?.[0]?.level,
-          role: profile.login === "bapasqui" || profile.login === "hbelle" ? "admin" : isPisciner ? "pisciner" : profile.staff ? "staff" : "student",
+          role: profile.login === "bapasqui" || profile.login === "hbelle" ? "admin" : profile.staff ? "staff" : "student",
         };
       },
     }),
