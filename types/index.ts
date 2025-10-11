@@ -60,6 +60,7 @@ export interface Student {
   campus?: string;
   relation: any;
   work: number;
+  has_validated : boolean;
 }
 
 export interface ExamStudent {
@@ -91,6 +92,7 @@ export interface PoolUser {
   currentProjects: any;
   examGrades: any;
   isPoolUser: boolean;
+  has_succeeded: boolean;
 }
 
 export interface UserIntraInfo {
