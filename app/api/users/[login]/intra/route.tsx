@@ -13,7 +13,7 @@ const getApiClient = async (): Promise<ApiClient> => {
     return apiClient;
   }
 
-  console.log("INFO: Creating new 42 API client...");
+  //console.log("INFO: Creating new 42 API client...");
   const clientId = process.env.NEXT_PUBLIC_CLIENT_ID!;
   const clientSecret = process.env.CLIENT_SECRET_NEXT1!;
 
@@ -44,7 +44,7 @@ const getApiClient = async (): Promise<ApiClient> => {
       throw new Error("Access token was not found in the API response.");
     }
 
-    console.log("INFO: 42 API client created and authenticated successfully.");
+    //console.log("INFO: 42 API client created and authenticated successfully.");
 
     // On crée notre client personnalisé avec le token obtenu
     apiClient = {
@@ -90,6 +90,27 @@ export async function GET(
     }
 
     const user = await response.json();
+
+    // Fetch all projects with pagination
+    let allProjects: any[] = [];
+    let page = 1;
+    const perPage = 100;
+    let projectsPage;
+
+    do {
+      const projectsResponse = await client.get(`/users/${user.id}/projects_users?per_page=${perPage}&page=${page}`);
+      if (!projectsResponse.ok) {
+        // Don't kill the request if projects fail, just log it. The main user data is still useful.
+        console.error(`Failed to fetch projects page ${page} for user ${login}: ${projectsResponse.statusText}`);
+        break;
+      }
+      projectsPage = await projectsResponse.json();
+      allProjects = allProjects.concat(projectsPage);
+      page++;
+    } while (projectsPage && projectsPage.length === perPage);
+
+    user.projects_users = allProjects;
+
     return NextResponse.json(user);
   } catch (error: any) {
     console.error(`[FATAL ERROR] in /api/users/${login}/intra:`, error.message);

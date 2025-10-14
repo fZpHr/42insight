@@ -6,10 +6,9 @@ import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import { TanstackProvider } from "@/lib/tanstack-provider";
 import { CommandMenu } from "@/components/CommandMenu";
-import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 function SidebarContent({ children }: { children: React.ReactNode }) {
-
   return (
     <>
       <AppSidebar />
