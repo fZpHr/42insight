@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from "react"
+import { useMemo, useSyncExternalStore } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
@@ -51,20 +51,31 @@ function TitleRequirement({ name, value, max, unit }: TitleRequirementProps) {
   )
 }
 
-export interface TitleRequirementsProps {
+
+
+
+interface TitleRequirementsProps {
   title: FortyTwoTitle
   className?: string
 }
 
 export function TitleRequirements({ title, className }: TitleRequirementsProps) {
-  const { 
-    professionalExperiences, 
-    toggleProfessionalExperience, 
-    events, 
-    setEvents, 
-    getSelectedXP, 
-    getLevel 
-  } = useFortyTwoStore((state) => state)
+
+  // Force re-render on projectMarks change
+    // Select validated group projects count directly from Zustand for reactivity
+    const validatedGroupProjectsCount = useFortyTwoStore((state) => {
+      const groupProjects = Object.values(state.projects).filter((p) => p && p.is_solo === false);
+      return groupProjects.filter((p) => state.projectMarks.get(p.id) && state.projectMarks.get(p.id)! > 0).length;
+    });
+    const {
+      professionalExperiences,
+      toggleProfessionalExperience,
+      events,
+      setEvents,
+      getSelectedXP,
+      getLevel,
+      projects
+    } = useFortyTwoStore((state) => state)
 
   const currentXP = getSelectedXP()
   const currentLevel = getLevel(currentXP)
@@ -77,7 +88,7 @@ export function TitleRequirements({ title, className }: TitleRequirementsProps) 
     return count
   }, [professionalExperiences])
 
-  const isComplete =
+  const requirementsComplete =
     currentLevel >= title.level &&
     events >= title.number_of_events &&
     professionalExperiencesCount >= title.number_of_experiences
@@ -92,15 +103,15 @@ export function TitleRequirements({ title, className }: TitleRequirementsProps) 
 
 
   return (
-    <Card className={cn(className, isComplete && "border-primary")}> 
+  <Card className={cn(className, requirementsComplete && "border-primary")}> 
       <CardHeader className="pb-4">
-        <CardTitle tag="h3" className="text-xl">
+        <CardTitle className="text-xl">
           Requirements
         </CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
-        <TitleRequirement name={"Level required"} value={currentLevel} max={title.level} />
-  {/* Jauge Projets de groupe supprimée */}
+  <TitleRequirement name={"Level required"} value={currentLevel} max={title.level} />
+  <TitleRequirement name={"Group projects"} value={validatedGroupProjectsCount} max={2} />
         <TitleRequirement name={"Number of events"} value={events} max={title.number_of_events} />
         <TitleRequirement
           name={"Professional experiences"}
@@ -150,16 +161,16 @@ export function TitleRequirements({ title, className }: TitleRequirementsProps) 
 }
 
 export function TitleOptionRequirements({ option }: { option: FortyTwoTitleOption }) {
-  const { isProjectModuleComplete, getExperienceForOption } = useFortyTwoStore((state) => state)
+  const { isProjectModuleComplete, getExperienceForOption, projects: allProjects } = useFortyTwoStore((state) => state)
 
-  let projects = 0
+  let completedProjects = 0
   const projectList = Array.isArray(option.projects)
-    ? option.projects.map((id) => useFortyTwoStore.getState().projects[id]).filter(Boolean)
+    ? (option.projects as number[]).map((id) => allProjects[id]).filter(Boolean)
     : Object.values(option.projects)
 
   for (const project of projectList) {
     if (isProjectModuleComplete(project)) {
-      projects += 1
+      completedProjects += 1
     }
   }
 
@@ -167,7 +178,7 @@ export function TitleOptionRequirements({ option }: { option: FortyTwoTitleOptio
 
   return (
     <div className="space-y-4">
-      <TitleRequirement name={'Projects'} value={projects} max={option.number_of_projects} />
+      <TitleRequirement name={'Projects'} value={completedProjects} max={option.number_of_projects} />
 
       {option.experience > 0 && (
         <TitleRequirement name={'Experience'} value={experience} max={option.experience} unit={'XP'} />

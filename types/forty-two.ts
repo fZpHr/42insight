@@ -15,7 +15,8 @@ export interface FortyTwoProject {
   mark?: number
   bonus?: boolean
   validated?: boolean
-
+  is_solo?: boolean // Added for group project detection
+}
 export interface FortyTwoCursus {
   id: number
   name: string
@@ -83,5 +84,8 @@ export interface FortyTwoStore {
   isProjectModuleComplete: (project: FortyTwoProject) => boolean;
   getExperienceForOption: (option: FortyTwoTitleOption) => number;
   getLevel: (experience: number) => number;
+  // Added for requirements UI
+  professionalExperiences: Set<string>;
+  toggleProfessionalExperience: (experience: string) => void;
 }
 }

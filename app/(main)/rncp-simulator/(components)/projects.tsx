@@ -112,7 +112,12 @@ const Project = memo(function Project({
         <ProjectIcon isSelected={isSelected} />
 
         <div className="grid w-full grid-cols-[1fr_auto] items-center gap-x-2 pr-2">
-          <p className="break-words">{project.name}</p>
+          <p className="break-words flex items-center gap-2">
+            {project.name}
+            <Badge className="rounded-lg ml-2" variant="outline">
+              {project.experience?.toLocaleString() ?? 0} XP
+            </Badge>
+          </p>
           <div
             className="flex flex-wrap items-center justify-end gap-2"
             onClick={isSelected ? (e) => e.stopPropagation() : undefined}
