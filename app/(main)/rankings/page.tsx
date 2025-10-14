@@ -59,7 +59,7 @@ const sortOptions: StudentSortOption[] = [
 
   const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
     try {
-      console.log("Fetching students for campus:", campus);
+      //console.log("Fetching students for campus:", campus);
       const response = await fetch(`/api/users/campus/${campus}`);
       if (!response.ok) {
         throw new Error("Failed to fetch students");
@@ -408,7 +408,6 @@ export default function Rankings() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Years</SelectItem>
-                      <SelectItem value="2025">2025</SelectItem>
                       <SelectItem value="2024">2024</SelectItem>
                       <SelectItem value="2023">2023</SelectItem>
                       <SelectItem value="2022">2022</SelectItem>

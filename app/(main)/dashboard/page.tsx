@@ -21,7 +21,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -30,6 +30,7 @@ import {
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { useSession } from "next-auth/react";
 import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
+import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 
 interface StatCardProps {
   title: string;
@@ -318,6 +319,29 @@ export default function Dashboard() {
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
   });
+
+  const { setEvents } = useFortyTwoStore((state) => state)
+
+  const { data: userEvents } = useQuery({
+    queryKey: ["userEvents", user?.login],
+    queryFn: async () => {
+      if (!user?.login) return [];
+      const res = await fetch(`/api/users/${user.login}/events`)
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.events || [];
+    },
+    enabled: !!user && !loading,
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
+  })
+
+  // Synchronise events dans Zustand si présents
+  useEffect(() => {
+    if (Array.isArray(userEvents)) {
+      setEvents(userEvents.length)
+    }
+  }, [userEvents, setEvents])
 
   const currentCursus = useMemo(() => {
     return (

@@ -13,6 +13,7 @@ export const metadata = {
     template: "%s | 42 Insight",
   },
   description: "One for all - Website for 42 Students",
+    generator: 'v0.app'
 };
 
 export default function RootLayout({

@@ -13,7 +13,7 @@ const getApiClient = async (): Promise<ApiClient> => {
     return apiClient;
   }
 
-  console.log("INFO: Creating new 42 API client...");
+  //console.log("INFO: Creating new 42 API client...");
   const clientId = process.env.NEXT_PUBLIC_CLIENT_ID!;
   const clientSecret = process.env.CLIENT_SECRET_NEXT1!;
 
@@ -44,7 +44,7 @@ const getApiClient = async (): Promise<ApiClient> => {
       throw new Error("Access token was not found in the API response.");
     }
 
-    console.log("INFO: 42 API client created and authenticated successfully.");
+    //console.log("INFO: 42 API client created and authenticated successfully.");
 
     // On crée notre client personnalisé avec le token obtenu
     apiClient = {
