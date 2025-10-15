@@ -71,8 +71,7 @@
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
-    "use-sync-external-store": "latest",
-    "zustand": "latest"
+  "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

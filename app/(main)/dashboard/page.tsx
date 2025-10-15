@@ -192,7 +192,8 @@ type Skill = {
 type SkillBarProps = {
   skills: Skill[];
   maxLevel?: number;
-};
+    title?: string;
+  };
 
 export function SkillBar({
   skills,
@@ -320,7 +321,7 @@ export default function Dashboard() {
     retry: 2,
   });
 
-  const { setEvents } = useFortyTwoStore((state) => state)
+  const setEvents = useFortyTwoStore(state => state.setEvents)
 
   const { data: userEvents } = useQuery({
     queryKey: ["userEvents", user?.login],

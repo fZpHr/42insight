@@ -58,8 +58,7 @@ function ProjectExperience({ totalXP }: { totalXP: number }) {
     </div>
   )
 }
-
-const Project = memo(function Project({
+function Project({
   projectId,
   depth = 0,
 }: {
@@ -73,7 +72,14 @@ const Project = memo(function Project({
     removeProject,
     getProjectXP,
     getDynamicProjectXP,
-  } = useFortyTwoStore((state) => state)
+  } = useFortyTwoStore(state => ({
+    projects: state.projects,
+    projectMarks: state.projectMarks,
+    setProjectMark: state.setProjectMark,
+    removeProject: state.removeProject,
+    getProjectXP: state.getProjectXP,
+    getDynamicProjectXP: state.getDynamicProjectXP,
+  }))
   
   const project = projects[projectId]
   if (!project) return null
@@ -87,9 +93,25 @@ const Project = memo(function Project({
   const totalXP = getProjectXP(project)
 
   // Nouvelle logique : overlay vert si module validé (même virtuellement)
-  const isModuleComplete = useFortyTwoStore((state) => state.isProjectModuleComplete(project))
+  const isModuleComplete = useFortyTwoStore(
+    (state) => {
+      const project = state.projects[projectId];
+      const complete = state.isProjectModuleComplete(project);
+      return complete;
+    }
+  );
 
+  // Log uniquement lors d'un changement d'état du contour
+  // (projectId, isModuleComplete, projectMarks.size, mark, isSelected)
+  // Pour aider au debug, on log aussi lors du click
+  // et lors du render du composant Project
+  
+  // Log lors du render
+  // [debug-contour:render] removed for production
+
+  // Log lors du click
   const handleToggle = () => {
+  // [debug-contour:click] removed for production
     if (isSelected) {
       removeProject(project.id)
     } else {
@@ -97,13 +119,15 @@ const Project = memo(function Project({
     }
   }
 
+  // (handleToggle avec debug déjà défini ci-dessus)
+
   return (
     <Collapsible>
       <div
         key={project.id}
         className={cn(
           "flex min-h-[42px] cursor-pointer items-center rounded-md border-2 border-transparent text-sm transition-colors hover:bg-accent",
-          isModuleComplete && "bg-primary/30",
+          isModuleComplete && "border-green-500 bg-primary/30",
           isBonus && "border-yellow-500",
         )}
         onClick={handleToggle}
@@ -158,8 +182,8 @@ const Project = memo(function Project({
       </CollapsibleContent>
     </Collapsible>
   )
-})
-
+}
+  
 export function ProjectList({
   projects: projectsToShow,
 }: {

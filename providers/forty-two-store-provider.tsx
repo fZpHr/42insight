@@ -1,9 +1,8 @@
 "use client"
 
 import type { FortyTwoCursus, FortyTwoLevel, FortyTwoProject, FortyTwoStore, FortyTwoTitle, FortyTwoTitleOption } from "@/types/forty-two"
-import { type ReactNode, createContext, useContext } from "react"
-import { useStore } from "zustand"
-import { createStore } from "zustand/vanilla"
+import { useRef, useContext, createContext, type ReactNode, useState } from "react";
+import { useStoreWithEqualityFn, createWithEqualityFn } from "zustand/traditional"
 
 // Persistance localStorage helpers
 const STORAGE_KEY = "rncp_simulator_progression"
@@ -52,8 +51,8 @@ const createFortyTwoStore = (initProps: {
     return descendantIds
   }
 
-  // Initial state with possible restore
-  const restored = loadProgressionFromStorage();
+  // Initial state: pas de localStorage ici (pour SSR/CSR sync)
+  const restored = null;
   // On étend le type du store localement pour inclure la persistance et les resets
   type StoreWithPersistence = FortyTwoStore & {
     professionalExperiences: Set<string>;
@@ -64,33 +63,12 @@ const createFortyTwoStore = (initProps: {
     resetAll: () => void;
     softReset: () => void;
   };
-  return createStore<StoreWithPersistence>()((set, get) => ({
-    /**
-     * Retourne le nombre de projets de groupe validés (coche manuelle ou via fetch)
-     * Un projet de groupe est un projet où current_team_id != null dans projects_users
-     * et qui est validé (mark > 0 ou validated)
-     */
-    getValidatedGroupProjectsCount: () => {
-      const state = get();
-      let count = 0;
-      // On parcourt tous les projets cochés
-      for (const [projectId, mark] of state.projectMarks) {
-        const project = state.projects[projectId];
-    // On considère que c'est un projet de groupe si le nom contient 'group' ou 'groupe' ou 'team' (fallback)
-    // (à adapter si tu as une meilleure logique ou une vraie propriété)
-    const isGroup = /group|groupe|team/i.test(project?.name || "");
-        if (isGroup && mark && mark > 0) {
-          count++;
-        }
-      }
-      // TODO: Ajouter ici la logique pour compter les projets de groupe validés via le fetch (projects_users)
-      return count;
-    },
+  return createWithEqualityFn<StoreWithPersistence>()((set, get) => ({
     cursus: initProps.cursus,
     levels: initProps.levels,
     titles: initProps.titles,
     projects: initProps.projects,
-  projectMarks: restored && restored.projectMarks ? restored.projectMarks : new Map<number, number>(),
+  projectMarks: new Map<number, number>(),
   autoFetchedProjectMarks: new Map<number, number>(),
   setAutoFetchedProjectMark: (projectId: number, mark: number) =>
     set((state) => {
@@ -107,7 +85,9 @@ const createFortyTwoStore = (initProps: {
     set((state) => {
       return { autoFetchedProjectMarks: new Map() }
     }),
-  professionalExperiences: restored && restored.professionalExperiences ? restored.professionalExperiences : new Set<string>(),
+  professionalExperiences: new Set<string>(),
+
+
   events: 0,
   eventsFetchedAt: 0, // timestamp ms
 
@@ -270,6 +250,41 @@ const createFortyTwoStore = (initProps: {
 
       return currentLevel
     },
+
+    getValidatedGroupProjectsCount: () => {
+      const state = get();
+      let count = 0;
+      // On parcourt tous les projets cochés
+      for (const [projectId, mark] of state.projectMarks) {
+        const project = state.projects[projectId];
+        // On considère que c'est un projet de groupe si le nom contient 'group' ou 'groupe' ou 'team' (fallback)
+        // (à adapter si tu as une meilleure logique ou une vraie propriété)
+        const isGroup = /group|groupe|team/i.test(project?.name || "");
+        if (isGroup && mark && mark > 0) {
+          count++;
+        }
+      }
+  // Logic for counting validated group projects via fetch (projects_users) can be added here if needed
+      return count;
+    },
+
+    areRequirementsComplete: (title: FortyTwoTitle | null) => {
+      if (!title) return false;
+      const state = get();
+      const currentXP = state.getSelectedXP();
+      const currentLevel = state.getLevel(currentXP);
+
+      const experienceProjectIds = (title as any).experience?.projects || [];
+      let experiencesCount = 0;
+      for (const projectId of experienceProjectIds) {
+        if (state.projectMarks.has(projectId)) {
+          experiencesCount++;
+        }
+      }
+      return currentLevel >= title.level && experiencesCount >= title.number_of_experiences;
+    },
+
+
   }))
 }
 
@@ -285,18 +300,41 @@ export interface FortyTwoStoreProviderProps {
   projects: Record<number, FortyTwoProject>
 }
 
+import { useEffect } from "react";
+
 export const FortyTwoStoreProvider = ({ children, cursus, levels, titles, projects }: FortyTwoStoreProviderProps) => {
-  const store = createFortyTwoStore({ cursus, levels, titles, projects })
-
-  return <FortyTwoStoreContext.Provider value={store}>{children}</FortyTwoStoreContext.Provider>
-}
-
-export const useFortyTwoStore = <T,>(selector: (store: FortyTwoStore) => T): T => {
-  const fortyTwoStoreContext = useContext(FortyTwoStoreContext)
-
-  if (!fortyTwoStoreContext) {
-    throw new Error("useFortyTwoStore must be used within FortyTwoStoreProvider")
+  const storeRef = useRef<FortyTwoStoreApi | null>(null);
+  const [, forceRerender] = useState(0);
+  if (!storeRef.current) {
+    storeRef.current = createFortyTwoStore({ cursus, levels, titles, projects });
   }
 
-  return useStore(fortyTwoStoreContext, selector)
-}
+  // Synchronise la progression après le mount côté client
+  useEffect(() => {
+    const restored = loadProgressionFromStorage();
+    if (restored) {
+      storeRef.current?.setState({
+        projectMarks: restored.projectMarks,
+        professionalExperiences: restored.professionalExperiences,
+      });
+      forceRerender(x => x + 1);
+    }
+  }, []);
+
+  return <FortyTwoStoreContext.Provider value={storeRef.current}>{children}</FortyTwoStoreContext.Provider>;
+};
+
+// On étend le type pour inclure les nouvelles fonctions
+type FullStore = FortyTwoStore & ReturnType<ReturnType<typeof createFortyTwoStore>["getState"]>;
+
+
+export const useFortyTwoStore = <T,>(
+  selector: (store: FullStore) => T,
+  equalityFn?: (a: T, b: T) => boolean
+): T => {
+  const fortyTwoStoreContext = useContext(FortyTwoStoreContext);
+  if (!fortyTwoStoreContext) {
+    throw new Error("useFortyTwoStore must be used within FortyTwoStoreProvider");
+  }
+  return useStoreWithEqualityFn(fortyTwoStoreContext, selector, equalityFn);
+};

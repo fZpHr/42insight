@@ -13,11 +13,14 @@ import { memo, useEffect, useMemo } from 'react'
 const TitleOption = memo(function TitleOption({ option, isComplete }: { option: FortyTwoTitleOption; isComplete: boolean }) {
   return (
     <Card
-      className={cn('min-h-[638px]')}
-      style={isComplete ? { border: '2px solid var(--primary)' } : undefined}
+      className={cn(
+        'min-h-[638px] border-2 border-transparent',
+        isComplete && 'border-green-500'
+      )}
+      style={isComplete ? { border: '2px solid green' } : undefined}
     >
       <CardHeader className="pb-4">
-        <CardTitle tag="h3" className="truncate text-xl">
+          <CardTitle className="truncate text-xl">
           {option.title}
         </CardTitle>
         <TitleOptionRequirements option={option} />
@@ -57,8 +60,21 @@ const TitleOptionItem = memo(function TitleOptionItem({
     )
 })
 
+
+interface TitleOptionsProps {
+  title: FortyTwoTitle;
+  className?: string;
+  onCompletionChange?: (status: any) => void;
+}
+
 export function TitleOptions({ title, className, onCompletionChange }: TitleOptionsProps) {
-  const { projects, isProjectModuleComplete, getExperienceForOption } = useFortyTwoStore((state) => state)
+
+  const { projects, isProjectModuleComplete, getExperienceForOption, projectMarks } = useFortyTwoStore(state => ({
+    projects: state.projects,
+    isProjectModuleComplete: state.isProjectModuleComplete,
+    getExperienceForOption: state.getExperienceForOption,
+    projectMarks: state.projectMarks,
+  }))
   const options: FortyTwoTitleOption[] = useMemo(
     () => [
       ...title.options,
@@ -96,7 +112,7 @@ export function TitleOptions({ title, className, onCompletionChange }: TitleOpti
       },
       {} as Record<string, boolean>,
     )
-  }, [options, projects, isProjectModuleComplete, getExperienceForOption])
+  }, [options, projects, isProjectModuleComplete, getExperienceForOption, projectMarks])
 
   useEffect(() => {
     onCompletionChange?.(completionStatuses)

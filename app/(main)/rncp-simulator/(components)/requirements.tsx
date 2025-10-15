@@ -75,7 +75,15 @@ export function TitleRequirements({ title, className }: TitleRequirementsProps) 
       getSelectedXP,
       getLevel,
       projects
-    } = useFortyTwoStore((state) => state)
+    } = useFortyTwoStore(state => ({
+      professionalExperiences: state.professionalExperiences,
+      toggleProfessionalExperience: state.toggleProfessionalExperience,
+      events: state.events,
+      setEvents: state.setEvents,
+      getSelectedXP: state.getSelectedXP,
+      getLevel: state.getLevel,
+      projects: state.projects,
+    }))
 
   const currentXP = getSelectedXP()
   const currentLevel = getLevel(currentXP)
@@ -161,7 +169,11 @@ export function TitleRequirements({ title, className }: TitleRequirementsProps) 
 }
 
 export function TitleOptionRequirements({ option }: { option: FortyTwoTitleOption }) {
-  const { isProjectModuleComplete, getExperienceForOption, projects: allProjects } = useFortyTwoStore((state) => state)
+  const { isProjectModuleComplete, getExperienceForOption, projects: allProjects } = useFortyTwoStore(state => ({
+    isProjectModuleComplete: state.isProjectModuleComplete,
+    getExperienceForOption: state.getExperienceForOption,
+    projects: state.projects,
+  }))
 
   let completedProjects = 0
   const projectList = Array.isArray(option.projects)
