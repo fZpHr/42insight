@@ -480,7 +480,7 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
             {oldProjects.length === 0 && <li>Aucun projet</li>}
             {oldProjects.map(p => (
               <li key={p.id} className="flex items-center gap-2">
-                <span>{p.name} ({p.xp} XP)</span>
+                <span>{p.name} (+{Math.round((typeof p.xp === 'number' ? p.xp : 0) * ((oldProjectInputValues[p.id] !== undefined ? oldProjectInputValues[p.id] : p.mark) / 100)).toLocaleString()} XP)</span>
                 <input
                   type="number"
                   min={0}

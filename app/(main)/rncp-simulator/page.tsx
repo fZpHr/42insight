@@ -276,38 +276,63 @@ export default function RNCPSimulator() {
         ? mainOption.projects
         : Object.keys(mainOption.projects).map(Number)
     );
+    // Récupère la vraie XP depuis le référentiel projects_21.json si dispo
+    let canonicalProjects: Record<number, any> = {};
+    try {
+      // @ts-ignore
+      canonicalProjects = require('@/lib/forty-two/data/projects_21.json').projects.reduce((acc: any, p: any) => { acc[p.id] = p; return acc; }, {});
+    } catch {}
     const oldProjects = userIntraInfo.projects_users
       .filter((pu: any) => !cursusProjectIds.has(pu.project.id) && pu.final_mark > 0)
-      .map((pu: any) => ({
-        id: pu.project.id,
-        name: pu.project.name,
-        xp: pu.project.experience || pu.project.xp || 0,
-        mark: pu.final_mark,
-      }));
+      .map((pu: any) => {
+        let xp = 0;
+        let logSource = '';
+        if (canonicalProjects[pu.project.id]) {
+          if (typeof canonicalProjects[pu.project.id].experience === 'number') {
+            xp = canonicalProjects[pu.project.id].experience;
+            logSource = 'canonical.experience';
+          } else if (typeof canonicalProjects[pu.project.id].xp === 'number') {
+            xp = canonicalProjects[pu.project.id].xp;
+            logSource = 'canonical.xp';
+          } else if (typeof canonicalProjects[pu.project.id].difficulty === 'number') {
+            xp = canonicalProjects[pu.project.id].difficulty;
+            logSource = 'canonical.difficulty';
+          }
+        }
+        if (!xp) {
+          if (typeof pu.project.experience === 'number') {
+            xp = pu.project.experience;
+            logSource = 'project.experience';
+          } else if (typeof pu.project.xp === 'number') {
+            xp = pu.project.xp;
+            logSource = 'project.xp';
+          } else if (!logSource) {
+            logSource = 'missing';
+          }
+        }
+        // eslint-disable-next-line no-console
+        console.log('[DEBUG][oldProjectXP]', {
+          id: pu.project.id,
+          name: pu.project.name,
+          xp,
+          mark: pu.final_mark,
+          logSource,
+          canonical: canonicalProjects[pu.project.id],
+          puProject: pu.project
+        });
+        return {
+          id: pu.project.id,
+          name: pu.project.name,
+          xp,
+          mark: pu.final_mark,
+        };
+      });
     setPersistedOldProjects(oldProjects);
     localStorage.setItem(oldProjectsKey, JSON.stringify(oldProjects));
   }, [userIntraInfo, activeTitle, oldProjectsKey]);
 
-  const autoExtraProjects = (() => {
-    if (userIntraInfo && userIntraInfo.projects_users && activeTitle) {
-      const mainOption = activeTitle.options?.[0];
-      if (!mainOption) return [];
-      const cursusProjectIds = new Set(
-        Array.isArray(mainOption.projects)
-          ? mainOption.projects
-          : Object.keys(mainOption.projects).map(Number)
-      );
-      return userIntraInfo.projects_users
-        .filter((pu: any) => !cursusProjectIds.has(pu.project.id) && pu.final_mark > 0)
-        .map((pu: any) => ({
-          id: pu.project.id,
-          name: pu.project.name,
-          xp: pu.project.experience || pu.project.xp || 0,
-          mark: pu.final_mark,
-        }));
-    }
-    return persistedOldProjects;
-  })();
+  // Toujours utiliser la version canonique persistée (XP correcte)
+  const autoExtraProjects = persistedOldProjects;
 
   return (
     <>
@@ -320,11 +345,13 @@ export default function RNCPSimulator() {
         <h4 className="font-semibold text-2xl leading-none tracking-tight">Information</h4>
 
         <p className="text-muted-foreground text-sm">
-          You must validate the requirements.   {" "}
+          You must validate the requirements.{" "}
           <Link
             className="underline underline-offset-1 transition-colors hover:text-foreground"
             prefetch={false}
             href="https://meta.intra.42.fr/articles/42-paris-s-homologated-certificates-rncp-6-7"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             Learn more.
           </Link>

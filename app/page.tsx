@@ -87,7 +87,7 @@ export default function Home() {
               target="_blank"
               className="underline hover:text-foreground transition-colors"
             >
-              fZpHr
+              Zeph
             </a>{" "}
             and{" "}
             <a

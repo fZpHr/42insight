@@ -54,7 +54,7 @@ git push origin feature/your-feature-name
 
 ## Creators
 
-- [fZpHr](https://github.com/fZpHr)
+- [Zeph](https://github.com/fZpHr)
 - [Haletran](https://github.com/Haletran)
 
 Feel free to reach out to us for any questions or suggestions!

@@ -88,6 +88,9 @@ function Project({
   const isSelected = projectMarks.has(project.id)
   const mark = projectMarks.get(project.id)
   const isBonus = mark === 125
+  const autoFetchedProjectMarks = useFortyTwoStore(state => state.autoFetchedProjectMarks)
+  const isAuto = isSelected && autoFetchedProjectMarks.has(project.id)
+  const isManual = isSelected && !autoFetchedProjectMarks.has(project.id)
 
   const totalProjectXP = getDynamicProjectXP(project)
   const totalXP = getProjectXP(project)
@@ -139,9 +142,12 @@ function Project({
       <div
         key={project.id}
         className={cn(
-          "flex min-h-[42px] cursor-pointer items-center rounded-md border-2 border-transparent text-sm transition-colors hover:bg-accent",
-          isModuleComplete && "border-green-500 bg-primary/30",
-          isBonus && "border-yellow-500",
+          "flex min-h-[42px] cursor-pointer items-center rounded-md border-2 text-sm transition-colors hover:bg-accent",
+          // Fond vert si auto, bleu si manuel (toujours appliqué si sélectionné)
+          isAuto && "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-100",
+          isManual && "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200",
+          // Bordure : jaune si bonus, sinon vert/bleu selon auto/manual
+          isBonus ? "border-yellow-500" : isAuto ? "border-green-500 dark:border-green-400" : isManual ? "border-blue-500 dark:border-blue-400" : undefined,
         )}
         onClick={handleToggle}
       >
@@ -149,41 +155,51 @@ function Project({
         <ProjectIcon isSelected={isSelected} />
 
         <div className="grid w-full grid-cols-[1fr_auto] items-center gap-x-2 pr-2">
-          <p className="break-words flex items-center gap-2">
-            {project.name}
-            <Badge className="rounded-lg ml-2" variant="outline">
-              {project.children && project.children.length > 0
-                ? totalXP.toLocaleString()
-                : (project.experience ?? 0).toLocaleString()
-              } XP
-            </Badge>
-          </p>
+          <div className="flex flex-col w-full items-center justify-center">
+            <span className="break-words w-full text-center font-medium">{project.name}</span>
+            <div className="flex items-center justify-center gap-2 mt-1">
+              <Badge className="rounded-lg" variant="outline">
+                {project.children && project.children.length > 0
+                  ? totalXP.toLocaleString()
+                  : (project.experience ?? 0).toLocaleString()
+                } XP
+              </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "size-7 p-0 border-none bg-transparent hover:bg-transparent focus:ring-0 focus:outline-none",
+                  isBonus ? "text-yellow-500" : "text-gray-400 dark:text-zinc-600"
+                )}
+                tabIndex={-1}
+                onClick={e => {
+                  e.stopPropagation();
+                  setProjectMark(project.id, isBonus ? 100 : 125);
+                }}
+                aria-label={isBonus ? "Retirer le bonus" : "Mettre le bonus"}
+              >
+                <StarIcon className={cn("size-4")}
+                  fill={isBonus ? "currentColor" : "none"}
+                />
+              </Button>
+            </div>
+          </div>
           <div
             className="flex flex-wrap items-center justify-end gap-2"
             onClick={isSelected ? (e) => e.stopPropagation() : undefined}
           >
-            <Badge className="rounded-lg bg-purple-100 border-purple-300 text-purple-800 border-2" variant="secondary">
+            <Badge className="rounded-lg bg-purple-100 border-purple-300 text-purple-800 border-2 dark:bg-purple-900 dark:border-purple-400 dark:text-purple-100" variant="secondary">
               {(totalProjectXP || 0).toLocaleString()} XP
             </Badge>
             {isSelected && (
-              <>
-                <Input
-                  type="number"
-                  className="h-8 w-20"
-                  value={mark ?? 100}
-                  onChange={(e) => setProjectMark(project.id, parseInt(e.target.value, 10) || 0)}
-                  min={0}
-                  max={125}
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => setProjectMark(project.id, isBonus ? 100 : 125)}
-                >
-                  <StarIcon className={cn("size-4", isBonus && "text-yellow-500")} fill={isBonus ? "currentColor" : "none"} />
-                </Button>
-              </>
+              <Input
+                type="number"
+                className="h-8 w-20"
+                value={mark ?? 100}
+                onChange={(e) => setProjectMark(project.id, parseInt(e.target.value, 10) || 0)}
+                min={0}
+                max={125}
+              />
             )}
           </div>
         </div>
