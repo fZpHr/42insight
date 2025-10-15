@@ -53,7 +53,7 @@ function ProjectExperience({ totalXP }: { totalXP: number }) {
   return (
     <div className="space-x-2">
       <Badge className="rounded-lg" variant="secondary">
-        {totalXP.toLocaleString()} XP
+  {totalXP.toLocaleString('fr-FR')} XP
       </Badge>
     </div>
   )
@@ -160,8 +160,8 @@ function Project({
             <div className="flex items-center justify-center gap-2 mt-1">
               <Badge className="rounded-lg" variant="outline">
                 {project.children && project.children.length > 0
-                  ? totalXP.toLocaleString()
-                  : (project.experience ?? 0).toLocaleString()
+                  ? totalXP.toLocaleString('fr-FR')
+                  : (project.experience ?? 0).toLocaleString('fr-FR')
                 } XP
               </Badge>
               <Button
@@ -189,7 +189,7 @@ function Project({
             onClick={isSelected ? (e) => e.stopPropagation() : undefined}
           >
             <Badge className="rounded-lg bg-purple-100 border-purple-300 text-purple-800 border-2 dark:bg-purple-900 dark:border-purple-400 dark:text-purple-100" variant="secondary">
-              {(totalProjectXP || 0).toLocaleString()} XP
+              {(totalProjectXP || 0).toLocaleString('fr-FR')} XP
             </Badge>
             {isSelected && (
               <Input

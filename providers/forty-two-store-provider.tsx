@@ -334,7 +334,7 @@ const createFortyTwoStore = (initProps: {
 
 type FortyTwoStoreApi = ReturnType<typeof createFortyTwoStore>
 
-const FortyTwoStoreContext = createContext<FortyTwoStoreApi | undefined>(undefined)
+export const FortyTwoStoreContext = createContext<FortyTwoStoreApi | undefined>(undefined)
 
 export interface FortyTwoStoreProviderProps {
   children: ReactNode

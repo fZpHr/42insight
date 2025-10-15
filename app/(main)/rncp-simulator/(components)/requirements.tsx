@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useSyncExternalStore, useState, useEffect } from "react"
+import { useMemo, useSyncExternalStore, useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
@@ -25,29 +25,29 @@ function TitleRequirement({ name, value, max, unit }: TitleRequirementProps) {
       // Format only the current level (value) with exactly 2 decimals, max as integer
       if (arguments[1] === value) { // value
         if (typeof value === 'number') {
-          return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true });
+          return value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true });
         }
         if (typeof value === 'string') {
           const num = parseFloat(value.replace(/\s/g, '').replace(',', '.'));
           if (isNaN(num)) return value;
           // Force 2 décimales, même si le nombre est 21.7 => 21.70
-          return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true });
+          return num.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true });
         }
         return '0.00';
       }
       if (arguments[2] === max) { // max
         if (typeof max === 'number') {
-          return max.toLocaleString(undefined, { maximumFractionDigits: 0 });
+          return max.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
         }
         if (typeof max === 'string') {
           const num = parseFloat(max.replace(/\s/g, '').replace(',', '.'));
-          return isNaN(num) ? max : num.toLocaleString(undefined, { maximumFractionDigits: 0 });
+          return isNaN(num) ? max : num.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
         }
         return '0';
       }
     }
     if (typeof value === 'string') return value;
-    return value.toLocaleString();
+  return value.toLocaleString('fr-FR');
   }
 
   const numValue = typeof value === 'string' ? parseFloat(value.replace(/\s/g, '').replace(',', '.')) : value;
@@ -86,10 +86,12 @@ interface TitleRequirementsProps {
   title: FortyTwoTitle;
   className?: string;
   autoExtraProjects?: { name: string; xp: number; id: number; mark: number }[];
+  manualProjects?: { name: string; xp: number; id: number; mark: number }[];
   onDeleteOldProject?: (id: number) => void;
+  onManualProjectsChange?: (manualProjects: { name: string; xp: number; id: number; mark: number }[]) => void;
 }
 
-export function TitleRequirements({ title, className, autoExtraProjects = [], onDeleteOldProject }: TitleRequirementsProps) {
+export function TitleRequirements({ title, className, autoExtraProjects = [], manualProjects = [], onDeleteOldProject, onManualProjectsChange }: TitleRequirementsProps) {
   // DEBUG : Affiche la liste des projets hors RNCP détectés
   const debugHorsRncp = autoExtraProjects;
 
@@ -116,7 +118,7 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
     setProjectMark: state.setProjectMark,
     removeProject: state.removeProject,
   }));
-
+// (removed stray lines, correct signature is below)
 //console.log('[DEBUG][requirements] events value:', events);
 
   const validatedGroupProjectsCount = (() => {
@@ -196,7 +198,7 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
-          <TitleRequirement name={"Level required"} value={currentLevelPrecise} max={title.level.toLocaleString()} />
+          <TitleRequirement name={"Level required"} value={currentLevelPrecise} max={title.level.toLocaleString('fr-FR')} />
           <TitleRequirement name={"Group projects"} value={validatedGroupProjectsCount} max={2} />
           <div className="relative">
             <TitleRequirement name={"Number of events"} value={events} max={title.number_of_events} />
@@ -238,14 +240,14 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
                     )}
                     title={
                       (isAuto ? "Détecté automatiquement depuis vos projets. Désactivation manuelle impossible. " : "") +
-                      `${exp.label} : ${totalXp.toLocaleString()} XP`
+                      `${exp.label} : ${totalXp.toLocaleString('fr-FR')} XP`
                     }
                     onClick={() => {
                       if (!isAuto) toggleProfessionalExperience(exp.id);
                     }}
                   >
                     <span>{exp.label}</span>
-                    <span className="ml-1 text-muted-foreground">{totalXp.toLocaleString()} XP</span>
+                    <span className="ml-1 text-muted-foreground">{totalXp.toLocaleString('fr-FR')} XP</span>
                     {isAuto && <span className="ml-1 text-primary font-semibold">auto</span>}
                     {isActive && (
                       <input
@@ -312,6 +314,8 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
               onAddProject={addManualProjectXp}
               autoExtraProjects={autoExtraProjects}
               onDeleteOldProject={onDeleteOldProject}
+              manualProjects={manualProjects ?? []} // always use prop
+              onManualProjectsChange={onManualProjectsChange}
               setProjectMark={setProjectMark}
               removeProject={removeProject}
               projects={projects}
@@ -357,17 +361,18 @@ export function TitleOptionRequirements({ option }: { option: FortyTwoTitleOptio
 
 // Formulaire d'ajout manuel de projet (influence uniquement la jauge de level)
 type ManualProject = { name: string; xp: number; id: number; mark: number };
-interface ManualProjectFormProps {
+type ManualProjectFormProps = {
   onAddProject: (xp: number) => void;
   autoExtraProjects?: ManualProject[];
+  manualProjects?: ManualProject[];
   onDeleteOldProject?: (id: number) => void;
   setProjectMark: (id: number, mark: number) => void;
   removeProject: (id: number) => void;
   projects: Record<string, any>;
-}
-function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldProject, setProjectMark, removeProject, projects }: ManualProjectFormProps) {
+  onManualProjectsChange?: (manualProjects: ManualProject[]) => void;
+};
+function ManualProjectForm({ onAddProject, autoExtraProjects = [], manualProjects = [], onDeleteOldProject, setProjectMark, removeProject, projects, onManualProjectsChange }: ManualProjectFormProps) {
   const [selected, setSelected] = useState<string>("");
-  const [added, setAdded] = useState<ManualProject[]>([]); // uniquement les projets ajoutés manuellement
   const [error, setError] = useState<string>("");
   const [showOld, setShowOld] = useState(false);
 
@@ -387,12 +392,12 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
 
   // Permet de modifier la note ou supprimer un ancien projet hors RNCP
   const handleOldMarkChange = (id: number, mark: number) => {
-    // Met à jour la valeur affichée
     setOldProjectInputValues(prev => ({ ...prev, [id]: mark }));
     let safeMark = Number(mark);
     if (isNaN(safeMark)) safeMark = 0;
     safeMark = Math.max(0, Math.min(safeMark, 125));
     setProjectMark(id, safeMark);
+    // (Persistance locale désactivée pour anciens projets, car plus de clé oldProjectsKey ni de merge avec added)
   };
   // Corrige la valeur affichée si hors borne lors du blur
   const handleOldMarkBlur = (id: number) => {
@@ -402,16 +407,18 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
       let safeMark = Number(val);
       if (isNaN(safeMark)) safeMark = 0;
       safeMark = Math.max(0, Math.min(safeMark, 125));
+      // (Persistance locale désactivée pour anciens projets)
       return { ...prev, [id]: safeMark };
     });
   };
   // Pour la persistance locale (clé identique à page.tsx)
-  const session = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('nextauth.session') || '{}') : undefined;
-  const oldProjectsKey = session?.user && 'login' in session.user && session.user.login ? `oldProjects_${session.user.login}` : undefined;
-
   const handleOldRemove = (id: number) => {
     setProjectMark(id, 0);
-    setOldProjects(list => list.filter(p => p.id !== id));
+    setOldProjects(list => {
+      const updated = list.filter(p => p.id !== id);
+      // (Persistance locale désactivée pour anciens projets)
+      return updated;
+    });
     if (typeof onDeleteOldProject === 'function') {
       onDeleteOldProject(id);
     }
@@ -426,22 +433,28 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
       setError("Sélectionne un projet valide.");
       return;
     }
-    if (added.some(a => a.id === project.id)) {
+    if (manualProjects.some(a => a.id === project.id)) {
       setError("Projet déjà ajouté.");
       return;
     }
     const xp = typeof project.experience === 'number' ? project.experience : (project as any).xp;
-    setAdded(list => [...list, { name: project.name, xp, id: project.id, mark: 100 }]);
-  setProjectMark(project.id, 100);
+    const newProject = { name: project.name, xp, id: project.id, mark: 100 };
+    if (onManualProjectsChange) {
+      onManualProjectsChange([...manualProjects, newProject]);
+    }
+    setProjectMark(project.id, 100);
     onAddProject(xp);
     setSelected("");
     setError("");
   };
+    // (Plus de synchronisation auto avec onManualProjectsChange, tout est contrôlé par le parent)
 
   // Permet de supprimer un projet ajouté
   const handleRemove = (id: number) => {
-    setAdded(list => list.filter(a => a.id !== id));
-    removeProject(id); // Retire complètement le projet de la Map
+    if (onManualProjectsChange) {
+      onManualProjectsChange(manualProjects.filter(a => a.id !== id));
+    }
+    removeProject(id);
   };
 
   // Permet de modifier la note d'un projet ajouté
@@ -449,9 +462,19 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
     let safeMark = Number(mark);
     if (isNaN(safeMark)) safeMark = 0;
     safeMark = Math.max(0, Math.min(safeMark, 125));
-    setAdded(list => list.map(a => a.id === id ? { ...a, mark: safeMark } : a));
-    setProjectMark(id, safeMark); // Met à jour la jauge
+    if (onManualProjectsChange) {
+      onManualProjectsChange(manualProjects.map(a => a.id === id ? { ...a, mark: safeMark } : a));
+    }
+    setProjectMark(id, safeMark);
   };
+  // Ajout: reset manuel (softReset) via event custom
+  useEffect(() => {
+    function handleManualProjectsReset() {
+      if (onManualProjectsChange) onManualProjectsChange([]);
+    }
+    window.addEventListener('manualProjectsReset', handleManualProjectsReset);
+    return () => window.removeEventListener('manualProjectsReset', handleManualProjectsReset);
+  }, [onManualProjectsChange]);
 
   return (
     <div className="space-y-4">
@@ -480,7 +503,7 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
             {oldProjects.length === 0 && <li>Aucun projet</li>}
             {oldProjects.map(p => (
               <li key={p.id} className="flex items-center gap-2">
-                <span>{p.name} (+{Math.round((typeof p.xp === 'number' ? p.xp : 0) * ((oldProjectInputValues[p.id] !== undefined ? oldProjectInputValues[p.id] : p.mark) / 100)).toLocaleString()} XP)</span>
+                <span>{p.name} (+{Math.round((typeof p.xp === 'number' ? p.xp : 0) * ((oldProjectInputValues[p.id] !== undefined ? oldProjectInputValues[p.id] : p.mark) / 100)).toLocaleString('fr-FR')} XP)</span>
                 <input
                   type="number"
                   min={0}
@@ -528,9 +551,9 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
       <div className="mt-4">
         <div className="font-semibold text-sm mb-2">Projets ajoutés :</div>
         <ul className="list-disc pl-5 text-sm text-muted-foreground">
-          {added.map(a => (
+          {manualProjects.map(a => (
             <li key={a.id} className="flex items-center gap-2">
-              <span>{a.name} (+{Math.round(a.xp * (a.mark / 100)).toLocaleString()} XP)</span>
+              <span>{a.name} (+{Math.round(a.xp * (a.mark / 100)).toLocaleString('fr-FR')} XP)</span>
               <input
                 type="number"
                 min={0}

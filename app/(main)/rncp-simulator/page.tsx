@@ -2,9 +2,16 @@
 
 import { shallow } from "zustand/shallow"
 import { useFortyTwoStore } from "@/providers/forty-two-store-provider"
+import { useContext } from "react"
+import { FortyTwoStoreContext } from "@/providers/forty-two-store-provider"
 import type { FortyTwoTitle } from "@/types/forty-two"
-import { useEffect, useMemo, useState, useRef } from "react"
+import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { addToLocalStorage, getFromLocalStorage } from "@/utils/localStorage"
+
+// Clé dédiée pour la persistance des projets ajoutés manuellement
+function getManualProjectsKey(session: any) {
+  return session?.user && 'login' in session.user && session.user.login ? `manualProjects_${session.user.login}` : undefined;
+}
 import { TitleOptions } from "./(components)/options"
 import { TitleRequirements } from "./(components)/requirements"
 import { TitleSelector } from "./(components)/selector"
@@ -47,14 +54,116 @@ async function fetchUserEvents(login: string) {
 }
 
 export default function RNCPSimulator() {
+  // --- Import/Export config logic ---
+  const storeContext = useContext(FortyTwoStoreContext);
+  function exportConfig() {
+    if (!storeContext) return;
+    const state = storeContext.getState();
+    // On exporte uniquement les projets ajoutés manuellement (pas les autoExtraProjects/anciens projets)
+    // Les projets ajoutés sont ceux qui ne sont pas dans autoExtraProjects
+    const manualProjectsKey = getManualProjectsKey(session);
+    const manualProjects = manualProjectsKey && typeof window !== 'undefined'
+      ? (JSON.parse(localStorage.getItem(manualProjectsKey) || '[]'))
+      : [];
+    const data = {
+      projectMarks: Array.from(state.projectMarks.entries()),
+      professionalExperiences: Array.from(state.professionalExperiences),
+      events: state.events ?? 0,
+      eventsFetchedAt: state.eventsFetchedAt ?? 0,
+      manualProjects,
+      ts: Date.now(),
+    };
+    console.log('[RNCP][EXPORT] manualProjects exportés:', manualProjects);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'rncp_simulator_config.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  }
+
+  function importConfig(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!storeContext) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        // DEBUG: Affiche le contenu du fichier importé
+        console.log('[RNCP][IMPORT] Fichier importé:', data);
+        console.log('[RNCP][IMPORT] oldProjectsKey:', oldProjectsKey);
+        if (data && data.projectMarks && data.professionalExperiences) {
+          storeContext.setState({
+            projectMarks: new Map<number, number>(data.projectMarks),
+            professionalExperiences: new Set<string>(data.professionalExperiences),
+            events: typeof data.events === 'number' ? data.events : 0,
+            eventsFetchedAt: typeof data.eventsFetchedAt === 'number' ? data.eventsFetchedAt : 0,
+          });
+          // Persiste aussi dans le localStorage
+          localStorage.setItem('rncp_simulator_progression', JSON.stringify(data));
+          // Restaure uniquement les projets ajoutés manuellement (clé dédiée)
+          const manualProjectsKey = getManualProjectsKey(session);
+          if (data.manualProjects && Array.isArray(data.manualProjects) && manualProjectsKey) {
+            console.log('[RNCP][IMPORT] Restaure manualProjects dans localStorage:', data.manualProjects);
+            localStorage.setItem(manualProjectsKey, JSON.stringify(data.manualProjects));
+            setManualProjects(data.manualProjects); // <-- force UI update
+            // Synchronise aussi les marks dans le store pour chaque projet manuel importé
+            if (Array.isArray(data.manualProjects)) {
+              data.manualProjects.forEach((proj: any) => {
+                if (proj && typeof proj.id === 'number' && typeof proj.mark === 'number') {
+                  if (storeContext && storeContext.setState) {
+                    // On utilise setState pour ne pas dépendre du hook
+                    storeContext.setState((prev: any) => {
+                      const newMarks = new Map(prev.projectMarks);
+                      newMarks.set(proj.id, proj.mark);
+                      return { ...prev, projectMarks: newMarks };
+                    });
+                  }
+                }
+              });
+            }
+            // On ne touche pas persistedOldProjects ici (les anciens projets restent auto)
+          } else {
+            console.log('[RNCP][IMPORT] Pas de manualProjects à restaurer ou manualProjectsKey manquant');
+          }
+        } else {
+          console.log('[RNCP][IMPORT] Fichier importé incomplet ou invalide');
+        }
+      } catch (err) {
+        console.error('[RNCP][IMPORT] Erreur lors de l\'import:', err);
+        alert('Erreur lors de l\'import du fichier de configuration.');
+      }
+    };
+    reader.readAsText(file);
+    // Reset input value to allow re-importing the same file
+    e.target.value = '';
+  }
   const { data: session } = useSession()
-  // --- Sauvegarde et récupération des anciens projets hors RNCP dans le localStorage ---
+  // --- Sauvegarde et récupération des anciens projets hors RNCP ---
   const oldProjectsKey = session?.user && 'login' in session.user && session.user.login ? `oldProjects_${session.user.login}` : undefined;
-  // Récupération au chargement si pas de userIntraInfo (ex: refresh)
+  const manualProjectsKey = getManualProjectsKey(session);
+  // Récupération des anciens projets (persistedOldProjects) et des projets ajoutés manuellement (manualProjects)
   const [persistedOldProjects, setPersistedOldProjects] = useState<any[]>(() => {
     if (!oldProjectsKey) return [];
     if (typeof window === 'undefined') return [];
     const raw = localStorage.getItem(oldProjectsKey);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  });
+  const [manualProjects, setManualProjects] = useState<any[]>(() => {
+    if (!manualProjectsKey) return [];
+    if (typeof window === 'undefined') return [];
+    const raw = localStorage.getItem(manualProjectsKey);
     if (!raw) return [];
     try {
       return JSON.parse(raw);
@@ -342,6 +451,23 @@ export default function RNCPSimulator() {
       <Separator className="my-6" />
 
       <div className="my-6 space-y-1.5">
+        <div className="flex gap-2 mb-2">
+          <Button variant="secondary" onClick={exportConfig} type="button">
+            Exporter la config
+          </Button>
+          <label className="inline-block">
+            <span className="sr-only">Importer la config</span>
+            <input
+              type="file"
+              accept="application/json"
+              style={{ display: 'none' }}
+              onChange={importConfig}
+            />
+            <Button asChild variant="secondary" type="button">
+              <span>Importer la config</span>
+            </Button>
+          </label>
+        </div>
         <h4 className="font-semibold text-2xl leading-none tracking-tight">Information</h4>
 
         <p className="text-muted-foreground text-sm">
@@ -360,7 +486,20 @@ export default function RNCPSimulator() {
           <Button variant="destructive" onClick={resetAll} type="button">
             Reset all
           </Button>
-          <Button variant="outline" onClick={softReset} type="button">
+          <Button
+            variant="outline"
+            onClick={() => {
+              softReset();
+              // Reset aussi les projets ajoutés manuellement (via event custom)
+              window.dispatchEvent(new Event('manualProjectsReset'));
+              // Vide la clé des projets manuels
+              if (manualProjectsKey) {
+                localStorage.setItem(manualProjectsKey, JSON.stringify([]));
+                setManualProjects([]);
+              }
+            }}
+            type="button"
+          >
             Soft reset
           </Button>
         </div>
@@ -369,6 +508,14 @@ export default function RNCPSimulator() {
       {/* Détection des projets hors RNCP auto (présents dans userIntraInfo.projects_users mais pas dans la liste RNCP) */}
       <TitleRequirements
         title={activeTitle}
+        manualProjects={manualProjects}
+        onManualProjectsChange={useCallback((manualProjects: { name: string; xp: number; id: number; mark: number }[]) => {
+          // Persiste uniquement les projets ajoutés manuellement
+          if (manualProjectsKey) {
+            localStorage.setItem(manualProjectsKey, JSON.stringify(manualProjects));
+            setManualProjects(manualProjects);
+          }
+        }, [manualProjectsKey])}
         className="my-6"
         autoExtraProjects={autoExtraProjects}
       />
