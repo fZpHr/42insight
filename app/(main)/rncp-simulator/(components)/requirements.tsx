@@ -94,12 +94,8 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
   const debugHorsRncp = autoExtraProjects;
 
   const [showManualTab, setShowManualTab] = useState(false);
-  // Force re-render on projectMarks change
-  const validatedGroupProjectsCount = useFortyTwoStore((state) => {
-    const groupProjects = Object.values(state.projects).filter((p) => p && p.is_solo === false);
-    return groupProjects.filter((p) => state.projectMarks.get(p.id) && state.projectMarks.get(p.id)! > 0).length;
-  });
-  const {
+    // Force re-render on projectMarks change
+    const {
     professionalExperiences,
     toggleProfessionalExperience,
     events,
@@ -107,6 +103,8 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
     getLevel,
     projects,
     projectMarks,
+    setProjectMark,
+    removeProject,
   } = useFortyTwoStore(state => ({
     professionalExperiences: state.professionalExperiences,
     toggleProfessionalExperience: state.toggleProfessionalExperience,
@@ -115,7 +113,16 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
     getLevel: state.getLevel,
     projects: state.projects,
     projectMarks: state.projectMarks,
+    setProjectMark: state.setProjectMark,
+    removeProject: state.removeProject,
   }));
+
+//console.log('[DEBUG][requirements] events value:', events);
+
+  const validatedGroupProjectsCount = (() => {
+    const groupProjects = Object.values(projects).filter((p) => p && p.is_solo === false);
+    return groupProjects.filter((p) => projectMarks.get(p.id) && projectMarks.get(p.id)! > 0).length;
+  })();
 
   // Calcul du niveau courant et du niveau précis
   const currentXP = useFortyTwoStore(state => state.getSelectedXP());
@@ -126,23 +133,39 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
   // Pour la gestion des notes d'expérience pro
   const [experienceMarks, setExperienceMarks] = useState<{ [id: string]: number }>({});
   // XP de base pour chaque expérience pro (à adapter selon la logique métier)
+  // Mapping exhaustif des expériences pro (doit matcher le mapping de page.tsx)
   const professionalExperienceXp: { [id: string]: number } = {
-    stage_1: 500,
-    stage_2: 1000,
-    alternance_1_an: 1500,
-    alternance_2_ans: 2000,
+    stage_1: 42000,
+    stage_2: 63000,
+    part_time_1: 42000,
+    part_time_2: 63000,
+    startup_experience: 42000,
+    alternance_1_an: 90000,
+    alternance_2_ans: 180000,
   };
+
+  // Liste exhaustive des expériences pro (clé + label)
+  const professionalExperienceOptions = [
+    { id: "stage_1", label: "Stage 1" },
+    { id: "stage_2", label: "Stage 2" },
+    { id: "startup_experience", label: "Startup Experience" },
+    { id: "alternance_1_an", label: "Alternance 1 an" },
+    { id: "alternance_2_ans", label: "Alternance 2 ans" },
+  ];
 
   // Pour synchroniser avec le store si besoin, tu peux persister dans localStorage
   const handleMarkChange = (id: string, mark: number) => {
     setExperienceMarks((prev: any) => ({ ...prev, [id]: Math.max(0, Math.min(mark, 125)) }))
   }
-  const professionalExperienceOptions = [
-    { id: "stage_1", label: "Stage 1" },
-    { id: "stage_2", label: "Stage 2" },
-    { id: "alternance_1_an", label: "Alternance 1 an" },
-    { id: "alternance_2_ans", label: "Alternance 2 ans" },
-  ]
+
+  // Détection des expériences auto-togglées (non manuelles)
+  // On stocke dans localStorage la liste des expériences auto (mise à jour dans page.tsx)
+  let autoToggledExperiences: string[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      autoToggledExperiences = JSON.parse(localStorage.getItem('autoToggledExperiences') || '[]');
+    } catch {}
+  }
 
   // Calcule le nombre d'expériences pro cochées
   const professionalExperiencesCount = useMemo(() => {
@@ -186,30 +209,44 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
               </button>
             )}
           </div>
-          <div className="md:col-span-3 flex flex-row items-center gap-4">
-            <div className="flex flex-row gap-2">
+          {/* Résumé expériences pro */}
+          <div className="md:col-span-3 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Expériences pro validées :</span>
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-xs font-semibold",
+                professionalExperiencesCount >= title.number_of_experiences ? "bg-green-200 text-green-900" : "bg-muted text-muted-foreground"
+              )}>
+                {professionalExperiencesCount} / {title.number_of_experiences}
+              </span>
+            </div>
+            {/* Affiche toutes les options, compactes, avec badge si actif/auto, bouton toggle sinon */}
+            <div className="flex flex-wrap gap-2 mt-1">
               {professionalExperienceOptions.map((exp) => {
-                const isActive = professionalExperiences.has(exp.id)
-                const mark = experienceMarks[exp.id] ?? 100
-                const baseXp = professionalExperienceXp[exp.id] ?? 0
-                const totalXp = Math.round(baseXp * (mark / 100))
+                const isActive = professionalExperiences.has(exp.id);
+                const mark = experienceMarks[exp.id] ?? 100;
+                const baseXp = professionalExperienceXp[exp.id] ?? 0;
+                const totalXp = Math.round(baseXp * (mark / 100));
+                const isAuto = autoToggledExperiences.includes(exp.id);
                 return (
                   <div
                     key={exp.id}
                     className={cn(
-                      "flex items-center space-x-2 rounded-md p-2 cursor-pointer border-2 border-primary/40 bg-secondary transition-colors hover:bg-accent relative group",
-                      isActive && "bg-primary/30 border-primary"
+                      "flex items-center gap-1 px-2 py-1 rounded border text-xs",
+                      isActive ? "bg-primary/20 border-primary" : "bg-secondary border-primary/30 hover:bg-accent cursor-pointer",
+                      isAuto && "opacity-70 cursor-not-allowed border-dashed"
                     )}
-                    onClick={() => toggleProfessionalExperience(exp.id)}
+                    title={
+                      (isAuto ? "Détecté automatiquement depuis vos projets. Désactivation manuelle impossible. " : "") +
+                      `${exp.label} : ${totalXp.toLocaleString()} XP`
+                    }
+                    onClick={() => {
+                      if (!isAuto) toggleProfessionalExperience(exp.id);
+                    }}
                   >
-                    <label htmlFor={exp.id} className="cursor-pointer">
-                      {exp.label}
-                    </label>
-                    {/* Affiche toujours l'XP */}
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      {isActive ? `${totalXp.toLocaleString()} XP` : `${baseXp.toLocaleString()} XP`}
-                    </span>
-                    {/* Input de note si activé */}
+                    <span>{exp.label}</span>
+                    <span className="ml-1 text-muted-foreground">{totalXp.toLocaleString()} XP</span>
+                    {isAuto && <span className="ml-1 text-primary font-semibold">auto</span>}
                     {isActive && (
                       <input
                         type="number"
@@ -221,18 +258,12 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
                         onChange={e => handleMarkChange(exp.id, Number(e.target.value))}
                         className="ml-2 w-14 px-1 py-0.5 rounded border border-primary/40 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                         title="Note (%) du stage/alternance"
+                        disabled={isAuto}
                       />
                     )}
                   </div>
-                )
+                );
               })}
-            </div>
-            <div className="flex-1">
-              <TitleRequirement
-                name={"Professional experiences"}
-                value={professionalExperiencesCount}
-                max={title.number_of_experiences}
-              />
             </div>
           </div>
         </CardContent>
@@ -277,7 +308,14 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], on
             <CardTitle>Ajout manuel de projets</CardTitle>
           </CardHeader>
           <CardContent>
-            <ManualProjectForm onAddProject={addManualProjectXp} autoExtraProjects={autoExtraProjects} onDeleteOldProject={onDeleteOldProject} />
+            <ManualProjectForm
+              onAddProject={addManualProjectXp}
+              autoExtraProjects={autoExtraProjects}
+              onDeleteOldProject={onDeleteOldProject}
+              setProjectMark={setProjectMark}
+              removeProject={removeProject}
+              projects={projects}
+            />
           </CardContent>
         </Card>
       )}
@@ -323,8 +361,11 @@ interface ManualProjectFormProps {
   onAddProject: (xp: number) => void;
   autoExtraProjects?: ManualProject[];
   onDeleteOldProject?: (id: number) => void;
+  setProjectMark: (id: number, mark: number) => void;
+  removeProject: (id: number) => void;
+  projects: Record<string, any>;
 }
-function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldProject }: ManualProjectFormProps) {
+function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldProject, setProjectMark, removeProject, projects }: ManualProjectFormProps) {
   const [selected, setSelected] = useState<string>("");
   const [added, setAdded] = useState<ManualProject[]>([]); // uniquement les projets ajoutés manuellement
   const [error, setError] = useState<string>("");
@@ -335,6 +376,8 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
   const [oldProjects, setOldProjects] = useState(() =>
     [...autoExtraProjects].filter(p => !piscineRegex.test(p.name)).sort((a, b) => b.id - a.id)
   );
+  // State local pour la valeur affichée dans les inputs d'anciens projets
+  const [oldProjectInputValues, setOldProjectInputValues] = useState<{ [id: number]: number }>({});
   // Synchronise oldProjects si autoExtraProjects change (ex: refresh, fetch)
   useEffect(() => {
     setOldProjects(
@@ -343,15 +386,24 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
   }, [autoExtraProjects]);
 
   // Permet de modifier la note ou supprimer un ancien projet hors RNCP
-  const { setProjectMark, projects } = useFortyTwoStore(state => ({
-    setProjectMark: state.setProjectMark,
-    projects: state.projects,
-  }));
   const handleOldMarkChange = (id: number, mark: number) => {
+    // Met à jour la valeur affichée
+    setOldProjectInputValues(prev => ({ ...prev, [id]: mark }));
     let safeMark = Number(mark);
     if (isNaN(safeMark)) safeMark = 0;
     safeMark = Math.max(0, Math.min(safeMark, 125));
     setProjectMark(id, safeMark);
+  };
+  // Corrige la valeur affichée si hors borne lors du blur
+  const handleOldMarkBlur = (id: number) => {
+    setOldProjectInputValues(prev => {
+      let val = prev[id];
+      if (val === undefined) return prev;
+      let safeMark = Number(val);
+      if (isNaN(safeMark)) safeMark = 0;
+      safeMark = Math.max(0, Math.min(safeMark, 125));
+      return { ...prev, [id]: safeMark };
+    });
   };
   // Pour la persistance locale (clé identique à page.tsx)
   const session = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('nextauth.session') || '{}') : undefined;
@@ -389,7 +441,7 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
   // Permet de supprimer un projet ajouté
   const handleRemove = (id: number) => {
     setAdded(list => list.filter(a => a.id !== id));
-  setProjectMark(id, 0); // Retire l'XP de la jauge
+    removeProject(id); // Retire complètement le projet de la Map
   };
 
   // Permet de modifier la note d'un projet ajouté
@@ -430,10 +482,17 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldPr
               <li key={p.id} className="flex items-center gap-2">
                 <span>{p.name} ({p.xp} XP)</span>
                 <input
+                  type="number"
                   min={0}
                   max={125}
-                  defaultValue={p.mark}
+                  step={1}
+                  value={
+                    oldProjectInputValues[p.id] !== undefined
+                      ? oldProjectInputValues[p.id]
+                      : p.mark
+                  }
                   onChange={e => handleOldMarkChange(p.id, Number(e.target.value))}
+                  onBlur={() => handleOldMarkBlur(p.id)}
                   className="w-14 border rounded px-1 py-0.5 text-xs"
                 />
                 <span>pts</span>

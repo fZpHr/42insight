@@ -105,13 +105,20 @@ function Project({
   // (projectId, isModuleComplete, projectMarks.size, mark, isSelected)
   // Pour aider au debug, on log aussi lors du click
   // et lors du render du composant Project
-  
-  // Log lors du render
-  // [debug-contour:render] removed for production
+  //
+  // // Log lors du render
+  // console.debug('[debug-contour:render]', { projectId, isModuleComplete, mark, isSelected });
 
-  // Log lors du click
+  // // Log lors du click
+  // const handleToggle = () => {
+  //   console.debug('[debug-contour:click]', { projectId, isSelected });
+  //   if (isSelected) {
+  //     removeProject(project.id)
+  //   } else {
+  //     setProjectMark(project.id, 100)
+  //   }
+  // }
   const handleToggle = () => {
-  // [debug-contour:click] removed for production
     if (isSelected) {
       removeProject(project.id)
     } else {
@@ -123,6 +130,12 @@ function Project({
 
   return (
     <Collapsible>
+      {/*
+      // DEBUG: Affichage visuel de l'état
+      <div style={{ fontSize: 10, color: '#888' }}>
+        [debug] id: {project.id} | isSelected: {String(isSelected)} | mark: {String(mark)} | isBonus: {String(isBonus)}
+      </div>
+      */}
       <div
         key={project.id}
         className={cn(
@@ -196,6 +209,9 @@ export function ProjectList({
     return <div>No projects available</div>
   }
 
+
+  const projectMarks = useFortyTwoStore(state => state.projectMarks);
+
   const projectIdsInList = useMemo(() => Object.keys(projectsToShow).map(Number), [projectsToShow])
 
   const filteredProjects = useMemo(
@@ -206,7 +222,7 @@ export function ProjectList({
         }
         return !projectIdsInList.includes(project.parent.id)
       }),
-    [projectsToShow, projectIdsInList],
+    [projectsToShow, projectIdsInList, projectMarks],
   )
 
   return (

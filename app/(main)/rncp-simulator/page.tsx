@@ -48,9 +48,23 @@ async function fetchUserEvents(login: string) {
 
 export default function RNCPSimulator() {
   const { data: session } = useSession()
+  // --- Sauvegarde et récupération des anciens projets hors RNCP dans le localStorage ---
+  const oldProjectsKey = session?.user && 'login' in session.user && session.user.login ? `oldProjects_${session.user.login}` : undefined;
+  // Récupération au chargement si pas de userIntraInfo (ex: refresh)
+  const [persistedOldProjects, setPersistedOldProjects] = useState<any[]>(() => {
+    if (!oldProjectsKey) return [];
+    if (typeof window === 'undefined') return [];
+    const raw = localStorage.getItem(oldProjectsKey);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  });
   // On utilise un sélecteur optimisé avec `shallow` pour éviter les re-renders inutiles.
   // On ne récupère que ce dont la page a *directement* besoin.
-  const { titles, setProjectMark, setEvents, resetAll, softReset, setAutoFetchedProjectMark, clearAutoFetchedProjectMarks, projects } =
+  const { titles, setProjectMark, setEvents, resetAll, softReset, setAutoFetchedProjectMark, clearAutoFetchedProjectMarks, projects, setProfessionalExperience, setAutoFetchedProfessionalExperience, clearAutoFetchedProfessionalExperiences, autoFetchedProfessionalExperiences } =
     useFortyTwoStore(
       (state) => ({
         titles: state.titles,
@@ -61,6 +75,10 @@ export default function RNCPSimulator() {
         setAutoFetchedProjectMark: state.setAutoFetchedProjectMark,
         clearAutoFetchedProjectMarks: state.clearAutoFetchedProjectMarks,
         projects: state.projects,
+        setProfessionalExperience: state.setProfessionalExperience,
+        setAutoFetchedProfessionalExperience: state.setAutoFetchedProfessionalExperience,
+        clearAutoFetchedProfessionalExperiences: state.clearAutoFetchedProfessionalExperiences,
+        autoFetchedProfessionalExperiences: state.autoFetchedProfessionalExperiences,
       }),
       shallow,
     )
@@ -68,6 +86,7 @@ export default function RNCPSimulator() {
   const { width, height } = useWindowSize()
   const [showConfetti, setShowConfetti] = useState(false)
   const [optionStatuses, setOptionStatuses] = useState<Record<string, boolean>>({})
+
 
 
   // Ajout du cache pour userIntraInfo (projets)
@@ -86,33 +105,113 @@ export default function RNCPSimulator() {
   })
 
 
-  const { data: userEvents } = useQuery({
+  const { data: userEvents, isLoading: eventsLoading } = useQuery({
     queryKey: ["userEvents", session?.user?.login],
     queryFn: async () => {
-      const events = await fetchUserEvents(session?.user?.login || "");
-      return events;
+      if (!session?.user?.login) return [];
+      return await fetchUserEvents(session.user.login);
     },
     enabled: !!session?.user,
-  })
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
 
+
+  // Debug: log userIntraInfo and projects_users
   useEffect(() => {
-    if (userIntraInfo && userIntraInfo.projects_users) {
-      // On vide d'abord la map autoFetchedProjectMarks pour éviter les doublons
-      clearAutoFetchedProjectMarks();
-      userIntraInfo.projects_users.forEach((project: any) => {
-        // N'applique la note que si final_mark est défini et > 0
-        if (typeof project.final_mark === 'number' && project.final_mark > 0) {
-          setProjectMark(project.project.id, project.final_mark)
-          setAutoFetchedProjectMark(project.project.id, project.final_mark)
-        }
-      })
+    if (!userIntraInfo) return;
+    //console.log('[DEBUG][RNCP] userIntraInfo:', userIntraInfo);
+    if (userIntraInfo.projects_users) {
+      //console.log('[DEBUG][RNCP] userIntraInfo.projects_users:', userIntraInfo.projects_users);
+      userIntraInfo.projects_users.forEach((proj: any, idx: number) => {
+        //console.log(`[DEBUG][RNCP] Project #${idx}:`, proj);
+      });
+    } else {
+      //console.log('[DEBUG][RNCP] userIntraInfo.projects_users is undefined or empty');
     }
-  }, [userIntraInfo, setProjectMark, setAutoFetchedProjectMark, clearAutoFetchedProjectMarks])
+  }, [userIntraInfo]);
+
+  // Auto-toggle professional experiences from user projects (with fallback to persistedOldProjects)
+  useEffect(() => {
+    // Utilise la source la plus fraiche : userIntraInfo.projects_users si dispo, sinon persistedOldProjects
+    const mainProjects = (userIntraInfo && userIntraInfo.projects_users && userIntraInfo.projects_users.length > 0)
+      ? userIntraInfo.projects_users
+      : persistedOldProjects.map((p) => ({
+          project: { id: p.id, name: p.name, experience: p.xp },
+          final_mark: p.mark,
+        }));
+
+    // Stocke tous les IDs de projets vus (même ceux avec final_mark 0)
+    if (mainProjects.length > 0 && typeof window !== 'undefined') {
+      const seenProjectIds = mainProjects.map((p: any) => p.project.id);
+      localStorage.setItem('seenProjectIds', JSON.stringify(seenProjectIds));
+    }
+    
+    // --- MAPPING projet <-> expérience pro ---
+    // Mapping exhaustif des IDs d'expériences pro (issus du JSON)
+    const projectToExperience: Record<number, string> = {
+      // Stages et part-time (si besoin, à compléter)
+      1638: "stage_1", // Work Experience I
+      1644: "stage_2", // Work Experience II
+      // Startup Experience
+      1662: "startup_experience",
+      // Apprentissage 1 an
+      1873: "alternance_1_an",
+      1877: "alternance_1_an",
+      1878: "alternance_1_an",
+      1879: "alternance_1_an",
+      1880: "alternance_1_an",
+      2561: "alternance_1_an", // FR - Alternance - RNCP6 - 1 an
+      2563: "alternance_1_an", // FR - Alternance - RNCP7 - 1 an
+      // Apprentissage 2 ans
+      1857: "alternance_2_ans",
+      1861: "alternance_2_ans",
+      1862: "alternance_2_ans",
+      1863: "alternance_2_ans",
+      1864: "alternance_2_ans",
+      1865: "alternance_2_ans",
+      1869: "alternance_2_ans",
+      1870: "alternance_2_ans",
+      1871: "alternance_2_ans",
+      1872: "alternance_2_ans",
+      2562: "alternance_2_ans", // FR - Alternance - RNCP6 - 2 ans
+      2564: "alternance_2_ans", // FR - Alternance - RNCP7 - 2 ans
+    };
+    const experiencesToToggle = new Set<string>();
+    //console.log('[DEBUG][RNCP] mainProjects (for auto-toggle):', mainProjects);
+    mainProjects.forEach((project: any) => {
+      //console.log('[DEBUG][RNCP] Checking project:', project.project.id, project.project.name, 'final_mark:', project.final_mark);
+      // On applique la note si final_mark est défini et > 0
+      if (typeof project.final_mark === 'number' && project.final_mark > 0) {
+        setProjectMark(project.project.id, project.final_mark)
+        setAutoFetchedProjectMark(project.project.id, project.final_mark)
+      }
+      // Si ce projet correspond à une expérience pro, on l'active même si en cours (final_mark >= 0)
+      const expKey = projectToExperience[project.project.id];
+      if (expKey) {
+        //console.log('[DEBUG][RNCP] Project', project.project.id, 'mapped to experience', expKey);
+      }
+      if (expKey && !experiencesToToggle.has(expKey)) {
+        experiencesToToggle.add(expKey);
+      }
+    });
+    //console.log('[DEBUG][RNCP] experiencesToToggle:', Array.from(experiencesToToggle));
+    // Active les expériences pro détectées
+    experiencesToToggle.forEach((expKey) => {
+      if (!autoFetchedProfessionalExperiences.has(expKey)) {
+        setProfessionalExperience(expKey, true);
+        setAutoFetchedProfessionalExperience(expKey);
+      }
+    });
+  }, [userIntraInfo, setProjectMark, setAutoFetchedProjectMark, clearAutoFetchedProjectMarks, persistedOldProjects]);
 
   useEffect(() => {
+    //console.log('[DEBUG] userEvents value:', userEvents);
     if (Array.isArray(userEvents)) {
       //console.log("[DEBUG] Injecting events into store:", userEvents.length, userEvents)
       setEvents(userEvents.length)
+    } else {
+      console.warn('[DEBUG] userEvents is not an array:', userEvents);
     }
   }, [userEvents, setEvents])
 
@@ -166,20 +265,6 @@ export default function RNCPSimulator() {
   }, [requirementsComplete])
 
 
-  // --- Sauvegarde et récupération des anciens projets hors RNCP dans le localStorage ---
-  const oldProjectsKey = session?.user && 'login' in session.user && session.user.login ? `oldProjects_${session.user.login}` : undefined;
-  // Récupération au chargement si pas de userIntraInfo (ex: refresh)
-  const [persistedOldProjects, setPersistedOldProjects] = useState<any[]>(() => {
-    if (!oldProjectsKey) return [];
-    if (typeof window === 'undefined') return [];
-    const raw = localStorage.getItem(oldProjectsKey);
-    if (!raw) return [];
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
-  });
 
   // Sauvegarde à chaque fetch
   useEffect(() => {
@@ -203,7 +288,6 @@ export default function RNCPSimulator() {
     localStorage.setItem(oldProjectsKey, JSON.stringify(oldProjects));
   }, [userIntraInfo, activeTitle, oldProjectsKey]);
 
-  // Utilise la source la plus fraiche (userIntraInfo si dispo, sinon localStorage)
   const autoExtraProjects = (() => {
     if (userIntraInfo && userIntraInfo.projects_users && activeTitle) {
       const mainOption = activeTitle.options?.[0];
@@ -265,3 +349,4 @@ export default function RNCPSimulator() {
     </>
   )
 }
+

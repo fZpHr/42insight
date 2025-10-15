@@ -6,10 +6,14 @@ import { useStoreWithEqualityFn, createWithEqualityFn } from "zustand/traditiona
 
 // Persistance localStorage helpers
 const STORAGE_KEY = "rncp_simulator_progression"
+const EVENTS_TTL = 10 * 60 * 1000; // 10 minutes en ms
 function saveProgressionToStorage(state: any) {
   const data = {
     projectMarks: Array.from(state.projectMarks.entries()),
     professionalExperiences: Array.from(state.professionalExperiences),
+    events: state.events ?? 0,
+    eventsFetchedAt: state.eventsFetchedAt ?? 0,
+    ts: Date.now(),
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
@@ -19,9 +23,19 @@ function loadProgressionFromStorage() {
   if (!raw) return null
   try {
     const data = JSON.parse(raw)
+    const now = Date.now();
+    let events = 0, eventsFetchedAt = 0;
+    if (typeof data.events === 'number' && typeof data.eventsFetchedAt === 'number') {
+      if (now - data.eventsFetchedAt < EVENTS_TTL) {
+        events = data.events;
+        eventsFetchedAt = data.eventsFetchedAt;
+      }
+    }
     return {
       projectMarks: new Map<number, number>(data.projectMarks as [number, number][]),
       professionalExperiences: new Set<string>(data.professionalExperiences as string[]),
+      events,
+      eventsFetchedAt,
     }
   } catch {
     return null
@@ -60,6 +74,10 @@ const createFortyTwoStore = (initProps: {
     setAutoFetchedProjectMark: (projectId: number, mark: number) => void;
     clearAutoFetchedProjectMarks: () => void;
     toggleProfessionalExperience: (experience: string) => void;
+    setProfessionalExperience: (experience: string, enabled: boolean) => void;
+    autoFetchedProfessionalExperiences: Set<string>;
+    setAutoFetchedProfessionalExperience: (expKey: string) => void;
+    clearAutoFetchedProfessionalExperiences: () => void;
     resetAll: () => void;
     softReset: () => void;
   };
@@ -70,6 +88,7 @@ const createFortyTwoStore = (initProps: {
     projects: initProps.projects,
   projectMarks: new Map<number, number>(),
   autoFetchedProjectMarks: new Map<number, number>(),
+  autoFetchedProfessionalExperiences: new Set<string>(),
   setAutoFetchedProjectMark: (projectId: number, mark: number) =>
     set((state) => {
       const newAuto = new Map(state.autoFetchedProjectMarks)
@@ -80,6 +99,16 @@ const createFortyTwoStore = (initProps: {
       saveProgressionToStorage({ ...state, projectMarks: newMarks })
       return { autoFetchedProjectMarks: newAuto, projectMarks: newMarks }
     }),
+
+    setAutoFetchedProfessionalExperience: (expKey: string) =>
+      set((state) => {
+        const newAuto: Set<string> = new Set(state.autoFetchedProfessionalExperiences)
+        newAuto.add(expKey)
+        return { autoFetchedProfessionalExperiences: newAuto }
+      }),
+
+    clearAutoFetchedProfessionalExperiences: () =>
+      set(() => ({ autoFetchedProfessionalExperiences: new Set<string>() })),
 
   clearAutoFetchedProjectMarks: () =>
     set((state) => {
@@ -100,6 +129,19 @@ const createFortyTwoStore = (initProps: {
           newExperiences.delete(experience)
         } else {
           newExperiences.add(experience)
+        }
+        const next = { professionalExperiences: newExperiences }
+        saveProgressionToStorage({ ...state, ...next })
+        return next
+      }),
+
+    setProfessionalExperience: (experience: string, enabled: boolean) =>
+      set((state) => {
+        const newExperiences = new Set(state.professionalExperiences)
+        if (enabled) {
+          newExperiences.add(experience)
+        } else {
+          newExperiences.delete(experience)
         }
         const next = { professionalExperiences: newExperiences }
         saveProgressionToStorage({ ...state, ...next })
@@ -139,10 +181,11 @@ const createFortyTwoStore = (initProps: {
     }),
 
     softReset: () => set((state) => {
-      // Soft reset: ne garde que les projets auto-fetch
+      // Soft reset: ne garde que les projets auto-fetch et expériences auto-fetch
       const newMarks = new Map(state.autoFetchedProjectMarks)
-      saveProgressionToStorage({ projectMarks: newMarks, professionalExperiences: new Set(state.professionalExperiences) })
-      return { projectMarks: newMarks }
+      const newProExp: Set<string> = new Set(state.autoFetchedProfessionalExperiences)
+      saveProgressionToStorage({ projectMarks: newMarks, professionalExperiences: newProExp })
+      return { projectMarks: newMarks, professionalExperiences: newProExp }
     }),
 
     getSelectedXP: () => {
@@ -314,9 +357,23 @@ export const FortyTwoStoreProvider = ({ children, cursus, levels, titles, projec
   useEffect(() => {
     const restored = loadProgressionFromStorage();
     if (restored) {
+      // Ne restaure events que si la valeur du localStorage est plus fraîche que celle du store
+      const current = storeRef.current?.getState();
+      let events = current?.events ?? 0;
+      let eventsFetchedAt = current?.eventsFetchedAt ?? 0;
+      if (
+        typeof restored.events === 'number' &&
+        typeof restored.eventsFetchedAt === 'number' &&
+        restored.eventsFetchedAt > eventsFetchedAt
+      ) {
+        events = restored.events;
+        eventsFetchedAt = restored.eventsFetchedAt;
+      }
       storeRef.current?.setState({
         projectMarks: restored.projectMarks,
         professionalExperiences: restored.professionalExperiences,
+        events,
+        eventsFetchedAt,
       });
       forceRerender(x => x + 1);
     }
