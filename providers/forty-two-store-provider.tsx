@@ -133,9 +133,9 @@ const createFortyTwoStore = (initProps: {
         return next
       }),
     resetAll: () => set((state) => {
-      // Reset tout (projets cochés, expériences pro)
-      saveProgressionToStorage({ projectMarks: new Map(), professionalExperiences: new Set() })
-      return { projectMarks: new Map(), professionalExperiences: new Set() }
+  // Reset tout (projets cochés, expériences pro, events)
+  saveProgressionToStorage({ projectMarks: new Map(), professionalExperiences: new Set(), events: 0, eventsFetchedAt: 0 })
+  return { projectMarks: new Map(), professionalExperiences: new Set(), events: 0, eventsFetchedAt: 0 }
     }),
 
     softReset: () => set((state) => {
@@ -171,19 +171,20 @@ const createFortyTwoStore = (initProps: {
     },
 
     getProjectXP: (project: FortyTwoProject) => {
-      const state = get()
-      let totalXP = project.experience || project.difficulty || 0
-
+      const state = get();
+      let totalXP = 0;
+      // Toujours additionner l'XP du projet lui-même (même si 0)
+      totalXP += project.experience || project.difficulty || 0;
+      // Additionner récursivement l'XP de tous les enfants
       if (project.children && project.children.length > 0) {
-        project.children.forEach((childRef) => {
-          const childProject = state.projects[childRef.id]
+        for (const childRef of project.children) {
+          const childProject = state.projects[childRef.id];
           if (childProject) {
-            totalXP += state.getProjectXP(childProject)
+            totalXP += state.getProjectXP(childProject);
           }
-        })
+        }
       }
-
-      return totalXP
+      return totalXP;
     },
 
     getDynamicProjectXP: (project: FortyTwoProject) => {

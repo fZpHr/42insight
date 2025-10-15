@@ -139,14 +139,17 @@ function Project({
           <p className="break-words flex items-center gap-2">
             {project.name}
             <Badge className="rounded-lg ml-2" variant="outline">
-              {project.experience?.toLocaleString() ?? 0} XP
+              {project.children && project.children.length > 0
+                ? totalXP.toLocaleString()
+                : (project.experience ?? 0).toLocaleString()
+              } XP
             </Badge>
           </p>
           <div
             className="flex flex-wrap items-center justify-end gap-2"
             onClick={isSelected ? (e) => e.stopPropagation() : undefined}
           >
-            <Badge className="rounded-lg" variant="secondary">
+            <Badge className="rounded-lg bg-purple-100 border-purple-300 text-purple-800 border-2" variant="secondary">
               {(totalProjectXP || 0).toLocaleString()} XP
             </Badge>
             {isSelected && (
@@ -207,12 +210,10 @@ export function ProjectList({
   )
 
   return (
-    <ScrollArea className="h-[442px]">
-      <div className="space-y-2">
-        {filteredProjects.map((project, index) => {
-          return <Project key={`${project.id}-${index}`} projectId={project.id} />
-        })}
-      </div>
-    </ScrollArea>
-  )
+    <div className="space-y-2">
+      {filteredProjects.map((project, index) => (
+        <Project key={`${project.id}-${index}`} projectId={project.id} />
+      ))}
+    </div>
+  );
 }

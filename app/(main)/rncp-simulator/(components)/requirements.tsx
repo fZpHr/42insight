@@ -118,48 +118,41 @@ export function TitleRequirements({ title, className }: TitleRequirementsProps) 
         </CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
-  <TitleRequirement name={"Level required"} value={currentLevel} max={title.level} />
-  <TitleRequirement name={"Group projects"} value={validatedGroupProjectsCount} max={2} />
-        <TitleRequirement name={"Number of events"} value={events} max={title.number_of_events} />
-        <TitleRequirement
-          name={"Professional experiences"}
-          value={professionalExperiencesCount}
-          max={title.number_of_experiences}
-        />
-        <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <h4 className="font-medium mb-2">Professional Experiences</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {professionalExperienceOptions.map((exp) => (
-                <div 
-                  key={exp.id} 
-                  className={cn(
-                    "flex items-center space-x-2 rounded-md p-2 cursor-pointer transition-colors hover:bg-accent",
-                    professionalExperiences.has(exp.id) && "bg-primary/30"
-                  )}
-                  onClick={() => toggleProfessionalExperience(exp.id)}
-                >
-                  <label htmlFor={exp.id} className="cursor-pointer">
-                    {exp.label}
-                  </label>
-                </div>
-              ))}
-            </div>
+        <TitleRequirement name={"Level required"} value={currentLevel} max={title.level} />
+        <TitleRequirement name={"Group projects"} value={validatedGroupProjectsCount} max={2} />
+        <div className="relative">
+          <TitleRequirement name={"Number of events"} value={events} max={title.number_of_events} />
+          {events < title.number_of_events && (
+            <button
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-primary-foreground rounded px-2 py-1 text-xs shadow hover:bg-primary/80 transition"
+              onClick={() => setEvents(title.number_of_events)}
+            >
+              Max event
+            </button>
+          )}
+        </div>
+        <div className="md:col-span-3 flex flex-row items-center gap-4">
+          <div className="flex flex-row gap-2">
+            {professionalExperienceOptions.map((exp) => (
+              <div
+                key={exp.id}
+                className={cn(
+                  "flex items-center space-x-2 rounded-md p-2 cursor-pointer border-2 border-primary/40 bg-secondary transition-colors hover:bg-accent",
+                  professionalExperiences.has(exp.id) && "bg-primary/30 border-primary"
+                )}
+                onClick={() => toggleProfessionalExperience(exp.id)}
+              >
+                <label htmlFor={exp.id} className="cursor-pointer">
+                  {exp.label}
+                </label>
+              </div>
+            ))}
           </div>
-          <div>
-            <h4 className="font-medium mb-2">Events</h4>
-            <Input 
-              type="number"
-              placeholder="Number of events"
-              value={events}
-              min={0}
-              max={15}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10)
-                if (!isNaN(value) && value >= 0 && value <= 15) {
-                  setEvents(value)
-                }
-              }}
+          <div className="flex-1">
+            <TitleRequirement
+              name={"Professional experiences"}
+              value={professionalExperiencesCount}
+              max={title.number_of_experiences}
             />
           </div>
         </div>

@@ -119,15 +119,15 @@ export function TitleOptions({ title, className, onCompletionChange }: TitleOpti
   }, [completionStatuses, onCompletionChange])
 
   return (
-    <div className="bg-muted/10 rounded-xl py-4">
+    <div className="bg-muted/10 rounded-xl py-4 w-full">
       <Carousel
         opts={{
           align: 'start',
         }}
-        className={cn('w-full px-8', className)}
+        className={cn('w-full px-0', className)}
         plugins={[WheelGesturesPlugin()]}
       >
-        <CarouselContent>
+        <CarouselContent className="w-full">
           {options.map((option, index) => {
               const isOptionComplete = completionStatuses[option.title]
 
@@ -141,8 +141,9 @@ export function TitleOptions({ title, className, onCompletionChange }: TitleOpti
               )
           })}
         </CarouselContent>
-        <CarouselPrevious className="-left-2 md:-left-3" />
-        <CarouselNext className="-right-2 md:-right-3" />
+        {/* Optionally hide navigation arrows if you want tabs to always fit */}
+        {/* <CarouselPrevious className="-left-2 md:-left-3" />
+        <CarouselNext className="-right-2 md:-right-3" /> */}
       </Carousel>
     </div>
   )

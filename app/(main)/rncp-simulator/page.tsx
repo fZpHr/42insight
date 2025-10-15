@@ -3,7 +3,8 @@
 import { shallow } from "zustand/shallow"
 import { useFortyTwoStore } from "@/providers/forty-two-store-provider"
 import type { FortyTwoTitle } from "@/types/forty-two"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
+import { addToLocalStorage, getFromLocalStorage } from "@/utils/localStorage"
 import { TitleOptions } from "./(components)/options"
 import { TitleRequirements } from "./(components)/requirements"
 import { TitleSelector } from "./(components)/selector"
@@ -16,11 +17,32 @@ import { useSession } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
 
+
+function getCache(key: string, maxAgeMs: number) {
+  if (typeof window === 'undefined') return null;
+  const raw = localStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    const { value, ts } = JSON.parse(raw);
+    if (Date.now() - ts < maxAgeMs) return value;
+  } catch {}
+  return null;
+}
+
+function setCache(key: string, value: any) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(key, JSON.stringify({ value, ts: Date.now() }));
+}
+
 async function fetchUserEvents(login: string) {
   if (!login) return [];
+  const cacheKey = `events_${login}`;
+  const cached = getCache(cacheKey, 10 * 60 * 1000);
+  if (cached) return cached;
   const res = await fetch(`/api/users/${login}/events`);
   if (!res.ok) return [];
   const data = await res.json();
+  setCache(cacheKey, data.events || []);
   return data.events || [];
 }
 
@@ -46,9 +68,19 @@ export default function RNCPSimulator() {
   const [showConfetti, setShowConfetti] = useState(false)
   const [optionStatuses, setOptionStatuses] = useState<Record<string, boolean>>({})
 
+
+  // Ajout du cache pour userIntraInfo (projets)
   const { data: userIntraInfo } = useQuery({
     queryKey: ["userIntraInfo", session?.user?.name],
-    queryFn: () => fetchUserIntraInfo(session?.user?.login || ""),
+    queryFn: async () => {
+      const login = session?.user?.login || "";
+      const cacheKey = `userIntraInfo_${login}`;
+      const cached = getCache(cacheKey, 10 * 60 * 1000);
+      if (cached) return cached;
+      const data = await fetchUserIntraInfo(login);
+      setCache(cacheKey, data);
+      return data;
+    },
     enabled: !!session?.user,
   })
 
@@ -95,34 +127,47 @@ export default function RNCPSimulator() {
 
   // La logique de complétion est maintenant dans le store.
   // On peut créer un hook personnalisé pour plus de clarté.
-  const isSuiteComplete = useMemo(() => optionStatuses["Suite"] === true, [optionStatuses])
-  const isAnyOtherOptionComplete = useMemo(
-    () => Object.entries(optionStatuses).some(([title, status]) => title !== "Suite" && status === true),
-    [optionStatuses],
-  )
 
-  // On utilise le store pour vérifier la complétion des prérequis.
-  // Le hook s'abonne aux changements de `projectMarks` et `level`.
-  const areReqsComplete = useFortyTwoStore((state) => {
+  // On récupère requirementsComplete du composant TitleRequirements
+  const requirementsComplete = useFortyTwoStore((state) => {
     if (!activeTitle) return false;
     const currentXP = state.getSelectedXP();
     const currentLevel = state.getLevel(currentXP);
-    return currentLevel >= activeTitle.level;
-  })
+    // On récupère aussi les events, pro exp, group projects
+    const events = state.events;
+    const professionalExperiences = state.professionalExperiences;
+    let professionalExperiencesCount = professionalExperiences.size;
+    if (professionalExperiences.has("alternance_2_ans")) professionalExperiencesCount += 1;
+    // Group projects validés
+    const groupProjects = Object.values(state.projects).filter((p) => p && p.is_solo === false);
+    const validatedGroupProjectsCount = groupProjects.filter((p) => state.projectMarks.get(p.id) && state.projectMarks.get(p.id)! > 0).length;
+    // Vérifie aussi que toutes les tabs/options sont complètes
+    const allTabsComplete = Object.values(optionStatuses).every(Boolean);
+    return (
+      currentLevel >= activeTitle.level &&
+      events >= activeTitle.number_of_events &&
+      professionalExperiencesCount >= activeTitle.number_of_experiences &&
+      validatedGroupProjectsCount >= 2 &&
+      allTabsComplete
+    );
+  });
 
-  const isOverallComplete = areReqsComplete && isSuiteComplete && isAnyOtherOptionComplete
 
+  // Confettis : déclenche à chaque passage requirementsComplete false -> true
+  const prevReqsComplete = useRef(false)
   useEffect(() => {
-    if (isOverallComplete) {
-      setShowConfetti(true)
-      const timer = setTimeout(() => setShowConfetti(false), 5000) // 5 seconds
-      return () => clearTimeout(timer)
+    if (requirementsComplete && !prevReqsComplete.current) {
+      setShowConfetti(false)
+      setTimeout(() => setShowConfetti(true), 10) // force le reset
+      setTimeout(() => setShowConfetti(false), 8000)
     }
-  }, [isOverallComplete])
+    prevReqsComplete.current = requirementsComplete
+  }, [requirementsComplete])
+
 
   return (
     <>
-      {showConfetti && <ReactConfetti width={width} height={height} recycle={false} />}
+  {showConfetti && <ReactConfetti width={width} height={height} recycle={false} />}
       <TitleSelector titles={titles} activeTitle={activeTitle} setActiveTitle={setActiveTitle} />
 
       <Separator className="my-6" />
@@ -131,8 +176,7 @@ export default function RNCPSimulator() {
         <h4 className="font-semibold text-2xl leading-none tracking-tight">Information</h4>
 
         <p className="text-muted-foreground text-sm">
-          Click on projects to select/deselect them and see how the XP bar changes. You must validate the requirements.{" "}
-          At least do 2 group projects.
+          You must validate the requirements.   {" "}
           <Link
             className="underline underline-offset-1 transition-colors hover:text-foreground"
             prefetch={false}
