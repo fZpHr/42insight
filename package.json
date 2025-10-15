@@ -43,6 +43,7 @@
     "embla-carousel": "latest",
     "embla-carousel-react": "^8.6.0",
     "embla-carousel-wheel-gestures": "latest",
+    "file-saver": "^2.0.5",
     "framer-motion": "latest",
     "graphology": "^0.26.0",
     "immer": "latest",
@@ -71,7 +72,7 @@
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
-  "zustand": "^4.5.2"
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

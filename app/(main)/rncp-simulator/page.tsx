@@ -50,7 +50,7 @@ export default function RNCPSimulator() {
   const { data: session } = useSession()
   // On utilise un sélecteur optimisé avec `shallow` pour éviter les re-renders inutiles.
   // On ne récupère que ce dont la page a *directement* besoin.
-  const { titles, setProjectMark, setEvents, resetAll, softReset, setAutoFetchedProjectMark, clearAutoFetchedProjectMarks } =
+  const { titles, setProjectMark, setEvents, resetAll, softReset, setAutoFetchedProjectMark, clearAutoFetchedProjectMarks, projects } =
     useFortyTwoStore(
       (state) => ({
         titles: state.titles,
@@ -60,6 +60,7 @@ export default function RNCPSimulator() {
         softReset: state.softReset,
         setAutoFetchedProjectMark: state.setAutoFetchedProjectMark,
         clearAutoFetchedProjectMarks: state.clearAutoFetchedProjectMarks,
+        projects: state.projects,
       }),
       shallow,
     )
@@ -165,9 +166,68 @@ export default function RNCPSimulator() {
   }, [requirementsComplete])
 
 
+  // --- Sauvegarde et récupération des anciens projets hors RNCP dans le localStorage ---
+  const oldProjectsKey = session?.user && 'login' in session.user && session.user.login ? `oldProjects_${session.user.login}` : undefined;
+  // Récupération au chargement si pas de userIntraInfo (ex: refresh)
+  const [persistedOldProjects, setPersistedOldProjects] = useState<any[]>(() => {
+    if (!oldProjectsKey) return [];
+    if (typeof window === 'undefined') return [];
+    const raw = localStorage.getItem(oldProjectsKey);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  });
+
+  // Sauvegarde à chaque fetch
+  useEffect(() => {
+    if (!userIntraInfo || !userIntraInfo.projects_users || !activeTitle || !oldProjectsKey) return;
+    const mainOption = activeTitle.options?.[0];
+    if (!mainOption) return;
+    const cursusProjectIds = new Set(
+      Array.isArray(mainOption.projects)
+        ? mainOption.projects
+        : Object.keys(mainOption.projects).map(Number)
+    );
+    const oldProjects = userIntraInfo.projects_users
+      .filter((pu: any) => !cursusProjectIds.has(pu.project.id) && pu.final_mark > 0)
+      .map((pu: any) => ({
+        id: pu.project.id,
+        name: pu.project.name,
+        xp: pu.project.experience || pu.project.xp || 0,
+        mark: pu.final_mark,
+      }));
+    setPersistedOldProjects(oldProjects);
+    localStorage.setItem(oldProjectsKey, JSON.stringify(oldProjects));
+  }, [userIntraInfo, activeTitle, oldProjectsKey]);
+
+  // Utilise la source la plus fraiche (userIntraInfo si dispo, sinon localStorage)
+  const autoExtraProjects = (() => {
+    if (userIntraInfo && userIntraInfo.projects_users && activeTitle) {
+      const mainOption = activeTitle.options?.[0];
+      if (!mainOption) return [];
+      const cursusProjectIds = new Set(
+        Array.isArray(mainOption.projects)
+          ? mainOption.projects
+          : Object.keys(mainOption.projects).map(Number)
+      );
+      return userIntraInfo.projects_users
+        .filter((pu: any) => !cursusProjectIds.has(pu.project.id) && pu.final_mark > 0)
+        .map((pu: any) => ({
+          id: pu.project.id,
+          name: pu.project.name,
+          xp: pu.project.experience || pu.project.xp || 0,
+          mark: pu.final_mark,
+        }));
+    }
+    return persistedOldProjects;
+  })();
+
   return (
     <>
-  {showConfetti && <ReactConfetti width={width} height={height} recycle={false} />}
+      {showConfetti && <ReactConfetti width={width} height={height} recycle={false} />}
       <TitleSelector titles={titles} activeTitle={activeTitle} setActiveTitle={setActiveTitle} />
 
       <Separator className="my-6" />
@@ -195,7 +255,12 @@ export default function RNCPSimulator() {
         </div>
       </div>
 
-      <TitleRequirements title={activeTitle} className="my-6" />
+      {/* Détection des projets hors RNCP auto (présents dans userIntraInfo.projects_users mais pas dans la liste RNCP) */}
+      <TitleRequirements
+        title={activeTitle}
+        className="my-6"
+        autoExtraProjects={autoExtraProjects}
+      />
       <TitleOptions title={activeTitle} onCompletionChange={setOptionStatuses} />
     </>
   )

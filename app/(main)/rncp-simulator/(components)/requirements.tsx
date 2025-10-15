@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useSyncExternalStore, useState } from "react"
+import { useMemo, useSyncExternalStore, useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
@@ -83,11 +83,15 @@ function TitleRequirement({ name, value, max, unit }: TitleRequirementProps) {
 
 
 interface TitleRequirementsProps {
-  title: FortyTwoTitle
-  className?: string
+  title: FortyTwoTitle;
+  className?: string;
+  autoExtraProjects?: { name: string; xp: number; id: number; mark: number }[];
+  onDeleteOldProject?: (id: number) => void;
 }
 
-export function TitleRequirements({ title, className }: TitleRequirementsProps) {
+export function TitleRequirements({ title, className, autoExtraProjects = [], onDeleteOldProject }: TitleRequirementsProps) {
+  // DEBUG : Affiche la liste des projets hors RNCP détectés
+  const debugHorsRncp = autoExtraProjects;
 
   const [showManualTab, setShowManualTab] = useState(false);
   // Force re-render on projectMarks change
@@ -102,7 +106,7 @@ export function TitleRequirements({ title, className }: TitleRequirementsProps) 
     setEvents,
     getLevel,
     projects,
-    projectMarks
+    projectMarks,
   } = useFortyTwoStore(state => ({
     professionalExperiences: state.professionalExperiences,
     toggleProfessionalExperience: state.toggleProfessionalExperience,
@@ -111,56 +115,27 @@ export function TitleRequirements({ title, className }: TitleRequirementsProps) 
     getLevel: state.getLevel,
     projects: state.projects,
     projectMarks: state.projectMarks,
-  }))
+  }));
 
+  // Calcul du niveau courant et du niveau précis
+  const currentXP = useFortyTwoStore(state => state.getSelectedXP());
+  const currentLevel = getLevel(currentXP);
+  // Utilise getPreciseLevel pour un affichage décimal précis
+  const currentLevelPrecise = getPreciseLevel(currentXP, useFortyTwoStore(state => state.levels)).toFixed(2);
 
-  // XP de base pour chaque expérience pro
-  const professionalExperienceXp: Record<string, number> = {
-    stage_1: 42000,
-    stage_2: 63000,
-    alternance_1_an: 90000,
-    alternance_2_ans: 180000,
-  }
-  // Note personnalisable pour chaque expérience pro (par défaut 100)
-  const [experienceMarks, setExperienceMarks] = useState<Record<string, number>>({
-    stage_1: 100,
-    stage_2: 100,
-    alternance_1_an: 100,
-    alternance_2_ans: 100,
-  })
-
-  // XP total des projets cochés (hors expériences pro)
-  const baseXP = useMemo(() => {
-    let totalXP = 0
-    for (const [projectId, mark] of projectMarks) {
-      const project = projects[projectId]
-      if (project) {
-        totalXP += (project.experience || project.difficulty || 0) * (mark / 100)
-      }
-    }
-    return totalXP
-  }, [projectMarks, projects])
-
-  // XP total des expériences pro cochées (avec note)
-  const professionalExperiencesXp = useMemo(() => {
-    let xp = 0
-    for (const id of professionalExperiences) {
-      const base = professionalExperienceXp[id] ?? 0
-      const mark = experienceMarks[id] ?? 100
-      xp += base * (mark / 100)
-    }
-    return xp
-  }, [professionalExperiences, experienceMarks])
-
-  const currentXP = baseXP + professionalExperiencesXp
-  const levels = useFortyTwoStore(state => state.levels)
-  // On arrondit à 2 décimales pour éviter les imprécisions (ex: 21.703 => 21.70)
-  const currentLevelPrecise = Math.floor(getPreciseLevel(currentXP, levels) * 100) / 100
-  const currentLevel = getLevel(currentXP)
+  // Pour la gestion des notes d'expérience pro
+  const [experienceMarks, setExperienceMarks] = useState<{ [id: string]: number }>({});
+  // XP de base pour chaque expérience pro (à adapter selon la logique métier)
+  const professionalExperienceXp: { [id: string]: number } = {
+    stage_1: 500,
+    stage_2: 1000,
+    alternance_1_an: 1500,
+    alternance_2_ans: 2000,
+  };
 
   // Pour synchroniser avec le store si besoin, tu peux persister dans localStorage
   const handleMarkChange = (id: string, mark: number) => {
-    setExperienceMarks((prev) => ({ ...prev, [id]: Math.max(0, Math.min(mark, 125)) }))
+    setExperienceMarks((prev: any) => ({ ...prev, [id]: Math.max(0, Math.min(mark, 125)) }))
   }
   const professionalExperienceOptions = [
     { id: "stage_1", label: "Stage 1" },
@@ -302,7 +277,7 @@ export function TitleRequirements({ title, className }: TitleRequirementsProps) 
             <CardTitle>Ajout manuel de projets</CardTitle>
           </CardHeader>
           <CardContent>
-            <ManualProjectForm onAddProject={addManualProjectXp} />
+            <ManualProjectForm onAddProject={addManualProjectXp} autoExtraProjects={autoExtraProjects} onDeleteOldProject={onDeleteOldProject} />
           </CardContent>
         </Card>
       )}
@@ -343,15 +318,54 @@ export function TitleOptionRequirements({ option }: { option: FortyTwoTitleOptio
 }
 
 // Formulaire d'ajout manuel de projet (influence uniquement la jauge de level)
-function ManualProjectForm({ onAddProject }: { onAddProject: (xp: number) => void }) {
+type ManualProject = { name: string; xp: number; id: number; mark: number };
+interface ManualProjectFormProps {
+  onAddProject: (xp: number) => void;
+  autoExtraProjects?: ManualProject[];
+  onDeleteOldProject?: (id: number) => void;
+}
+function ManualProjectForm({ onAddProject, autoExtraProjects = [], onDeleteOldProject }: ManualProjectFormProps) {
   const [selected, setSelected] = useState<string>("");
-  const [added, setAdded] = useState<{ name: string; xp: number }[]>([]);
+  const [added, setAdded] = useState<ManualProject[]>([]); // uniquement les projets ajoutés manuellement
   const [error, setError] = useState<string>("");
+  const [showOld, setShowOld] = useState(false);
 
+  // Trie et filtre les anciens projets (autoExtraProjects) du plus récent au plus ancien (par id décroissant), sans les projets piscine
+  const piscineRegex = /Piscine|piscine|C Piscine/;
+  const [oldProjects, setOldProjects] = useState(() =>
+    [...autoExtraProjects].filter(p => !piscineRegex.test(p.name)).sort((a, b) => b.id - a.id)
+  );
+  // Synchronise oldProjects si autoExtraProjects change (ex: refresh, fetch)
+  useEffect(() => {
+    setOldProjects(
+      [...autoExtraProjects].filter(p => !piscineRegex.test(p.name)).sort((a, b) => b.id - a.id)
+    );
+  }, [autoExtraProjects]);
+
+  // Permet de modifier la note ou supprimer un ancien projet hors RNCP
+  const { setProjectMark, projects } = useFortyTwoStore(state => ({
+    setProjectMark: state.setProjectMark,
+    projects: state.projects,
+  }));
+  const handleOldMarkChange = (id: number, mark: number) => {
+    let safeMark = Number(mark);
+    if (isNaN(safeMark)) safeMark = 0;
+    safeMark = Math.max(0, Math.min(safeMark, 125));
+    setProjectMark(id, safeMark);
+  };
+  // Pour la persistance locale (clé identique à page.tsx)
+  const session = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('nextauth.session') || '{}') : undefined;
+  const oldProjectsKey = session?.user && 'login' in session.user && session.user.login ? `oldProjects_${session.user.login}` : undefined;
+
+  const handleOldRemove = (id: number) => {
+    setProjectMark(id, 0);
+    setOldProjects(list => list.filter(p => p.id !== id));
+    if (typeof onDeleteOldProject === 'function') {
+      onDeleteOldProject(id);
+    }
+  };
 
   // Utilise la vraie liste de projets pour l'ajout manuel
-  // @ts-ignore
-  const { setProjectMark, projects } = useFortyTwoStore();
   const options = Object.values(projects).filter((p: any) => (p.experience || p.xp) && p.name && typeof (p.experience ?? p.xp) === "number");
 
   const handleAdd = () => {
@@ -360,21 +374,76 @@ function ManualProjectForm({ onAddProject }: { onAddProject: (xp: number) => voi
       setError("Sélectionne un projet valide.");
       return;
     }
-    if (added.some(a => a.name === project.name)) {
+    if (added.some(a => a.id === project.id)) {
       setError("Projet déjà ajouté.");
       return;
     }
     const xp = typeof project.experience === 'number' ? project.experience : (project as any).xp;
-    setAdded(list => [...list, { name: project.name, xp }]);
-    // Marque le projet comme validé à 100 pour qu'il donne de l'XP à la jauge
-    setProjectMark(project.id, 100, true);
+    setAdded(list => [...list, { name: project.name, xp, id: project.id, mark: 100 }]);
+  setProjectMark(project.id, 100);
     onAddProject(xp);
     setSelected("");
     setError("");
   };
 
+  // Permet de supprimer un projet ajouté
+  const handleRemove = (id: number) => {
+    setAdded(list => list.filter(a => a.id !== id));
+  setProjectMark(id, 0); // Retire l'XP de la jauge
+  };
+
+  // Permet de modifier la note d'un projet ajouté
+  const handleMarkChange = (id: number, mark: number) => {
+    let safeMark = Number(mark);
+    if (isNaN(safeMark)) safeMark = 0;
+    safeMark = Math.max(0, Math.min(safeMark, 125));
+    setAdded(list => list.map(a => a.id === id ? { ...a, mark: safeMark } : a));
+    setProjectMark(id, safeMark); // Met à jour la jauge
+  };
+
   return (
     <div className="space-y-4">
+      {/* Section repliable pour anciens projets hors RNCP */}
+      <div className="mb-2">
+        <button
+          type="button"
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition"
+          onClick={() => setShowOld(v => !v)}
+          aria-expanded={showOld}
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${showOld ? '' : '-rotate-90'}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+          <span>Voir anciens projets hors RNCP ({oldProjects.length})</span>
+        </button>
+        {showOld && (
+          <ul className="mt-2 pl-4 text-xs text-muted-foreground/70 space-y-1">
+            {oldProjects.length === 0 && <li>Aucun projet</li>}
+            {oldProjects.map(p => (
+              <li key={p.id} className="flex items-center gap-2">
+                <span>{p.name} ({p.xp} XP)</span>
+                <input
+                  min={0}
+                  max={125}
+                  defaultValue={p.mark}
+                  onChange={e => handleOldMarkChange(p.id, Number(e.target.value))}
+                  className="w-14 border rounded px-1 py-0.5 text-xs"
+                />
+                <span>pts</span>
+                {/* Suppression désactivée */}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {/* Ajout manuel classique */}
       <div>
         <label className="block mb-1 text-sm font-medium">Projet hors RNCP</label>
         <select
@@ -397,16 +466,34 @@ function ManualProjectForm({ onAddProject }: { onAddProject: (xp: number) => voi
         Ajouter à la jauge de level
       </button>
       {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
-      {added.length > 0 && (
-        <div className="mt-4">
-          <div className="font-semibold text-sm mb-2">Projets ajoutés :</div>
-          <ul className="list-disc pl-5 text-sm text-muted-foreground">
-            {added.map(a => (
-              <li key={a.name}>{a.name} (+{a.xp} XP)</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="mt-4">
+        <div className="font-semibold text-sm mb-2">Projets ajoutés :</div>
+        <ul className="list-disc pl-5 text-sm text-muted-foreground">
+          {added.map(a => (
+            <li key={a.id} className="flex items-center gap-2">
+              <span>{a.name} (+{Math.round(a.xp * (a.mark / 100)).toLocaleString()} XP)</span>
+              <input
+                type="number"
+                min={0}
+                max={125}
+                step={1}
+                value={a.mark}
+                onChange={e => handleMarkChange(a.id, Number(e.target.value))}
+                className="ml-2 w-14 px-1 py-0.5 rounded border border-primary/40 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                title="Note (%) du projet"
+              />
+              <button
+                type="button"
+                className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold"
+                onClick={() => handleRemove(a.id)}
+                title="Supprimer ce projet"
+              >
+                Supprimer
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
