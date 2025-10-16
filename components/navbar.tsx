@@ -17,6 +17,7 @@ import {
   Activity,
   LayoutGrid,
   Workflow,
+  Award,
 } from "lucide-react";
 
 import {
@@ -92,7 +93,7 @@ const navigationData = {
         {
           title: "RNCP Simulator",
           url: "/rncp-simulator",
-          icon: Database,
+          icon: Award, // Icône diplôme
           description: "Simulate your RNCP progress",
         }
       ],
