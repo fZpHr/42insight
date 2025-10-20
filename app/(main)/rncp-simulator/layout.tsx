@@ -1,0 +1,53 @@
+import type React from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { getFortyTwoCursus } from "@/lib/forty-two/cursus"
+import { getFortyTwoLevels } from "@/lib/forty-two/forty-two-experience"
+import { getFortyTwoProjects } from "@/lib/forty-two/forty-two-projects"
+import { getFortyTwoTitles } from "@/lib/forty-two/forty-two-rncp"
+import { FortyTwoStoreProvider } from "@/providers/forty-two-store-provider"
+import { Suspense } from "react"
+import "./rncp-simulator.css"
+
+function TitlesSkeleton() {
+  return <Skeleton className="h-[246.5px] @max-[1400px]:w-full @min-[1400px]:max-w-[1400px]" />
+}
+
+async function TitlesProvider({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  const cursus = await getFortyTwoCursus()
+  const projects = await getFortyTwoProjects()
+  const titles = await getFortyTwoTitles()
+  const levels = await getFortyTwoLevels()
+
+  return (
+    <FortyTwoStoreProvider cursus={cursus} levels={levels} titles={titles} projects={projects}>
+      {children}
+    </FortyTwoStoreProvider>
+  )
+}
+
+export default function RNCPSimulatorLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <main className="rncp-simulator-theme @container flex grow items-start justify-center p-4 md:p-12 lg:p-24">
+      <Card className="@max-[1400px]:w-full @min-[1400px]:w-[1400px] bg-card/5 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle tag="h1">RNCP Simulator</CardTitle>
+          <CardDescription>Simulate your RNCP progress by selecting projects.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 md:p-6">
+          <Suspense fallback={<TitlesSkeleton />}>
+            <TitlesProvider>{children}</TitlesProvider>
+          </Suspense>
+        </CardContent>
+      </Card>
+    </main>
+  )
+}
