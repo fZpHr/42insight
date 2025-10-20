@@ -11,6 +11,7 @@ function saveProgressionToStorage(state: any) {
   const data = {
     projectMarks: Array.from(state.projectMarks.entries()),
     professionalExperiences: Array.from(state.professionalExperiences),
+    coalitionProjects: Array.from(state.coalitionProjects.values()), // Save coalition projects
     events: state.events ?? 0,
     eventsFetchedAt: state.eventsFetchedAt ?? 0,
     ts: Date.now(),
@@ -34,6 +35,7 @@ function loadProgressionFromStorage() {
     return {
       projectMarks: new Map<number, number>(data.projectMarks as [number, number][]),
       professionalExperiences: new Set<string>(data.professionalExperiences as string[]),
+      coalitionProjects: new Set<number>(data.coalitionProjects as number[]),
       events,
       eventsFetchedAt,
     }
@@ -81,7 +83,9 @@ const createFortyTwoStore = (initProps: {
     professionalExperienceMarks: Map<string, number>;
     hydrated: boolean;
     setHydrated: (hydrated: boolean) => void;
-    isDataProcessed: boolean; // New flag
+    isDataProcessed: boolean;
+    coalitionProjects: Set<number>;
+    toggleCoalitionBonus: (projectId: number) => void;
   };
 
   return createWithEqualityFn<StoreWithPersistence>()((set, get) => ({
@@ -95,7 +99,9 @@ const createFortyTwoStore = (initProps: {
     autoFetchedProfessionalExperiences: new Set<string>(),
     persistedOldProjects: [],
     hydrated: false,
-    isDataProcessed: false, // Initial state for the new flag
+    isDataProcessed: false,
+    coalitionProjects: new Set<number>(),
+
     setHydrated: (hydrated: boolean) => set({ hydrated }),
 
     clearAutoFetchedProfessionalExperiences: () =>
@@ -108,7 +114,24 @@ const createFortyTwoStore = (initProps: {
     events: 0,
     eventsFetchedAt: 0,
 
-    setEvents: (events: number) => set({ events, eventsFetchedAt: Date.now() }),
+    setEvents: (events: number) => set((state) => {
+      const next = { events, eventsFetchedAt: Date.now() };
+      saveProgressionToStorage({ ...state, ...next });
+      return next;
+    }),
+
+    toggleCoalitionBonus: (projectId: number) =>
+      set((state) => {
+        const newCoalitionProjects = new Set(state.coalitionProjects);
+        if (newCoalitionProjects.has(projectId)) {
+          newCoalitionProjects.delete(projectId);
+        } else {
+          newCoalitionProjects.add(projectId);
+        }
+        const next = { coalitionProjects: newCoalitionProjects };
+        saveProgressionToStorage({ ...state, ...next });
+        return next;
+      }),
 
     toggleProfessionalExperience: (experience: string) =>
       set((state) => {
@@ -170,15 +193,15 @@ const createFortyTwoStore = (initProps: {
       }),
 
     resetAll: () => set((state) => {
-      saveProgressionToStorage({ projectMarks: new Map(), professionalExperiences: new Set(), events: 0, eventsFetchedAt: 0 })
-      return { projectMarks: new Map(), professionalExperiences: new Set(), events: 0, eventsFetchedAt: 0, persistedOldProjects: [], initialXPDelta: 0, isDataProcessed: false }
+      saveProgressionToStorage({ projectMarks: new Map(), professionalExperiences: new Set(), coalitionProjects: new Set(), events: 0, eventsFetchedAt: 0 })
+      return { projectMarks: new Map(), professionalExperiences: new Set(), coalitionProjects: new Set(), events: 0, eventsFetchedAt: 0, persistedOldProjects: [], initialXPDelta: 0, isDataProcessed: false }
     }),
 
     softReset: () => set((state) => {
       const newMarks = new Map(state.autoFetchedProjectMarks)
       const newProExp: Set<string> = new Set(state.autoFetchedProfessionalExperiences)
       saveProgressionToStorage({ projectMarks: newMarks, professionalExperiences: newProExp })
-      return { projectMarks: newMarks, professionalExperiences: newProExp, isDataProcessed: false }
+      return { projectMarks: newMarks, professionalExperiences: newProExp, coalitionProjects: new Set(), isDataProcessed: false }
     }),
 
     initialXPDelta: 0,
@@ -287,15 +310,18 @@ const createFortyTwoStore = (initProps: {
       }
       const initialXPDelta = (userLevelXP ?? 0) - totalXP;
 
-      set({
+      const finalState = {
         projectMarks: newMarks,
         autoFetchedProjectMarks: newAutoMarks,
         professionalExperiences: newProExp,
         autoFetchedProfessionalExperiences: newAutoProExp,
         initialXPDelta: initialXPDelta,
         persistedOldProjects: oldProjects,
-        isDataProcessed: true, // Set the flag to true
-      });
+        isDataProcessed: true,
+      };
+
+      set(finalState);
+      saveProgressionToStorage({ ...get(), ...finalState });
     },
 
     getSelectedXP: () => {
@@ -316,7 +342,10 @@ const createFortyTwoStore = (initProps: {
       for (const [projectId, mark] of state.projectMarks) {
         const project = state.projects[projectId];
         if (project) {
-          xp = (project.experience || project.difficulty || 0) * (mark / 100);
+          let xp = (project.experience || project.difficulty || 0) * (mark / 100);
+          if (state.coalitionProjects.has(projectId)) {
+            xp *= 1.042;
+          }
           totalXP += xp;
         }
       }
@@ -473,6 +502,7 @@ export const FortyTwoStoreProvider = ({ children, cursus, levels, titles, projec
       storeRef.current?.setState({
         projectMarks: restored.projectMarks,
         professionalExperiences: restored.professionalExperiences,
+        coalitionProjects: restored.coalitionProjects, // Restore coalition projects
         events,
         eventsFetchedAt,
       });

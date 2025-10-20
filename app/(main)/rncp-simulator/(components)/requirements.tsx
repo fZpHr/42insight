@@ -8,6 +8,8 @@ import { getPreciseLevel } from '@/lib/forty-two/forty-two-experience'
 import type { FortyTwoProject, FortyTwoTitle, FortyTwoTitleOption } from '@/types/forty-two'
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
+import { Users } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 interface TitleRequirementProps {
@@ -86,9 +88,9 @@ interface TitleRequirementsProps {
   title: FortyTwoTitle;
   className?: string;
   autoExtraProjects?: { name: string; xp: number; id: number; mark: number }[];
-  manualProjects?: { name: string; xp: number; id: number; mark: number }[];
+  manualProjects?: { name: string; xp: number; id: number; mark: number; coa?: boolean }[];
   onDeleteOldProject?: (id: number) => void;
-  onManualProjectsChange?: (manualProjects: { name: string; xp: number; id: number; mark: number }[]) => void;
+  onManualProjectsChange?: (manualProjects: { name: string; xp: number; id: number; mark: number; coa?: boolean }[]) => void;
 }
 
 export function TitleRequirements({ title, className, autoExtraProjects = [], manualProjects = [], onDeleteOldProject, onManualProjectsChange }: TitleRequirementsProps) {
@@ -215,7 +217,7 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], ma
               <span className="font-medium">Expériences pro validées :</span>
               <span className={cn(
                 "px-2 py-0.5 rounded-full text-xs font-semibold",
-                professionalExperiencesCount >= title.number_of_experiences ? "bg-green-200 text-green-900" : "bg-muted text-muted-foreground"
+                professionalExperiencesCount >= title.number_of_experiences ? "bg-green-200 text-green-900" : "bg-yellow-200 text-yellow-900"
               )}>
                 {professionalExperiencesCount} / {title.number_of_experiences}
               </span>
@@ -233,7 +235,7 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], ma
                     key={exp.id}
                     className={cn(
                       "flex items-center gap-1 px-2 py-1 rounded border text-xs",
-                      isActive ? "bg-primary/20 border-primary" : "bg-secondary border-primary/30 hover:bg-accent cursor-pointer",
+                      isActive ? "bg-primary/20 border-primary" : "bg-blue-50 hover:bg-blue-100 cursor-pointer",
                       isAuto && "opacity-70 cursor-not-allowed border-dashed"
                     )}
                     title={
@@ -358,13 +360,13 @@ export function TitleOptionRequirements({ option }: { option: FortyTwoTitleOptio
 }
 
 // Formulaire d'ajout manuel de projet (influence uniquement la jauge de level)
-type ManualProject = { name: string; xp: number; id: number; mark: number };
+type ManualProject = { name: string; xp: number; id: number; mark: number; coa?: boolean };
 type ManualProjectFormProps = {
   onAddProject: (xp: number) => void;
   autoExtraProjects?: ManualProject[];
   manualProjects?: ManualProject[];
   onDeleteOldProject?: (id: number) => void;
-  setProjectMark: (id: number, mark: number) => void;
+  setProjectMark: (id: number, mark: number, coa?: boolean) => void;
   removeProject: (id: number) => void;
   projects: Record<string, any>;
   onManualProjectsChange?: (manualProjects: ManualProject[]) => void;
@@ -456,14 +458,25 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], manualProject
   };
 
   // Permet de modifier la note d'un projet ajouté
-  const handleMarkChange = (id: number, mark: number) => {
+  const handleMarkChange = (id: number, mark: number, coa?: boolean) => {
     let safeMark = Number(mark);
     if (isNaN(safeMark)) safeMark = 0;
     safeMark = Math.max(0, Math.min(safeMark, 125));
     if (onManualProjectsChange) {
       onManualProjectsChange(manualProjects.map(a => a.id === id ? { ...a, mark: safeMark } : a));
     }
-    setProjectMark(id, safeMark);
+    setProjectMark(id, safeMark, coa);
+  };
+
+  const handleToggleCoa = (id: number) => {
+    if (onManualProjectsChange) {
+      const project = manualProjects.find(p => p.id === id);
+      if (project) {
+        const newCoa = !project.coa;
+        onManualProjectsChange(manualProjects.map(p => p.id === id ? { ...p, coa: newCoa } : p));
+        setProjectMark(id, project.mark, newCoa);
+      }
+    }
   };
   // Ajout: reset manuel (softReset) via event custom
   useEffect(() => {
@@ -551,17 +564,37 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], manualProject
         <ul className="list-disc pl-5 text-sm text-muted-foreground">
           {manualProjects.map(a => (
             <li key={a.id} className="flex items-center gap-2">
-              <span>{a.name} (+{Math.round(a.xp * (a.mark / 100)).toLocaleString('fr-FR')} XP)</span>
+              <span>{a.name} (+{Math.round(a.xp * (a.mark / 100) * (a.coa ? 1.042 : 1)).toLocaleString('fr-FR')} XP)</span>
               <input
                 type="number"
                 min={0}
                 max={125}
                 step={1}
                 value={a.mark}
-                onChange={e => handleMarkChange(a.id, Number(e.target.value))}
+                onChange={e => handleMarkChange(a.id, Number(e.target.value), a.coa)}
                 className="ml-2 w-14 px-1 py-0.5 rounded border border-primary/40 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                 title="Note (%) du projet"
               />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "p-1 rounded-full transition-colors",
+                        a.coa ? "bg-primary/20 text-primary" : "hover:bg-muted"
+                      )}
+                      onClick={() => handleToggleCoa(a.id)}
+                      title="Appliquer le bonus de coalition (+4.2% XP)"
+                    >
+                      <Users className="h-3 w-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>coa</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <button
                 type="button"
                 className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold"

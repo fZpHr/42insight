@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
 import { memo, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useFortyTwoStore } from "@/providers/forty-two-store-provider"
 import type { FortyTwoProject } from "@/types/forty-two"
-import { CircleCheck, CircleDashed, ChevronsUpDownIcon, CornerDownRightIcon, StarIcon } from "lucide-react"
+import { CircleCheck, CircleDashed, ChevronsUpDownIcon, CornerDownRightIcon, StarIcon, UsersIcon } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
@@ -72,6 +72,8 @@ function Project({
     removeProject,
     getProjectXP,
     getDynamicProjectXP,
+    coalitionProjects,
+    toggleCoalitionBonus,
   } = useFortyTwoStore(state => ({
     projects: state.projects,
     projectMarks: state.projectMarks,
@@ -79,6 +81,8 @@ function Project({
     removeProject: state.removeProject,
     getProjectXP: state.getProjectXP,
     getDynamicProjectXP: state.getDynamicProjectXP,
+    coalitionProjects: state.coalitionProjects,
+    toggleCoalitionBonus: state.toggleCoalitionBonus,
   }))
   
   const project = projects[projectId]
@@ -88,6 +92,7 @@ function Project({
   const isSelected = projectMarks.has(project.id)
   const mark = projectMarks.get(project.id)
   const isBonus = mark === 125
+  const isCoalition = coalitionProjects.has(project.id)
   const autoFetchedProjectMarks = useFortyTwoStore(state => state.autoFetchedProjectMarks)
   const isAuto = isSelected && autoFetchedProjectMarks.has(project.id)
   const isManual = isSelected && !autoFetchedProjectMarks.has(project.id)
@@ -95,7 +100,6 @@ function Project({
   const totalProjectXP = getDynamicProjectXP(project)
   const totalXP = getProjectXP(project)
 
-  // Nouvelle logique : overlay vert si module validé (même virtuellement)
   const isModuleComplete = useFortyTwoStore(
     (state) => {
       const project = state.projects[projectId];
@@ -104,23 +108,6 @@ function Project({
     }
   );
 
-  // Log uniquement lors d'un changement d'état du contour
-  // (projectId, isModuleComplete, projectMarks.size, mark, isSelected)
-  // Pour aider au debug, on log aussi lors du click
-  // et lors du render du composant Project
-  //
-  // // Log lors du render
-  // console.debug('[debug-contour:render]', { projectId, isModuleComplete, mark, isSelected });
-
-  // // Log lors du click
-  // const handleToggle = () => {
-  //   console.debug('[debug-contour:click]', { projectId, isSelected });
-  //   if (isSelected) {
-  //     removeProject(project.id)
-  //   } else {
-  //     setProjectMark(project.id, 100)
-  //   }
-  // }
   const handleToggle = () => {
     if (isSelected) {
       removeProject(project.id)
@@ -129,28 +116,25 @@ function Project({
     }
   }
 
-  // (handleToggle avec debug déjà défini ci-dessus)
-
   return (
     <Collapsible>
-      {/*
-      // DEBUG: Affichage visuel de l'état
-      <div style={{ fontSize: 10, color: '#888' }}>
-        [debug] id: {project.id} | isSelected: {String(isSelected)} | mark: {String(mark)} | isBonus: {String(isBonus)}
-      </div>
-      */}
       <div
         key={project.id}
         className={cn(
-          "flex min-h-[42px] cursor-pointer items-center rounded-md border-2 text-sm transition-colors hover:bg-accent",
-          // Fond vert si auto, bleu si manuel (toujours appliqué si sélectionné)
+          "relative flex min-h-[42px] cursor-pointer items-center rounded-md border-2 text-sm transition-colors hover:bg-accent", // Added relative for overlay
           isAuto && "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-100",
           isManual && "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200",
-          // Bordure : jaune si bonus, sinon vert/bleu selon auto/manual
           isBonus ? "border-yellow-500" : isAuto ? "border-green-500 dark:border-green-400" : isManual ? "border-blue-500 dark:border-blue-400" : undefined,
         )}
         onClick={handleToggle}
       >
+        {isCoalition && (
+            <div className="absolute inset-0 flex items-center justify-center bg-cyan-500/20 pointer-events-none z-10">
+              <span className="text-lg font-bold text-white" style={{ textShadow: '1px 1px 2px black' }}>
+                COALITION
+              </span>
+            </div>
+        )}
         <ProjectSideIcon project={project} depth={depth} />
         <ProjectIcon isSelected={isSelected} />
 
@@ -164,6 +148,24 @@ function Project({
                   : (project.experience ?? 0).toLocaleString('fr-FR')
                 } XP
               </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "size-7 p-0 border-none bg-transparent hover:bg-transparent focus:ring-0 focus:outline-none",
+                  isCoalition ? "text-cyan-500" : "text-gray-400 dark:text-zinc-600"
+                )}
+                tabIndex={-1}
+                onClick={e => {
+                  e.stopPropagation();
+                  toggleCoalitionBonus(project.id);
+                }}
+                aria-label={isCoalition ? "Retirer le bonus de coalition" : "Mettre le bonus de coalition"}
+              >
+                <UsersIcon className={cn("size-4")}
+                  fill={isCoalition ? "currentColor" : "none"}
+                />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"

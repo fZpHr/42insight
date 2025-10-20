@@ -74,6 +74,7 @@ export default function RNCPSimulator() {
     professionalExperiences: state.professionalExperiences,
     projects: state.projects,
     projectMarks: state.projectMarks,
+    coalitionProjects: state.coalitionProjects, // Subscribe to coalitionProjects
   }), shallow);
 
   // Server State (React Query)

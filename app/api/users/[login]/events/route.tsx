@@ -1,7 +1,10 @@
-
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
+// In-memory cache for events
+const eventsCache = new Map<string, { events: any[], timestamp: number }>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // Copie de la logique d'authentification de l'API 42
 let apiClient: { get: (path: string) => Promise<Response> } | null = null;
@@ -43,6 +46,12 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Check cache first
+  const cached = eventsCache.get(login);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    return NextResponse.json({ events: cached.events });
+  }
+
   try {
     const client = await getApiClient();
     // Récupérer l'utilisateur pour obtenir son id
@@ -59,16 +68,23 @@ export async function GET(
     do {
       const eventsRes = await client.get(`/users/${user.id}/events?per_page=${perPage}&page=${page}`);
       if (!eventsRes.ok) {
+        // If we get rate limited, return the stale cache if it exists, otherwise fail
+        if (eventsRes.status === 429 && cached) {
+          console.warn(`[WARN] Rate limited fetching events for ${login}. Serving stale cache.`);
+          return NextResponse.json({ events: cached.events });
+        }
         console.error(`[DEBUG] Failed to fetch events page ${page} for user ${login}:`, eventsRes.statusText);
-        break;
+        // Don't cache partial results, just break and return what we have (which is none)
+        return NextResponse.json({ error: `Failed to fetch events: ${eventsRes.statusText}` }, { status: eventsRes.status });
       }
       eventsPage = await eventsRes.json();
-      //console.log(`[DEBUG] Events page ${page} for user ${login}:`, eventsPage);
       allEvents = allEvents.concat(eventsPage);
       page++;
     } while (eventsPage && eventsPage.length === perPage);
 
-    //console.log(`[DEBUG] All events for user ${login}:`, allEvents);
+    // Store in cache before returning
+    eventsCache.set(login, { events: allEvents, timestamp: Date.now() });
+
     return NextResponse.json({ events: allEvents });
   } catch (error: any) {
     console.error("[ERROR] /api/users/[login]/events:", error.message);

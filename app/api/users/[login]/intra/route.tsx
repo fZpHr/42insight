@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
 
+// In-memory cache for user intra data
+const intraCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 type ApiClient = {
   get: (path: string) => Promise<Response>;
 };
@@ -13,7 +17,6 @@ const getApiClient = async (): Promise<ApiClient> => {
     return apiClient;
   }
 
-  //console.log("INFO: Creating new 42 API client...");
   const clientId = process.env.NEXT_PUBLIC_CLIENT_ID!;
   const clientSecret = process.env.CLIENT_SECRET_NEXT1!;
 
@@ -44,9 +47,6 @@ const getApiClient = async (): Promise<ApiClient> => {
       throw new Error("Access token was not found in the API response.");
     }
 
-    //console.log("INFO: 42 API client created and authenticated successfully.");
-
-    // On crée notre client personnalisé avec le token obtenu
     apiClient = {
       get: (path: string) => {
         return fetch(`https://api.intra.42.fr/v2${path}`, {
@@ -57,10 +57,9 @@ const getApiClient = async (): Promise<ApiClient> => {
 
     return apiClient;
   } catch (error) {
-    // Si une erreur survient, on s'assure que le client n'est pas mis en cache dans un état invalide
     apiClient = null;
     console.error("ERROR in getApiClient:", error);
-    throw error; // Propage l'erreur
+    throw error;
   }
 };
 
@@ -76,6 +75,12 @@ export async function GET(
           { error: 'Unauthorized' },
           { status: 401 }
       )
+  }
+
+  // Check cache first
+  const cached = intraCache.get(login);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    return NextResponse.json(cached.data);
   }
 
   try {
@@ -100,7 +105,10 @@ export async function GET(
     do {
       const projectsResponse = await client.get(`/users/${user.id}/projects_users?per_page=${perPage}&page=${page}`);
       if (!projectsResponse.ok) {
-        // Don't kill the request if projects fail, just log it. The main user data is still useful.
+        if (projectsResponse.status === 429 && cached) {
+          console.warn(`[WARN] Rate limited fetching projects for ${login}. Serving stale cache.`);
+          return NextResponse.json(cached.data);
+        }
         console.error(`Failed to fetch projects page ${page} for user ${login}: ${projectsResponse.statusText}`);
         break;
       }
@@ -110,6 +118,9 @@ export async function GET(
     } while (projectsPage && projectsPage.length === perPage);
 
     user.projects_users = allProjects;
+
+    // Store in cache before returning
+    intraCache.set(login, { data: user, timestamp: Date.now() });
 
     return NextResponse.json(user);
   } catch (error: any) {
