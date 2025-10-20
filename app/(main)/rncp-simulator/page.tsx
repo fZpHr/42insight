@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { shallow } from "zustand/shallow"
 import { useFortyTwoStore } from "@/providers/forty-two-store-provider"
@@ -6,12 +6,7 @@ import { useContext } from "react"
 import { FortyTwoStoreContext } from "@/providers/forty-two-store-provider"
 import type { FortyTwoTitle } from "@/types/forty-two"
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
-import { addToLocalStorage, getFromLocalStorage } from "@/utils/localStorage"
 
-// Clé dédiée pour la persistance des projets ajoutés manuellement
-function getManualProjectsKey(session: any) {
-  return session?.user && 'login' in session.user && session.user.login ? `manualProjects_${session.user.login}` : undefined;
-}
 import { TitleOptions } from "./(components)/options"
 import { TitleRequirements } from "./(components)/requirements"
 import { TitleSelector } from "./(components)/selector"
@@ -24,334 +19,104 @@ import { useSession } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
 
-
-function getCache(key: string, maxAgeMs: number) {
-  if (typeof window === 'undefined') return null;
-  const raw = localStorage.getItem(key);
-  if (!raw) return null;
-  try {
-    const { value, ts } = JSON.parse(raw);
-    if (Date.now() - ts < maxAgeMs) return value;
-  } catch {}
-  return null;
-}
-
-function setCache(key: string, value: any) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify({ value, ts: Date.now() }));
+function getManualProjectsKey(session: any) {
+  return session?.user?.login ? `manualProjects_${session.user.login}` : undefined;
 }
 
 async function fetchUserEvents(login: string) {
   if (!login) return [];
-  const cacheKey = `events_${login}`;
-  const cached = getCache(cacheKey, 10 * 60 * 1000);
-  if (cached) return cached;
   const res = await fetch(`/api/users/${login}/events`);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    throw new Error('Failed to fetch user events');
+  }
   const data = await res.json();
-  setCache(cacheKey, data.events || []);
   return data.events || [];
 }
 
 export default function RNCPSimulator() {
-  // --- Import/Export config logic ---
-  const storeContext = useContext(FortyTwoStoreContext);
-  function exportConfig() {
-    if (!storeContext) return;
-    const state = storeContext.getState();
-    // On exporte uniquement les projets ajoutés manuellement (pas les autoExtraProjects/anciens projets)
-    // Les projets ajoutés sont ceux qui ne sont pas dans autoExtraProjects
-    const manualProjectsKey = getManualProjectsKey(session);
-    const manualProjects = manualProjectsKey && typeof window !== 'undefined'
-      ? (JSON.parse(localStorage.getItem(manualProjectsKey) || '[]'))
-      : [];
-    const data = {
-      projectMarks: Array.from(state.projectMarks.entries()),
-      professionalExperiences: Array.from(state.professionalExperiences),
-      events: state.events ?? 0,
-      eventsFetchedAt: state.eventsFetchedAt ?? 0,
-      manualProjects,
-      ts: Date.now(),
-    };
-    console.log('[RNCP][EXPORT] manualProjects exportés:', manualProjects);
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'rncp_simulator_config.json';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
-  }
+  const { data: session } = useSession({ required: true });
+  const { width, height } = useWindowSize();
 
-  function importConfig(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!storeContext) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target?.result as string);
-        // DEBUG: Affiche le contenu du fichier importé
-        console.log('[RNCP][IMPORT] Fichier importé:', data);
-        console.log('[RNCP][IMPORT] oldProjectsKey:', oldProjectsKey);
-        if (data && data.projectMarks && data.professionalExperiences) {
-          storeContext.setState({
-            projectMarks: new Map<number, number>(data.projectMarks),
-            professionalExperiences: new Set<string>(data.professionalExperiences),
-            events: typeof data.events === 'number' ? data.events : 0,
-            eventsFetchedAt: typeof data.eventsFetchedAt === 'number' ? data.eventsFetchedAt : 0,
-          });
-          // Persiste aussi dans le localStorage
-          localStorage.setItem('rncp_simulator_progression', JSON.stringify(data));
-          // Restaure uniquement les projets ajoutés manuellement (clé dédiée)
-          const manualProjectsKey = getManualProjectsKey(session);
-          if (data.manualProjects && Array.isArray(data.manualProjects) && manualProjectsKey) {
-            console.log('[RNCP][IMPORT] Restaure manualProjects dans localStorage:', data.manualProjects);
-            localStorage.setItem(manualProjectsKey, JSON.stringify(data.manualProjects));
-            setManualProjects(data.manualProjects); // <-- force UI update
-            // Synchronise aussi les marks dans le store pour chaque projet manuel importé
-            if (Array.isArray(data.manualProjects)) {
-              data.manualProjects.forEach((proj: any) => {
-                if (proj && typeof proj.id === 'number' && typeof proj.mark === 'number') {
-                  if (storeContext && storeContext.setState) {
-                    // On utilise setState pour ne pas dépendre du hook
-                    storeContext.setState((prev: any) => {
-                      const newMarks = new Map(prev.projectMarks);
-                      newMarks.set(proj.id, proj.mark);
-                      return { ...prev, projectMarks: newMarks };
-                    });
-                  }
-                }
-              });
-            }
-            // On ne touche pas persistedOldProjects ici (les anciens projets restent auto)
-          } else {
-            console.log('[RNCP][IMPORT] Pas de manualProjects à restaurer ou manualProjectsKey manquant');
-          }
-        } else {
-          console.log('[RNCP][IMPORT] Fichier importé incomplet ou invalide');
-        }
-      } catch (err) {
-        console.error('[RNCP][IMPORT] Erreur lors de l\'import:', err);
-        alert('Erreur lors de l\'import du fichier de configuration.');
-      }
-    };
-    reader.readAsText(file);
-    // Reset input value to allow re-importing the same file
-    e.target.value = '';
-  }
-  const { data: session } = useSession()
-  // --- Sauvegarde et récupération des anciens projets hors RNCP ---
-  const oldProjectsKey = session?.user && 'login' in session.user && session.user.login ? `oldProjects_${session.user.login}` : undefined;
+  // UI State
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [optionStatuses, setOptionStatuses] = useState<Record<string, boolean>>({});
   const manualProjectsKey = getManualProjectsKey(session);
-  // Récupération des anciens projets (persistedOldProjects) et des projets ajoutés manuellement (manualProjects)
-  const [persistedOldProjects, setPersistedOldProjects] = useState<any[]>(() => {
-    if (!oldProjectsKey) return [];
-    if (typeof window === 'undefined') return [];
-    const raw = localStorage.getItem(oldProjectsKey);
-    if (!raw) return [];
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
-  });
+
   const [manualProjects, setManualProjects] = useState<any[]>(() => {
-    if (!manualProjectsKey) return [];
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined' || !manualProjectsKey) return [];
     const raw = localStorage.getItem(manualProjectsKey);
-    if (!raw) return [];
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return raw ? JSON.parse(raw) : [];
   });
-  // On utilise un sélecteur optimisé avec `shallow` pour éviter les re-renders inutiles.
-  // On ne récupère que ce dont la page a *directement* besoin.
-  const { titles, setProjectMark, setEvents, resetAll, softReset, setAutoFetchedProjectMark, clearAutoFetchedProjectMarks, projects, setProfessionalExperience, setAutoFetchedProfessionalExperience, clearAutoFetchedProfessionalExperiences, autoFetchedProfessionalExperiences } =
-    useFortyTwoStore(
-      (state) => ({
-        titles: state.titles,
-        setProjectMark: state.setProjectMark,
-        setEvents: state.setEvents,
-        resetAll: state.resetAll,
-        softReset: state.softReset,
-        setAutoFetchedProjectMark: state.setAutoFetchedProjectMark,
-        clearAutoFetchedProjectMarks: state.clearAutoFetchedProjectMarks,
-        projects: state.projects,
-        setProfessionalExperience: state.setProfessionalExperience,
-        setAutoFetchedProfessionalExperience: state.setAutoFetchedProfessionalExperience,
-        clearAutoFetchedProfessionalExperiences: state.clearAutoFetchedProfessionalExperiences,
-        autoFetchedProfessionalExperiences: state.autoFetchedProfessionalExperiences,
-      }),
-      shallow,
-    )
-  const [activeTitle, setActiveTitle] = useState<FortyTwoTitle | null>(titles[0] ?? null)
-  const { width, height } = useWindowSize()
-  const [showConfetti, setShowConfetti] = useState(false)
-  const [optionStatuses, setOptionStatuses] = useState<Record<string, boolean>>({})
 
+  // Store State & Actions
+  const {
+    titles, setEvents, resetAll, softReset, processInitialData, persistedOldProjects, hydrated, isDataProcessed
+  } = useFortyTwoStore(
+    (state) => ({
+      titles: state.titles,
+      setEvents: state.setEvents,
+      resetAll: state.resetAll,
+      softReset: state.softReset,
+      processInitialData: state.processInitialData,
+      persistedOldProjects: state.persistedOldProjects,
+      hydrated: state.hydrated,
+      isDataProcessed: state.isDataProcessed,
+    }),
+    shallow,
+  );
 
+  const [activeTitle, setActiveTitle] = useState<FortyTwoTitle | null>(titles[0] ?? null);
 
-  // Ajout du cache pour userIntraInfo (projets)
-  const { data: userIntraInfo } = useQuery({
-    queryKey: ["userIntraInfo", session?.user?.name],
-    queryFn: async () => {
-      const login = session?.user?.login || "";
-      const cacheKey = `userIntraInfo_${login}`;
-      const cached = getCache(cacheKey, 10 * 60 * 1000);
-      if (cached) return cached;
-      const data = await fetchUserIntraInfo(login);
-      setCache(cacheKey, data);
-      return data;
-    },
-    enabled: !!session?.user,
-  })
+  const storeState = useFortyTwoStore((state) => ({
+    getSelectedXP: state.getSelectedXP,
+    getLevel: state.getLevel,
+    events: state.events,
+    professionalExperiences: state.professionalExperiences,
+    projects: state.projects,
+    projectMarks: state.projectMarks,
+  }), shallow);
 
+  // Server State (React Query)
+  const { data: userIntraInfo, isLoading: isIntraLoading } = useQuery({
+    queryKey: ["userIntraInfo", session?.user?.login],
+    queryFn: () => fetchUserIntraInfo(session!.user!.login!),
+    enabled: !!session?.user?.login,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
 
-  const { data: userEvents, isLoading: eventsLoading } = useQuery({
+  const { data: userEvents, isLoading: areEventsLoading } = useQuery({
     queryKey: ["userEvents", session?.user?.login],
-    queryFn: async () => {
-      if (!session?.user?.login) return [];
-      return await fetchUserEvents(session.user.login);
-    },
-    enabled: !!session?.user,
+    queryFn: () => fetchUserEvents(session!.user!.login!),
+    enabled: !!session?.user?.login,
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
   });
 
-
-  // Debug: log userIntraInfo and projects_users
+  // Effects for processing and synchronization
   useEffect(() => {
-    if (!userIntraInfo) return;
-    //console.log('[DEBUG][RNCP] userIntraInfo:', userIntraInfo);
-    if (userIntraInfo.projects_users) {
-      //console.log('[DEBUG][RNCP] userIntraInfo.projects_users:', userIntraInfo.projects_users);
-      userIntraInfo.projects_users.forEach((proj: any, idx: number) => {
-        //console.log(`[DEBUG][RNCP] Project #${idx}:`, proj);
-      });
-    } else {
-      //console.log('[DEBUG][RNCP] userIntraInfo.projects_users is undefined or empty');
+    if (userIntraInfo && activeTitle) {
+      processInitialData(userIntraInfo, activeTitle);
     }
-  }, [userIntraInfo]);
-
-  // Auto-toggle professional experiences from user projects (with fallback to persistedOldProjects)
-  useEffect(() => {
-    // Utilise la source la plus fraiche : userIntraInfo.projects_users si dispo, sinon persistedOldProjects
-    const mainProjects = (userIntraInfo && userIntraInfo.projects_users && userIntraInfo.projects_users.length > 0)
-      ? userIntraInfo.projects_users
-      : persistedOldProjects.map((p) => ({
-          project: { id: p.id, name: p.name, experience: p.xp },
-          final_mark: p.mark,
-        }));
-
-    // Stocke tous les IDs de projets vus (même ceux avec final_mark 0)
-    if (mainProjects.length > 0 && typeof window !== 'undefined') {
-      const seenProjectIds = mainProjects.map((p: any) => p.project.id);
-      localStorage.setItem('seenProjectIds', JSON.stringify(seenProjectIds));
-    }
-    
-    // --- MAPPING projet <-> expérience pro ---
-    // Mapping exhaustif des IDs d'expériences pro (issus du JSON)
-    const projectToExperience: Record<number, string> = {
-      // Stages et part-time (si besoin, à compléter)
-      1638: "stage_1", // Work Experience I
-      1644: "stage_2", // Work Experience II
-      // Startup Experience
-      1662: "startup_experience",
-      // Apprentissage 1 an
-      1873: "alternance_1_an",
-      1877: "alternance_1_an",
-      1878: "alternance_1_an",
-      1879: "alternance_1_an",
-      1880: "alternance_1_an",
-      2561: "alternance_1_an", // FR - Alternance - RNCP6 - 1 an
-      2563: "alternance_1_an", // FR - Alternance - RNCP7 - 1 an
-      // Apprentissage 2 ans
-      1857: "alternance_2_ans",
-      1861: "alternance_2_ans",
-      1862: "alternance_2_ans",
-      1863: "alternance_2_ans",
-      1864: "alternance_2_ans",
-      1865: "alternance_2_ans",
-      1869: "alternance_2_ans",
-      1870: "alternance_2_ans",
-      1871: "alternance_2_ans",
-      1872: "alternance_2_ans",
-      2562: "alternance_2_ans", // FR - Alternance - RNCP6 - 2 ans
-      2564: "alternance_2_ans", // FR - Alternance - RNCP7 - 2 ans
-    };
-    const experiencesToToggle = new Set<string>();
-    //console.log('[DEBUG][RNCP] mainProjects (for auto-toggle):', mainProjects);
-    mainProjects.forEach((project: any) => {
-      //console.log('[DEBUG][RNCP] Checking project:', project.project.id, project.project.name, 'final_mark:', project.final_mark);
-      // On applique la note si final_mark est défini et > 0
-      if (typeof project.final_mark === 'number' && project.final_mark > 0) {
-        setProjectMark(project.project.id, project.final_mark)
-        setAutoFetchedProjectMark(project.project.id, project.final_mark)
-      }
-      // Si ce projet correspond à une expérience pro, on l'active même si en cours (final_mark >= 0)
-      const expKey = projectToExperience[project.project.id];
-      if (expKey) {
-        //console.log('[DEBUG][RNCP] Project', project.project.id, 'mapped to experience', expKey);
-      }
-      if (expKey && !experiencesToToggle.has(expKey)) {
-        experiencesToToggle.add(expKey);
-      }
-    });
-    //console.log('[DEBUG][RNCP] experiencesToToggle:', Array.from(experiencesToToggle));
-    // Active les expériences pro détectées
-    experiencesToToggle.forEach((expKey) => {
-      if (!autoFetchedProfessionalExperiences.has(expKey)) {
-        setProfessionalExperience(expKey, true);
-        setAutoFetchedProfessionalExperience(expKey);
-      }
-    });
-  }, [userIntraInfo, setProjectMark, setAutoFetchedProjectMark, clearAutoFetchedProjectMarks, persistedOldProjects]);
+  }, [userIntraInfo, activeTitle, processInitialData]);
 
   useEffect(() => {
-    //console.log('[DEBUG] userEvents value:', userEvents);
     if (Array.isArray(userEvents)) {
-      //console.log("[DEBUG] Injecting events into store:", userEvents.length, userEvents)
-      setEvents(userEvents.length)
-    } else {
-      console.warn('[DEBUG] userEvents is not an array:', userEvents);
+      setEvents(userEvents.length);
     }
-  }, [userEvents, setEvents])
+  }, [userEvents, setEvents]);
 
-  useEffect(() => {
-    if (userIntraInfo) {
-      //console.log("RAW USER INTRA INFO:", userIntraInfo);
-    }
-  }, [userIntraInfo]);
-
-  if (!activeTitle) {
-    return null
-  }
-
-  // La logique de complétion est maintenant dans le store.
-  // On peut créer un hook personnalisé pour plus de clarté.
-
-  // On récupère requirementsComplete du composant TitleRequirements
-  const requirementsComplete = useFortyTwoStore((state) => {
-    if (!activeTitle) return false;
-    const currentXP = state.getSelectedXP();
-    const currentLevel = state.getLevel(currentXP);
-    // On récupère aussi les events, pro exp, group projects
-    const events = state.events;
-    const professionalExperiences = state.professionalExperiences;
+  // Memoized calculations
+  const requirementsComplete = useMemo(() => {
+    if (!activeTitle || !isDataProcessed) return false;
+    const currentXP = storeState.getSelectedXP();
+    const currentLevel = storeState.getLevel(currentXP);
+    const events = storeState.events;
+    const professionalExperiences = storeState.professionalExperiences;
     let professionalExperiencesCount = professionalExperiences.size;
     if (professionalExperiences.has("alternance_2_ans")) professionalExperiencesCount += 1;
-    // Group projects validés
-    const groupProjects = Object.values(state.projects).filter((p) => p && p.is_solo === false);
-    const validatedGroupProjectsCount = groupProjects.filter((p) => state.projectMarks.get(p.id) && state.projectMarks.get(p.id)! > 0).length;
-    // Vérifie aussi que toutes les tabs/options sont complètes
-    const allTabsComplete = Object.values(optionStatuses).every(Boolean);
+    const groupProjects = Object.values(storeState.projects).filter((p) => p && p.is_solo === false);
+    const validatedGroupProjectsCount = groupProjects.filter((p) => (storeState.projectMarks.get(p.id) ?? 0) > 0).length;
+    const allTabsComplete = Object.keys(optionStatuses).length > 0 && Object.values(optionStatuses).every(Boolean);
+    
     return (
       currentLevel >= activeTitle.level &&
       events >= activeTitle.number_of_events &&
@@ -359,92 +124,37 @@ export default function RNCPSimulator() {
       validatedGroupProjectsCount >= 2 &&
       allTabsComplete
     );
-  });
+  }, [activeTitle, storeState, optionStatuses, isDataProcessed]);
 
-
-  // Confettis : déclenche à chaque passage requirementsComplete false -> true
-  const prevReqsComplete = useRef(false)
+  const prevReqsComplete = useRef(false);
   useEffect(() => {
     if (requirementsComplete && !prevReqsComplete.current) {
-      setShowConfetti(false)
-      setTimeout(() => setShowConfetti(true), 10) // force le reset
-      setTimeout(() => setShowConfetti(false), 8000)
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 8000);
     }
-    prevReqsComplete.current = requirementsComplete
-  }, [requirementsComplete])
+    prevReqsComplete.current = requirementsComplete;
+  }, [requirementsComplete]);
 
+  const onManualProjectsChange = useCallback((newManualProjects: any[]) => {
+    if (manualProjectsKey) {
+      localStorage.setItem(manualProjectsKey, JSON.stringify(newManualProjects));
+      setManualProjects(newManualProjects);
+    }
+  }, [manualProjectsKey]);
 
+  // Comprehensive loading state
+  const isLoading = !hydrated || isIntraLoading || areEventsLoading || !isDataProcessed;
 
-  // Sauvegarde à chaque fetch
-  useEffect(() => {
-    if (!userIntraInfo || !userIntraInfo.projects_users || !activeTitle || !oldProjectsKey) return;
-    const mainOption = activeTitle.options?.[0];
-    if (!mainOption) return;
-    const cursusProjectIds = new Set(
-      Array.isArray(mainOption.projects)
-        ? mainOption.projects
-        : Object.keys(mainOption.projects).map(Number)
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] text-muted-foreground text-lg">
+        Chargement des données du simulateur...
+      </div>
     );
-    // Récupère la vraie XP depuis le référentiel projects_21.json si dispo
-    let canonicalProjects: Record<number, any> = {};
-    try {
-      // @ts-ignore
-      canonicalProjects = require('@/lib/forty-two/data/projects_21.json').projects.reduce((acc: any, p: any) => { acc[p.id] = p; return acc; }, {});
-    } catch {}
-    const oldProjects = userIntraInfo.projects_users
-      .filter((pu: any) => !cursusProjectIds.has(pu.project.id) && pu.final_mark > 0)
-      .map((pu: any) => {
-        let xp = 0;
-        let logSource = '';
-        if (canonicalProjects[pu.project.id]) {
-          if (typeof canonicalProjects[pu.project.id].experience === 'number') {
-            xp = canonicalProjects[pu.project.id].experience;
-            logSource = 'canonical.experience';
-          } else if (typeof canonicalProjects[pu.project.id].xp === 'number') {
-            xp = canonicalProjects[pu.project.id].xp;
-            logSource = 'canonical.xp';
-          } else if (typeof canonicalProjects[pu.project.id].difficulty === 'number') {
-            xp = canonicalProjects[pu.project.id].difficulty;
-            logSource = 'canonical.difficulty';
-          }
-        }
-        if (!xp) {
-          if (typeof pu.project.experience === 'number') {
-            xp = pu.project.experience;
-            logSource = 'project.experience';
-          } else if (typeof pu.project.xp === 'number') {
-            xp = pu.project.xp;
-            logSource = 'project.xp';
-          } else if (!logSource) {
-            logSource = 'missing';
-          }
-        }
-        // eslint-disable-next-line no-console
-        console.log('[DEBUG][oldProjectXP]', {
-          id: pu.project.id,
-          name: pu.project.name,
-          xp,
-          mark: pu.final_mark,
-          logSource,
-          canonical: canonicalProjects[pu.project.id],
-          puProject: pu.project
-        });
-        return {
-          id: pu.project.id,
-          name: pu.project.name,
-          xp,
-          mark: pu.final_mark,
-        };
-      });
-    setPersistedOldProjects(oldProjects);
-    localStorage.setItem(oldProjectsKey, JSON.stringify(oldProjects));
-  }, [userIntraInfo, activeTitle, oldProjectsKey]);
-
-  // Toujours utiliser la version canonique persistée (XP correcte)
-  const autoExtraProjects = persistedOldProjects;
+  }
 
   return (
-  <>
+    <>
       {showConfetti && <ReactConfetti width={width} height={height} recycle={false} />}
       <TitleSelector titles={titles} activeTitle={activeTitle} setActiveTitle={setActiveTitle} />
 
@@ -491,9 +201,7 @@ export default function RNCPSimulator() {
             variant="outline"
             onClick={() => {
               softReset();
-              // Reset aussi les projets ajoutés manuellement (via event custom)
               window.dispatchEvent(new Event('manualProjectsReset'));
-              // Vide la clé des projets manuels
               if (manualProjectsKey) {
                 localStorage.setItem(manualProjectsKey, JSON.stringify([]));
                 setManualProjects([]);
@@ -504,46 +212,14 @@ export default function RNCPSimulator() {
             Soft reset
           </Button>
         </div>
-        {/* Boutons Exporter/Importer en travaux, même taille qu'avant, juste en dessous */}
-        <div className="flex gap-2 mt-2">
-          <div className="flex flex-col items-center group relative">
-            <Button variant="secondary" type="button" disabled tabIndex={-1} className="opacity-60 pointer-events-none">
-              Exporter la config
-            </Button>
-            <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-0.5 rounded bg-yellow-200 text-yellow-900 text-xs font-semibold opacity-0 group-hover:opacity-100 pointer-events-none transition">En développement</span>
-          </div>
-          <div className="flex flex-col items-center group relative">
-            <label className="inline-block pointer-events-none" aria-disabled="true">
-              <span className="sr-only">Importer la config</span>
-              <input
-                type="file"
-                accept="application/json"
-                style={{ display: 'none' }}
-                onChange={() => {}}
-                disabled
-              />
-              <Button asChild variant="secondary" type="button" disabled tabIndex={-1} className="opacity-60 pointer-events-none">
-                <span>Importer la config</span>
-              </Button>
-            </label>
-            <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-0.5 rounded bg-yellow-200 text-yellow-900 text-xs font-semibold opacity-0 group-hover:opacity-100 pointer-events-none transition">En développement</span>
-          </div>
-        </div>
       </div>
 
-      {/* Détection des projets hors RNCP auto (présents dans userIntraInfo.projects_users mais pas dans la liste RNCP) */}
       <TitleRequirements
         title={activeTitle}
         manualProjects={manualProjects}
-        onManualProjectsChange={useCallback((manualProjects: { name: string; xp: number; id: number; mark: number }[]) => {
-          // Persiste uniquement les projets ajoutés manuellement
-          if (manualProjectsKey) {
-            localStorage.setItem(manualProjectsKey, JSON.stringify(manualProjects));
-            setManualProjects(manualProjects);
-          }
-        }, [manualProjectsKey])}
+        onManualProjectsChange={onManualProjectsChange}
         className="my-6"
-        autoExtraProjects={autoExtraProjects}
+        autoExtraProjects={persistedOldProjects}
       />
       <TitleOptions title={activeTitle} onCompletionChange={setOptionStatuses} />
       <div className="fixed bottom-2 left-0 w-full text-center text-xs text-muted-foreground pointer-events-none z-50">
@@ -552,4 +228,3 @@ export default function RNCPSimulator() {
     </>
   )
 }
-

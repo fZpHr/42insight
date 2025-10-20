@@ -87,5 +87,5 @@ export interface FortyTwoStore {
   // Added for requirements UI
   professionalExperiences: Set<string>;
   toggleProfessionalExperience: (experience: string) => void;
-}
+  setProfessionalExperienceMark: (experience: string, mark: number) => void;
 }

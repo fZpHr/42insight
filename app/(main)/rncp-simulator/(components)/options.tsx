@@ -141,9 +141,8 @@ export function TitleOptions({ title, className, onCompletionChange }: TitleOpti
               )
           })}
         </CarouselContent>
-        {/* Optionally hide navigation arrows if you want tabs to always fit */}
-        {/* <CarouselPrevious className="-left-2 md:-left-3" />
-        <CarouselNext className="-right-2 md:-right-3" /> */}
+        <CarouselPrevious className="-left-2 md:-left-3" />
+        <CarouselNext className="-right-2 md:-right-3" />
       </Carousel>
     </div>
   )

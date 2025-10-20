@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import type { FortyTwoCursus, FortyTwoLevel, FortyTwoProject, FortyTwoStore, FortyTwoTitle, FortyTwoTitleOption } from "@/types/forty-two"
 import { useRef, useContext, createContext, type ReactNode, useState } from "react";
@@ -65,62 +65,50 @@ const createFortyTwoStore = (initProps: {
     return descendantIds
   }
 
-  // Initial state: pas de localStorage ici (pour SSR/CSR sync)
-  const restored = null;
-  // On étend le type du store localement pour inclure la persistance et les resets
   type StoreWithPersistence = FortyTwoStore & {
     professionalExperiences: Set<string>;
     autoFetchedProjectMarks: Map<number, number>;
-    setAutoFetchedProjectMark: (projectId: number, mark: number) => void;
     clearAutoFetchedProjectMarks: () => void;
     toggleProfessionalExperience: (experience: string) => void;
     setProfessionalExperience: (experience: string, enabled: boolean) => void;
     autoFetchedProfessionalExperiences: Set<string>;
-    setAutoFetchedProfessionalExperience: (expKey: string) => void;
     clearAutoFetchedProfessionalExperiences: () => void;
     resetAll: () => void;
     softReset: () => void;
+    initialXPDelta: number;
+    processInitialData: (userInfo: any, activeTitle: FortyTwoTitle | null) => void;
+    persistedOldProjects: any[];
+    professionalExperienceMarks: Map<string, number>;
+    hydrated: boolean;
+    setHydrated: (hydrated: boolean) => void;
+    isDataProcessed: boolean; // New flag
   };
+
   return createWithEqualityFn<StoreWithPersistence>()((set, get) => ({
     cursus: initProps.cursus,
     levels: initProps.levels,
     titles: initProps.titles,
     projects: initProps.projects,
-  projectMarks: new Map<number, number>(),
-  autoFetchedProjectMarks: new Map<number, number>(),
-  autoFetchedProfessionalExperiences: new Set<string>(),
-  setAutoFetchedProjectMark: (projectId: number, mark: number) =>
-    set((state) => {
-      const newAuto = new Map(state.autoFetchedProjectMarks)
-      newAuto.set(projectId, mark)
-      // On met aussi à jour projectMarks pour affichage immédiat
-      const newMarks = new Map(state.projectMarks)
-      newMarks.set(projectId, mark)
-      saveProgressionToStorage({ ...state, projectMarks: newMarks })
-      return { autoFetchedProjectMarks: newAuto, projectMarks: newMarks }
-    }),
-
-    setAutoFetchedProfessionalExperience: (expKey: string) =>
-      set((state) => {
-        const newAuto: Set<string> = new Set(state.autoFetchedProfessionalExperiences)
-        newAuto.add(expKey)
-        return { autoFetchedProfessionalExperiences: newAuto }
-      }),
+    projectMarks: new Map<number, number>(),
+    professionalExperienceMarks: new Map<string, number>(),
+    autoFetchedProjectMarks: new Map<number, number>(),
+    autoFetchedProfessionalExperiences: new Set<string>(),
+    persistedOldProjects: [],
+    hydrated: false,
+    isDataProcessed: false, // Initial state for the new flag
+    setHydrated: (hydrated: boolean) => set({ hydrated }),
 
     clearAutoFetchedProfessionalExperiences: () =>
       set(() => ({ autoFetchedProfessionalExperiences: new Set<string>() })),
 
-  clearAutoFetchedProjectMarks: () =>
-    set((state) => {
-      return { autoFetchedProjectMarks: new Map() }
-    }),
-  professionalExperiences: new Set<string>(),
+    clearAutoFetchedProjectMarks: () =>
+      set(() => ({ autoFetchedProjectMarks: new Map() })),
 
+    professionalExperiences: new Set<string>(),
+    events: 0,
+    eventsFetchedAt: 0,
 
-  events: 0,
-  eventsFetchedAt: 0, // timestamp ms
-
-  setEvents: (events: number) => set({ events, eventsFetchedAt: Date.now() }),
+    setEvents: (events: number) => set({ events, eventsFetchedAt: Date.now() }),
 
     toggleProfessionalExperience: (experience: string) =>
       set((state) => {
@@ -148,7 +136,13 @@ const createFortyTwoStore = (initProps: {
         return next
       }),
 
-    // Par défaut, applique la note à tous les descendants (sélection manuelle)
+    setProfessionalExperienceMark: (experience: string, mark: number) =>
+      set((state) => {
+        const newMarks = new Map(state.professionalExperienceMarks);
+        newMarks.set(experience, Math.max(0, Math.min(mark, 100)));
+        return { professionalExperienceMarks: newMarks };
+      }),
+
     setProjectMark: (projectId: number, mark: number, onlySelf: boolean = false) =>
       set((state) => {
         const newMarks = new Map(state.projectMarks)
@@ -174,51 +168,165 @@ const createFortyTwoStore = (initProps: {
         saveProgressionToStorage({ ...state, ...next })
         return next
       }),
+
     resetAll: () => set((state) => {
-  // Reset tout (projets cochés, expériences pro, events)
-  saveProgressionToStorage({ projectMarks: new Map(), professionalExperiences: new Set(), events: 0, eventsFetchedAt: 0 })
-  return { projectMarks: new Map(), professionalExperiences: new Set(), events: 0, eventsFetchedAt: 0 }
+      saveProgressionToStorage({ projectMarks: new Map(), professionalExperiences: new Set(), events: 0, eventsFetchedAt: 0 })
+      return { projectMarks: new Map(), professionalExperiences: new Set(), events: 0, eventsFetchedAt: 0, persistedOldProjects: [], initialXPDelta: 0, isDataProcessed: false }
     }),
 
     softReset: () => set((state) => {
-      // Soft reset: ne garde que les projets auto-fetch et expériences auto-fetch
       const newMarks = new Map(state.autoFetchedProjectMarks)
       const newProExp: Set<string> = new Set(state.autoFetchedProfessionalExperiences)
       saveProgressionToStorage({ projectMarks: newMarks, professionalExperiences: newProExp })
-      return { projectMarks: newMarks, professionalExperiences: newProExp }
+      return { projectMarks: newMarks, professionalExperiences: newProExp, isDataProcessed: false }
     }),
 
-    getSelectedXP: () => {
-      const state = get()
-      let totalXP = 0
+    initialXPDelta: 0,
 
-      const professionalExperienceXp: Record<string, number> = {
-        stage_1: 40000,
-        stage_2: 40000,
-        alternance_1_an: 90000,
-        alternance_2_ans: 180000,
-      }
+    processInitialData: (userInfo: any, activeTitle: FortyTwoTitle | null) => {
+      if (!userInfo) return;
+      const state = get();
 
-      for (const experience of state.professionalExperiences) {
-        totalXP += professionalExperienceXp[experience] || 0
-      }
-
-      for (const [projectId, mark] of state.projectMarks) {
-        const project = state.projects[projectId]
-        if (project) {
-          totalXP += (project.experience || project.difficulty || 0) * (mark / 100)
+      let oldProjects: any[] = [];
+      if (userInfo.projects_users && activeTitle) {
+        const mainOption = activeTitle.options?.[0];
+        if (mainOption) {
+          const cursusProjectIds = new Set(
+            Array.isArray(mainOption.projects)
+              ? mainOption.projects
+              : Object.keys(mainOption.projects).map(Number)
+          );
+          let canonicalProjects: Record<number, any> = {};
+          try {
+            // @ts-ignore
+            canonicalProjects = require('@/lib/forty-two/data/projects_21.json').projects.reduce((acc: any, p: any) => { acc[p.id] = p; return acc; }, {});
+          } catch {}
+          oldProjects = userInfo.projects_users
+            .filter((pu: any) => !cursusProjectIds.has(pu.project.id) && pu.final_mark > 0)
+            .map((pu: any) => {
+              let xp = 0;
+              if (canonicalProjects[pu.project.id]) {
+                xp = canonicalProjects[pu.project.id].experience || canonicalProjects[pu.project.id].xp || canonicalProjects[pu.project.id].difficulty || 0;
+              }
+              if (!xp) {
+                xp = pu.project.experience || pu.project.xp || 0;
+              }
+              return {
+                id: pu.project.id,
+                name: pu.project.name,
+                xp,
+                mark: pu.final_mark,
+              };
+            });
         }
       }
 
-      return totalXP
+      const newMarks = new Map(state.projectMarks);
+      const newAutoMarks = new Map(state.autoFetchedProjectMarks);
+      const newProExp = new Set(state.professionalExperiences);
+      const newAutoProExp = new Set(state.autoFetchedProfessionalExperiences);
+
+      const mainProjects = (userInfo.projects_users && userInfo.projects_users.length > 0)
+        ? userInfo.projects_users
+        : oldProjects.map((p: any) => ({ project: { id: p.id }, final_mark: p.mark }));
+
+      const projectToExperience: Record<number, string> = {
+        1638: "stage_1", 1644: "stage_2", 1662: "startup_experience",
+        1873: "alternance_1_an", 1877: "alternance_1_an", 1878: "alternance_1_an",
+        1879: "alternance_1_an", 1880: "alternance_1_an", 2561: "alternance_1_an",
+        2563: "alternance_1_an", 1857: "alternance_2_ans", 1861: "alternance_2_ans",
+        1862: "alternance_2_ans", 1863: "alternance_2_ans", 1864: "alternance_2_ans",
+        1865: "alternance_2_ans", 1869: "alternance_2_ans", 1870: "alternance_2_ans",
+        1871: "alternance_2_ans", 1872: "alternance_2_ans", 2562: "alternance_2_ans",
+        2564: "alternance_2_ans",
+      };
+
+      mainProjects.forEach((project: any) => {
+        if (typeof project.final_mark === 'number' && project.final_mark > 0) {
+          newMarks.set(project.project.id, project.final_mark);
+          newAutoMarks.set(project.project.id, project.final_mark);
+        }
+        const expKey = projectToExperience[project.project.id];
+        if (expKey) {
+            newProExp.add(expKey);
+            newAutoProExp.add(expKey);
+        }
+      });
+
+      const cursus = userInfo.cursus_users?.find((c: any) => c.cursus_id === 21);
+      const userLevel = cursus?.level ?? null;
+      let userLevelXP = null;
+      if (userLevel !== null && typeof userLevel === 'number') {
+        try {
+          // @ts-ignore
+          const expData = require('@/lib/forty-two/data/experience_21.json');
+          const levels = expData.levels;
+          let lower = levels[0];
+          let upper = levels[levels.length - 1];
+          for (let i = 0; i < levels.length; i++) {
+            if (levels[i].level <= userLevel) lower = levels[i];
+            if (levels[i].level >= userLevel) { upper = levels[i]; break; }
+          }
+          if (lower.level === upper.level) {
+            userLevelXP = lower.experience;
+          } else {
+            const ratio = (userLevel - lower.level) / (upper.level - lower.level);
+            userLevelXP = lower.experience + ratio * (upper.experience - lower.experience);
+          }
+        } catch (e) {
+          userLevelXP = null;
+        }
+      }
+
+      let totalXP = 0;
+      for (const [projectId, mark] of newMarks) {
+        const project = state.projects[projectId];
+        if (project) {
+          totalXP += (project.experience || project.difficulty || 0) * (mark / 100);
+        }
+      }
+      const initialXPDelta = (userLevelXP ?? 0) - totalXP;
+
+      set({
+        projectMarks: newMarks,
+        autoFetchedProjectMarks: newAutoMarks,
+        professionalExperiences: newProExp,
+        autoFetchedProfessionalExperiences: newAutoProExp,
+        initialXPDelta: initialXPDelta,
+        persistedOldProjects: oldProjects,
+        isDataProcessed: true, // Set the flag to true
+      });
+    },
+
+    getSelectedXP: () => {
+      const state = get();
+      const professionalExperienceXp: Record<string, number> = {
+        stage_1: 42000,
+        stage_2: 63000,
+        startup_experience: 42000,
+        alternance_1_an: 90000,
+        alternance_2_ans: 180000,
+      };
+      let totalXP = 0;
+      let xp = 0;
+      for (const experience of state.professionalExperiences) {
+        const mark = state.professionalExperienceMarks.get(experience) ?? 100;
+        totalXP += (professionalExperienceXp[experience] || 0) * (mark / 100);
+      }
+      for (const [projectId, mark] of state.projectMarks) {
+        const project = state.projects[projectId];
+        if (project) {
+          xp = (project.experience || project.difficulty || 0) * (mark / 100);
+          totalXP += xp;
+        }
+      }
+      return totalXP + (state.initialXPDelta ?? 0);
     },
 
     getProjectXP: (project: FortyTwoProject) => {
       const state = get();
       let totalXP = 0;
-      // Toujours additionner l'XP du projet lui-même (même si 0)
       totalXP += project.experience || project.difficulty || 0;
-      // Additionner récursivement l'XP de tous les enfants
       if (project.children && project.children.length > 0) {
         for (const childRef of project.children) {
           const childProject = state.projects[childRef.id];
@@ -249,7 +357,6 @@ const createFortyTwoStore = (initProps: {
 
     isProjectModuleComplete: (project: FortyTwoProject) => {
       const state = get();
-      // Si le projet a des enfants, on ne regarde que les enfants non optionnels
       if (project.children && project.children.length > 0) {
         for (const child of project.children) {
           if (child.name && child.name.trim().startsWith('(Optional)')) continue;
@@ -260,7 +367,6 @@ const createFortyTwoStore = (initProps: {
         }
         return true;
       }
-      // Sinon, comportement classique : validé si lui-même est validé
       const mark = state.projectMarks.get(project.id);
       return !!mark && mark > 0;
     },
@@ -298,17 +404,13 @@ const createFortyTwoStore = (initProps: {
     getValidatedGroupProjectsCount: () => {
       const state = get();
       let count = 0;
-      // On parcourt tous les projets cochés
       for (const [projectId, mark] of state.projectMarks) {
         const project = state.projects[projectId];
-        // On considère que c'est un projet de groupe si le nom contient 'group' ou 'groupe' ou 'team' (fallback)
-        // (à adapter si tu as une meilleure logique ou une vraie propriété)
         const isGroup = /group|groupe|team/i.test(project?.name || "");
         if (isGroup && mark && mark > 0) {
           count++;
         }
       }
-  // Logic for counting validated group projects via fetch (projects_users) can be added here if needed
       return count;
     },
 
@@ -357,7 +459,6 @@ export const FortyTwoStoreProvider = ({ children, cursus, levels, titles, projec
   useEffect(() => {
     const restored = loadProgressionFromStorage();
     if (restored) {
-      // Ne restaure events que si la valeur du localStorage est plus fraîche que celle du store
       const current = storeRef.current?.getState();
       let events = current?.events ?? 0;
       let eventsFetchedAt = current?.eventsFetchedAt ?? 0;
@@ -376,6 +477,11 @@ export const FortyTwoStoreProvider = ({ children, cursus, levels, titles, projec
         eventsFetchedAt,
       });
       forceRerender(x => x + 1);
+      setTimeout(() => {
+        storeRef.current?.getState().setHydrated(true);
+      }, 0);
+    } else {
+      storeRef.current?.getState().setHydrated(true);
     }
   }, []);
 

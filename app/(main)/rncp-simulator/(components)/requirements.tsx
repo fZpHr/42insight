@@ -128,19 +128,17 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], ma
 
   // Calcul du niveau courant et du niveau précis
   const currentXP = useFortyTwoStore(state => state.getSelectedXP());
+  console.log('[DEBUG][requirements] currentXP value:', currentXP);
   const currentLevel = getLevel(currentXP);
   // Utilise getPreciseLevel pour un affichage décimal précis
   const currentLevelPrecise = getPreciseLevel(currentXP, useFortyTwoStore(state => state.levels)).toFixed(2);
 
-  // Pour la gestion des notes d'expérience pro
-  const [experienceMarks, setExperienceMarks] = useState<{ [id: string]: number }>({});
-  // XP de base pour chaque expérience pro (à adapter selon la logique métier)
-  // Mapping exhaustif des expériences pro (doit matcher le mapping de page.tsx)
+  // Utilisation du store Zustand pour la gestion des notes d'expérience pro
+  const professionalExperienceMarks = useFortyTwoStore(state => state.professionalExperienceMarks);
+  const setProfessionalExperienceMark = useFortyTwoStore(state => state.setProfessionalExperienceMark);
   const professionalExperienceXp: { [id: string]: number } = {
     stage_1: 42000,
     stage_2: 63000,
-    part_time_1: 42000,
-    part_time_2: 63000,
     startup_experience: 42000,
     alternance_1_an: 90000,
     alternance_2_ans: 180000,
@@ -157,7 +155,7 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], ma
 
   // Pour synchroniser avec le store si besoin, tu peux persister dans localStorage
   const handleMarkChange = (id: string, mark: number) => {
-    setExperienceMarks((prev: any) => ({ ...prev, [id]: Math.max(0, Math.min(mark, 125)) }))
+    setProfessionalExperienceMark(id, Math.max(0, Math.min(mark, 125)));
   }
 
   // Détection des expériences auto-togglées (non manuelles)
@@ -226,7 +224,7 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], ma
             <div className="flex flex-wrap gap-2 mt-1">
               {professionalExperienceOptions.map((exp) => {
                 const isActive = professionalExperiences.has(exp.id);
-                const mark = experienceMarks[exp.id] ?? 100;
+                const mark = professionalExperienceMarks.get(exp.id) ?? 100;
                 const baseXp = professionalExperienceXp[exp.id] ?? 0;
                 const totalXp = Math.round(baseXp * (mark / 100));
                 const isAuto = autoToggledExperiences.includes(exp.id);
