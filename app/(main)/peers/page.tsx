@@ -17,7 +17,7 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from "@/components/ui/empty"
-import { TriangleAlert } from "lucide-react";
+import { Search, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 async function fetchPeersData() {
@@ -286,6 +286,11 @@ export default function PeersPage() {
                         : "N/A"}
                 </p>
             </div>
+            {/* load all people that dont have groups for your current project and make a tinder like choice to send a dm or a mail to the chosen group user */}
+            <Button className="mb-6" onClick={() => { window.location.reload(); }}>
+                <Search className="mr-2 h-4 w-4" />
+                Find a peer for your group project
+            </Button>
             {sortedProjects?.map((project) => {
                 const nonValidatedSubscribers = project.subscribers.filter(
                     subscriber => subscriber.validated === false

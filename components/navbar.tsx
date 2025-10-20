@@ -17,6 +17,7 @@ import {
   Calendar,
   Activity,
   UserRoundSearch,
+  Map,
   LayoutGrid,
   BookUser,
   Workflow,
@@ -120,6 +121,12 @@ const navigationData = {
     {
       title: "Resources",
       items: [
+        {
+          title: "Cluster Map",
+          url: "/cluster-map",
+          icon: Map,
+          description: "Visual representation of cluster status",
+        },
         {
           title: "Useful Links",
           url: "/links",
