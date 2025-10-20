@@ -109,6 +109,7 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], ma
     projectMarks,
     setProjectMark,
     removeProject,
+    toggleCoalitionBonus,
   } = useFortyTwoStore(state => ({
     professionalExperiences: state.professionalExperiences,
     toggleProfessionalExperience: state.toggleProfessionalExperience,
@@ -119,7 +120,11 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], ma
     projectMarks: state.projectMarks,
     setProjectMark: state.setProjectMark,
     removeProject: state.removeProject,
+    toggleCoalitionBonus: state.toggleCoalitionBonus,
   }));
+
+  // Separate hook to ensure we can call toggleCoalitionBonus without typing issues
+  const toggleCoalition = useFortyTwoStore(state => state.toggleCoalitionBonus);
 // (removed stray lines, correct signature is below)
 //console.log('[DEBUG][requirements] events value:', events);
 
@@ -375,6 +380,7 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], manualProject
   const [selected, setSelected] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [showOld, setShowOld] = useState(false);
+  const toggleCoalition = useFortyTwoStore(state => state.toggleCoalitionBonus);
 
   // Trie et filtre les anciens projets (autoExtraProjects) du plus récent au plus ancien (par id décroissant), sans les projets piscine
   const piscineRegex = /Piscine|piscine|C Piscine/;
@@ -474,7 +480,8 @@ function ManualProjectForm({ onAddProject, autoExtraProjects = [], manualProject
       if (project) {
         const newCoa = !project.coa;
         onManualProjectsChange(manualProjects.map(p => p.id === id ? { ...p, coa: newCoa } : p));
-        setProjectMark(id, project.mark, newCoa);
+        // Toggle coalition flag in store so dynamic XP reflects the coalition bonus
+        toggleCoalition(id);
       }
     }
   };

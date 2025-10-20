@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 function ProjectSideIcon({ project, depth }: { project: FortyTwoProject; depth: number }) {
   if (project.children?.length > 0) {
@@ -91,6 +92,8 @@ function Project({
 
   const isSelected = projectMarks.has(project.id)
   const mark = projectMarks.get(project.id)
+  // When a project is selected but no explicit mark is stored yet, treat it as 100 for display
+  const displayMark = mark ?? 100
   const isBonus = mark === 125
   const isCoalition = coalitionProjects.has(project.id)
   const autoFetchedProjectMarks = useFortyTwoStore(state => state.autoFetchedProjectMarks)
@@ -128,13 +131,7 @@ function Project({
         )}
         onClick={handleToggle}
       >
-        {isCoalition && (
-            <div className="absolute inset-0 flex items-center justify-center bg-cyan-500/20 pointer-events-none z-10">
-              <span className="text-lg font-bold text-white" style={{ textShadow: '1px 1px 2px black' }}>
-                COALITION
-              </span>
-            </div>
-        )}
+        {/* show tooltip on hover for coalition instead of tinting the whole card */}
         <ProjectSideIcon project={project} depth={depth} />
         <ProjectIcon isSelected={isSelected} />
 
@@ -148,24 +145,33 @@ function Project({
                   : (project.experience ?? 0).toLocaleString('fr-FR')
                 } XP
               </Badge>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "size-7 p-0 border-none bg-transparent hover:bg-transparent focus:ring-0 focus:outline-none",
-                  isCoalition ? "text-cyan-500" : "text-gray-400 dark:text-zinc-600"
-                )}
-                tabIndex={-1}
-                onClick={e => {
-                  e.stopPropagation();
-                  toggleCoalitionBonus(project.id);
-                }}
-                aria-label={isCoalition ? "Retirer le bonus de coalition" : "Mettre le bonus de coalition"}
-              >
-                <UsersIcon className={cn("size-4")}
-                  fill={isCoalition ? "currentColor" : "none"}
-                />
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "size-7 p-0 border-none bg-transparent hover:bg-transparent focus:ring-0 focus:outline-none",
+                        isCoalition ? "text-cyan-500" : "text-gray-400 dark:text-zinc-600"
+                      )}
+                      tabIndex={-1}
+                      onClick={e => {
+                        e.stopPropagation();
+                        toggleCoalitionBonus(project.id);
+                      }}
+                      aria-label={isCoalition ? "Retirer le bonus de coalition" : "Mettre le bonus de coalition"}
+                    >
+                      <UsersIcon className={cn("size-4")}
+                        fill={isCoalition ? "currentColor" : "none"}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Coalition</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Button
                 variant="ghost"
                 size="icon"
@@ -196,8 +202,11 @@ function Project({
             {isSelected && (
               <Input
                 type="number"
-                className="h-8 w-20"
-                value={mark ?? 100}
+                className={cn(
+                  "h-8 w-20",
+                  displayMark > 0 ? "bg-green-50 text-green-800 border-green-300 focus:ring-2 focus:ring-green-300" : ""
+                )}
+                value={displayMark}
                 onChange={(e) => setProjectMark(project.id, parseInt(e.target.value, 10) || 0)}
                 min={0}
                 max={125}

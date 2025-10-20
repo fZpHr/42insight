@@ -343,6 +343,7 @@ const createFortyTwoStore = (initProps: {
         const project = state.projects[projectId];
         if (project) {
           let xp = (project.experience || project.difficulty || 0) * (mark / 100);
+          // Apply coalition bonus to the global gauge if project flagged as coalition
           if (state.coalitionProjects.has(projectId)) {
             xp *= 1.042;
           }
@@ -377,7 +378,13 @@ const createFortyTwoStore = (initProps: {
         const mark = state.projectMarks.get(projectId)
 
         if (proj && mark !== undefined && mark > 0) {
-          totalXP += (proj.experience || proj.difficulty || 0) * (mark / 100)
+          let xpForProj = (proj.experience || proj.difficulty || 0) * (mark / 100)
+          // Apply coalition bonus only for manually-added projects (not auto-fetched ones)
+          const isAutoFetched = state.autoFetchedProjectMarks?.has(projectId);
+          if (state.coalitionProjects.has(projectId) && !isAutoFetched) {
+            xpForProj *= 1.042
+          }
+          totalXP += xpForProj
         }
       }
 
