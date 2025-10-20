@@ -1,37 +1,53 @@
-'use client'
+"use client"
 
-import type { FortyTwoCursus, FortyTwoLevel, FortyTwoProject, FortyTwoStore, FortyTwoTitle, FortyTwoTitleOption } from "@/types/forty-two"
-import { useRef, useContext, createContext, type ReactNode, useState } from "react";
+import type {
+  FortyTwoCursus,
+  FortyTwoLevel,
+  FortyTwoProject,
+  FortyTwoStore,
+  FortyTwoTitle,
+  FortyTwoTitleOption,
+} from "@/types/forty-two"
+import { useRef, useContext, createContext, type ReactNode, useState, useEffect } from "react"
 import { useStoreWithEqualityFn, createWithEqualityFn } from "zustand/traditional"
 
-// Persistance localStorage helpers
 const STORAGE_KEY = "rncp_simulator_progression"
-const EVENTS_TTL = 10 * 60 * 1000; // 10 minutes en ms
+const EVENTS_TTL = 10 * 60 * 1000 // 10 minutes
+
 function saveProgressionToStorage(state: any) {
-  const data = {
-    projectMarks: Array.from((state.projectMarks ?? new Map()).entries()),
-    professionalExperiences: Array.from(state.professionalExperiences ?? []),
-    coalitionProjects: Array.from((state.coalitionProjects ?? new Set()).values()), // Save coalition projects
-    events: state.events ?? 0,
-    eventsFetchedAt: state.eventsFetchedAt ?? 0,
-    ts: Date.now(),
+  try {
+    const data = {
+      projectMarks: Array.from((state.projectMarks ?? new Map()).entries()),
+      professionalExperiences: Array.from(state.professionalExperiences ?? []),
+      coalitionProjects: Array.from((state.coalitionProjects ?? new Set()).values()),
+      events: state.events ?? 0,
+      eventsFetchedAt: state.eventsFetchedAt ?? 0,
+      ts: Date.now(),
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch (error) {
+    // Silently fail if localStorage is not available
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
+
 function loadProgressionFromStorage() {
   if (typeof window === "undefined") return null
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return null
   try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+
     const data = JSON.parse(raw)
-    const now = Date.now();
-    let events = 0, eventsFetchedAt = 0;
-    if (typeof data.events === 'number' && typeof data.eventsFetchedAt === 'number') {
+    const now = Date.now()
+
+    let events = 0,
+      eventsFetchedAt = 0
+    if (typeof data.events === "number" && typeof data.eventsFetchedAt === "number") {
       if (now - data.eventsFetchedAt < EVENTS_TTL) {
-        events = data.events;
-        eventsFetchedAt = data.eventsFetchedAt;
+        events = data.events
+        eventsFetchedAt = data.eventsFetchedAt
       }
     }
+
     return {
       projectMarks: new Map<number, number>(data.projectMarks as [number, number][]),
       professionalExperiences: new Set<string>(data.professionalExperiences as string[]),
@@ -52,41 +68,38 @@ const createFortyTwoStore = (initProps: {
 }) => {
   const getAllDescendants = (projectId: number, projects: Record<number, FortyTwoProject>): number[] => {
     const project = projects[projectId]
-    if (!project || !project.children || project.children.length === 0) {
-      return []
-    }
+    if (!project?.children?.length) return []
 
     const descendantIds: number[] = []
-    project.children.forEach((child) => {
+    for (const child of project.children) {
       if (!child.name.startsWith(" (Optional)")) {
         descendantIds.push(child.id)
         descendantIds.push(...getAllDescendants(child.id, projects))
       }
-    })
-
+    }
     return descendantIds
   }
 
   type StoreWithPersistence = FortyTwoStore & {
-    professionalExperiences: Set<string>;
-    autoFetchedProjectMarks: Map<number, number>;
-    clearAutoFetchedProjectMarks: () => void;
-    toggleProfessionalExperience: (experience: string) => void;
-    setProfessionalExperience: (experience: string, enabled: boolean) => void;
-    autoFetchedProfessionalExperiences: Set<string>;
-    clearAutoFetchedProfessionalExperiences: () => void;
-    resetAll: () => void;
-    softReset: () => void;
-    initialXPDelta: number;
-    processInitialData: (userInfo: any, activeTitle: FortyTwoTitle | null) => void;
-    persistedOldProjects: any[];
-    professionalExperienceMarks: Map<string, number>;
-    hydrated: boolean;
-    setHydrated: (hydrated: boolean) => void;
-    isDataProcessed: boolean;
-    coalitionProjects: Set<number>;
-    toggleCoalitionBonus: (projectId: number) => void;
-  };
+    professionalExperiences: Set<string>
+    autoFetchedProjectMarks: Map<number, number>
+    clearAutoFetchedProjectMarks: () => void
+    toggleProfessionalExperience: (experience: string) => void
+    setProfessionalExperience: (experience: string, enabled: boolean) => void
+    autoFetchedProfessionalExperiences: Set<string>
+    clearAutoFetchedProfessionalExperiences: () => void
+    resetAll: () => void
+    softReset: () => void
+    initialXPDelta: number
+    processInitialData: (userInfo: any, activeTitle: FortyTwoTitle | null) => void
+    persistedOldProjects: any[]
+    professionalExperienceMarks: Map<string, number>
+    hydrated: boolean
+    setHydrated: (hydrated: boolean) => void
+    isDataProcessed: boolean
+    coalitionProjects: Set<number>
+    toggleCoalitionBonus: (projectId: number) => void
+  }
 
   return createWithEqualityFn<StoreWithPersistence>()((set, get) => ({
     cursus: initProps.cursus,
@@ -104,33 +117,32 @@ const createFortyTwoStore = (initProps: {
 
     setHydrated: (hydrated: boolean) => set({ hydrated }),
 
-    clearAutoFetchedProfessionalExperiences: () =>
-      set(() => ({ autoFetchedProfessionalExperiences: new Set<string>() })),
+    clearAutoFetchedProfessionalExperiences: () => set({ autoFetchedProfessionalExperiences: new Set<string>() }),
 
-    clearAutoFetchedProjectMarks: () =>
-      set(() => ({ autoFetchedProjectMarks: new Map() })),
+    clearAutoFetchedProjectMarks: () => set({ autoFetchedProjectMarks: new Map() }),
 
     professionalExperiences: new Set<string>(),
     events: 0,
     eventsFetchedAt: 0,
 
-    setEvents: (events: number) => set((state) => {
-      const next = { events, eventsFetchedAt: Date.now() };
-      saveProgressionToStorage({ ...state, ...next });
-      return next;
-    }),
+    setEvents: (events: number) =>
+      set((state) => {
+        const next = { events, eventsFetchedAt: Date.now() }
+        saveProgressionToStorage({ ...state, ...next })
+        return next
+      }),
 
     toggleCoalitionBonus: (projectId: number) =>
       set((state) => {
-        const newCoalitionProjects = new Set(state.coalitionProjects);
+        const newCoalitionProjects = new Set(state.coalitionProjects)
         if (newCoalitionProjects.has(projectId)) {
-          newCoalitionProjects.delete(projectId);
+          newCoalitionProjects.delete(projectId)
         } else {
-          newCoalitionProjects.add(projectId);
+          newCoalitionProjects.add(projectId)
         }
-        const next = { coalitionProjects: newCoalitionProjects };
-        saveProgressionToStorage({ ...state, ...next });
-        return next;
+        const next = { coalitionProjects: newCoalitionProjects }
+        saveProgressionToStorage({ ...state, ...next })
+        return next
       }),
 
     toggleProfessionalExperience: (experience: string) =>
@@ -161,19 +173,19 @@ const createFortyTwoStore = (initProps: {
 
     setProfessionalExperienceMark: (experience: string, mark: number) =>
       set((state) => {
-        const newMarks = new Map(state.professionalExperienceMarks);
-        newMarks.set(experience, Math.max(0, Math.min(mark, 100)));
-        return { professionalExperienceMarks: newMarks };
+        const newMarks = new Map(state.professionalExperienceMarks)
+        newMarks.set(experience, Math.max(0, Math.min(mark, 100)))
+        return { professionalExperienceMarks: newMarks }
       }),
 
-    setProjectMark: (projectId: number, mark: number, onlySelf: boolean = false) =>
+    setProjectMark: (projectId: number, mark: number, onlySelf = false) =>
       set((state) => {
         const newMarks = new Map(state.projectMarks)
         const projectsToMark = onlySelf ? [projectId] : [projectId, ...getAllDescendants(projectId, state.projects)]
 
-        projectsToMark.forEach((id) => {
+        for (const id of projectsToMark) {
           newMarks.set(id, Math.max(0, Math.min(mark, 125)))
-        })
+        }
         const next = { projectMarks: newMarks }
         saveProgressionToStorage({ ...state, ...next })
         return next
@@ -184,201 +196,236 @@ const createFortyTwoStore = (initProps: {
         const newMarks = new Map(state.projectMarks)
         const projectsToRemove = [projectId, ...getAllDescendants(projectId, state.projects)]
 
-        projectsToRemove.forEach((id) => {
+        for (const id of projectsToRemove) {
           newMarks.delete(id)
-        })
+        }
         const next = { projectMarks: newMarks }
         saveProgressionToStorage({ ...state, ...next })
         return next
       }),
 
-    resetAll: () => set((state) => {
-      saveProgressionToStorage({ projectMarks: new Map(), professionalExperiences: new Set(), coalitionProjects: new Set(), events: 0, eventsFetchedAt: 0 })
-      return { projectMarks: new Map(), professionalExperiences: new Set(), coalitionProjects: new Set(), events: 0, eventsFetchedAt: 0, persistedOldProjects: [], initialXPDelta: 0, isDataProcessed: false }
-    }),
+    resetAll: () =>
+      set(() => {
+        const emptyState = {
+          projectMarks: new Map(),
+          professionalExperiences: new Set(),
+          coalitionProjects: new Set(),
+          events: 0,
+          eventsFetchedAt: 0,
+          persistedOldProjects: [],
+          initialXPDelta: 0,
+          isDataProcessed: false,
+        }
+        saveProgressionToStorage(emptyState)
+        return emptyState
+      }),
 
-    softReset: () => set((state) => {
-      const newMarks = new Map(state.autoFetchedProjectMarks ?? [])
-      const newProExp: Set<string> = new Set(state.autoFetchedProfessionalExperiences ?? [])
-      saveProgressionToStorage({
-        projectMarks: newMarks,
-        professionalExperiences: newProExp,
-        coalitionProjects: state.coalitionProjects ?? new Set(),
-        events: state.events,
-        eventsFetchedAt: state.eventsFetchedAt,
-      })
-      return {
-        projectMarks: newMarks,
-        professionalExperiences: newProExp,
-        coalitionProjects: new Set(),
-        events: state.events,
-        eventsFetchedAt: state.eventsFetchedAt,
-        isDataProcessed: false,
-      }
-    }),
+    softReset: () =>
+      set((state) => {
+        const newMarks = new Map(state.autoFetchedProjectMarks ?? [])
+        const newProExp = new Set(state.autoFetchedProfessionalExperiences ?? [])
+        const resetState = {
+          projectMarks: newMarks,
+          professionalExperiences: newProExp,
+          coalitionProjects: new Set(),
+          events: state.events,
+          eventsFetchedAt: state.eventsFetchedAt,
+          isDataProcessed: false,
+        }
+        saveProgressionToStorage({ ...state, ...resetState })
+        return resetState
+      }),
 
     initialXPDelta: 0,
 
     processInitialData: (userInfo: any, activeTitle: FortyTwoTitle | null) => {
-      if (!userInfo) return;
-      const state = get();
+      if (!userInfo) return
+      const state = get()
 
-      let oldProjects: any[] = [];
+      let oldProjects: any[] = []
       if (userInfo.projects_users && activeTitle) {
-        const mainOption = activeTitle.options?.[0];
+        const mainOption = activeTitle.options?.[0]
         if (mainOption) {
           const cursusProjectIds = new Set(
-            Array.isArray(mainOption.projects)
-              ? mainOption.projects
-              : Object.keys(mainOption.projects).map(Number)
-          );
-          let canonicalProjects: Record<number, any> = {};
+            Array.isArray(mainOption.projects) ? mainOption.projects : Object.keys(mainOption.projects).map(Number),
+          )
+
+          let canonicalProjects: Record<number, any> = {}
           try {
-            // @ts-ignore
-            canonicalProjects = require('@/lib/forty-two/data/projects_21.json').projects.reduce((acc: any, p: any) => { acc[p.id] = p; return acc; }, {});
+            canonicalProjects = require("@/lib/forty-two/data/projects_21.json").projects.reduce((acc: any, p: any) => {
+              acc[p.id] = p
+              return acc
+            }, {})
           } catch {}
+
           oldProjects = userInfo.projects_users
             .filter((pu: any) => !cursusProjectIds.has(pu.project.id) && pu.final_mark > 0)
             .map((pu: any) => {
-              let xp = 0;
-              if (canonicalProjects[pu.project.id]) {
-                xp = canonicalProjects[pu.project.id].experience || canonicalProjects[pu.project.id].xp || canonicalProjects[pu.project.id].difficulty || 0;
-              }
-              if (!xp) {
-                xp = pu.project.experience || pu.project.xp || 0;
-              }
+              const xp =
+                canonicalProjects[pu.project.id]?.experience ||
+                canonicalProjects[pu.project.id]?.xp ||
+                canonicalProjects[pu.project.id]?.difficulty ||
+                pu.project.experience ||
+                pu.project.xp ||
+                0
+
               return {
                 id: pu.project.id,
                 name: pu.project.name,
                 xp,
                 mark: pu.final_mark,
-              };
-            });
+              }
+            })
         }
       }
 
-      const newMarks = new Map(state.projectMarks);
-      const newAutoMarks = new Map(state.autoFetchedProjectMarks);
-      const newProExp = new Set(state.professionalExperiences);
-      const newAutoProExp = new Set(state.autoFetchedProfessionalExperiences);
-
-      const mainProjects = (userInfo.projects_users && userInfo.projects_users.length > 0)
-        ? userInfo.projects_users
-        : oldProjects.map((p: any) => ({ project: { id: p.id }, final_mark: p.mark }));
+      const newMarks = new Map(state.projectMarks)
+      const newAutoMarks = new Map(state.autoFetchedProjectMarks)
+      const newProExp = new Set(state.professionalExperiences)
+      const newAutoProExp = new Set(state.autoFetchedProfessionalExperiences)
 
       const projectToExperience: Record<number, string> = {
-        1638: "stage_1", 1644: "stage_2", 1662: "startup_experience",
-        1873: "alternance_1_an", 1877: "alternance_1_an", 1878: "alternance_1_an",
-        1879: "alternance_1_an", 1880: "alternance_1_an", 2561: "alternance_1_an",
-        2563: "alternance_1_an", 1857: "alternance_2_ans", 1861: "alternance_2_ans",
-        1862: "alternance_2_ans", 1863: "alternance_2_ans", 1864: "alternance_2_ans",
-        1865: "alternance_2_ans", 1869: "alternance_2_ans", 1870: "alternance_2_ans",
-        1871: "alternance_2_ans", 1872: "alternance_2_ans", 2562: "alternance_2_ans",
+        1638: "stage_1",
+        1644: "stage_2",
+        1662: "startup_experience",
+        1873: "alternance_1_an",
+        1877: "alternance_1_an",
+        1878: "alternance_1_an",
+        1879: "alternance_1_an",
+        1880: "alternance_1_an",
+        2561: "alternance_1_an",
+        2563: "alternance_1_an",
+        1857: "alternance_2_ans",
+        1861: "alternance_2_ans",
+        1862: "alternance_2_ans",
+        1863: "alternance_2_ans",
+        1864: "alternance_2_ans",
+        1865: "alternance_2_ans",
+        1869: "alternance_2_ans",
+        1870: "alternance_2_ans",
+        1871: "alternance_2_ans",
+        1872: "alternance_2_ans",
+        2562: "alternance_2_ans",
         2564: "alternance_2_ans",
-      };
+      }
 
-      mainProjects.forEach((project: any) => {
-        if (typeof project.final_mark === 'number' && project.final_mark > 0) {
-          newMarks.set(project.project.id, project.final_mark);
-          newAutoMarks.set(project.project.id, project.final_mark);
+      const mainProjects =
+        userInfo.projects_users?.length > 0
+          ? userInfo.projects_users
+          : oldProjects.map((p: any) => ({ project: { id: p.id }, final_mark: p.mark }))
+
+      for (const project of mainProjects) {
+        if (typeof project.final_mark === "number" && project.final_mark > 0) {
+          newMarks.set(project.project.id, project.final_mark)
+          newAutoMarks.set(project.project.id, project.final_mark)
         }
-        const expKey = projectToExperience[project.project.id];
+        const expKey = projectToExperience[project.project.id]
         if (expKey) {
-            newProExp.add(expKey);
-            newAutoProExp.add(expKey);
+          newProExp.add(expKey)
+          newAutoProExp.add(expKey)
         }
-      });
+      }
 
-      const cursus = userInfo.cursus_users?.find((c: any) => c.cursus_id === 21);
-      const userLevel = cursus?.level ?? null;
-      let userLevelXP = null;
-      if (userLevel !== null && typeof userLevel === 'number') {
+      const cursus = userInfo.cursus_users?.find((c: any) => c.cursus_id === 21)
+      const userLevel = cursus?.level ?? null
+      let userLevelXP = null
+
+      if (userLevel !== null && typeof userLevel === "number") {
         try {
-          // @ts-ignore
-          const expData = require('@/lib/forty-two/data/experience_21.json');
-          const levels = expData.levels;
-          let lower = levels[0];
-          let upper = levels[levels.length - 1];
-          for (let i = 0; i < levels.length; i++) {
-            if (levels[i].level <= userLevel) lower = levels[i];
-            if (levels[i].level >= userLevel) { upper = levels[i]; break; }
+          const expData = require("@/lib/forty-two/data/experience_21.json")
+          const levels = expData.levels
+          let lower = levels[0]
+          let upper = levels[levels.length - 1]
+
+          for (const level of levels) {
+            if (level.level <= userLevel) lower = level
+            if (level.level >= userLevel) {
+              upper = level
+              break
+            }
           }
+
           if (lower.level === upper.level) {
-            userLevelXP = lower.experience;
+            userLevelXP = lower.experience
           } else {
-            const ratio = (userLevel - lower.level) / (upper.level - lower.level);
-            userLevelXP = lower.experience + ratio * (upper.experience - lower.experience);
+            const ratio = (userLevel - lower.level) / (upper.level - lower.level)
+            userLevelXP = lower.experience + ratio * (upper.experience - lower.experience)
           }
-        } catch (e) {
-          userLevelXP = null;
+        } catch {
+          userLevelXP = null
         }
       }
 
-      let totalXP = 0;
+      let totalXP = 0
       for (const [projectId, mark] of newMarks) {
-        const project = state.projects[projectId];
+        const project = state.projects[projectId]
         if (project) {
-          totalXP += (project.experience || project.difficulty || 0) * (mark / 100);
+          totalXP += (project.experience || project.difficulty || 0) * (mark / 100)
         }
       }
-      const initialXPDelta = (userLevelXP ?? 0) - totalXP;
+
+      const initialXPDelta = (userLevelXP ?? 0) - totalXP
 
       const finalState = {
         projectMarks: newMarks,
         autoFetchedProjectMarks: newAutoMarks,
         professionalExperiences: newProExp,
         autoFetchedProfessionalExperiences: newAutoProExp,
-        initialXPDelta: initialXPDelta,
+        initialXPDelta,
         persistedOldProjects: oldProjects,
         isDataProcessed: true,
-      };
+      }
 
-      set(finalState);
-      saveProgressionToStorage({ ...get(), ...finalState });
+      set(finalState)
+      saveProgressionToStorage({ ...get(), ...finalState })
     },
 
     getSelectedXP: () => {
-      const state = get();
+      const state = get()
       const professionalExperienceXp: Record<string, number> = {
         stage_1: 42000,
         stage_2: 63000,
         startup_experience: 42000,
         alternance_1_an: 90000,
         alternance_2_ans: 180000,
-      };
-      let totalXP = 0;
-      let xp = 0;
-      for (const experience of state.professionalExperiences) {
-        const mark = state.professionalExperienceMarks.get(experience) ?? 100;
-        totalXP += (professionalExperienceXp[experience] || 0) * (mark / 100);
       }
+
+      let totalXP = 0
+
+      // Calculate professional experience XP
+      for (const experience of state.professionalExperiences) {
+        const mark = state.professionalExperienceMarks.get(experience) ?? 100
+        totalXP += (professionalExperienceXp[experience] || 0) * (mark / 100)
+      }
+
+      // Calculate project XP
       for (const [projectId, mark] of state.projectMarks) {
-        const project = state.projects[projectId];
+        const project = state.projects[projectId]
         if (project) {
-          let xp = (project.experience || project.difficulty || 0) * (mark / 100);
-          // Apply coalition bonus to the global gauge if project flagged as coalition
+          let xp = (project.experience || project.difficulty || 0) * (mark / 100)
           if (state.coalitionProjects.has(projectId)) {
-            xp *= 1.042;
+            xp *= 1.042
           }
-          totalXP += xp;
+          totalXP += xp
         }
       }
-      return totalXP + (state.initialXPDelta ?? 0);
+
+      return totalXP + (state.initialXPDelta ?? 0)
     },
 
     getProjectXP: (project: FortyTwoProject) => {
-      const state = get();
-      let totalXP = 0;
-      totalXP += project.experience || project.difficulty || 0;
-      if (project.children && project.children.length > 0) {
+      const state = get()
+      let totalXP = project.experience || project.difficulty || 0
+
+      if (project.children?.length) {
         for (const childRef of project.children) {
-          const childProject = state.projects[childRef.id];
+          const childProject = state.projects[childRef.id]
           if (childProject) {
-            totalXP += state.getProjectXP(childProject);
+            totalXP += state.getProjectXP(childProject)
           }
         }
       }
-      return totalXP;
+      return totalXP
     },
 
     getDynamicProjectXP: (project: FortyTwoProject) => {
@@ -392,8 +439,7 @@ const createFortyTwoStore = (initProps: {
 
         if (proj && mark !== undefined && mark > 0) {
           let xpForProj = (proj.experience || proj.difficulty || 0) * (mark / 100)
-          // Apply coalition bonus only for manually-added projects (not auto-fetched ones)
-          const isAutoFetched = state.autoFetchedProjectMarks?.has(projectId);
+          const isAutoFetched = state.autoFetchedProjectMarks?.has(projectId)
           if (state.coalitionProjects.has(projectId) && !isAutoFetched) {
             xpForProj *= 1.042
           }
@@ -405,19 +451,17 @@ const createFortyTwoStore = (initProps: {
     },
 
     isProjectModuleComplete: (project: FortyTwoProject) => {
-      const state = get();
-      if (project.children && project.children.length > 0) {
+      const state = get()
+      if (project.children?.length) {
         for (const child of project.children) {
-          if (child.name && child.name.trim().startsWith('(Optional)')) continue;
-          const mark = state.projectMarks.get(child.id);
-          if (!mark || mark === 0) {
-            return false;
-          }
+          if (child.name?.trim().startsWith("(Optional)")) continue
+          const mark = state.projectMarks.get(child.id)
+          if (!mark || mark === 0) return false
         }
-        return true;
+        return true
       }
-      const mark = state.projectMarks.get(project.id);
-      return !!mark && mark > 0;
+      const mark = state.projectMarks.get(project.id)
+      return !!mark && mark > 0
     },
 
     getExperienceForOption: (option: FortyTwoTitleOption) => {
@@ -451,35 +495,33 @@ const createFortyTwoStore = (initProps: {
     },
 
     getValidatedGroupProjectsCount: () => {
-      const state = get();
-      let count = 0;
+      const state = get()
+      let count = 0
       for (const [projectId, mark] of state.projectMarks) {
-        const project = state.projects[projectId];
-        const isGroup = /group|groupe|team/i.test(project?.name || "");
+        const project = state.projects[projectId]
+        const isGroup = /group|groupe|team/i.test(project?.name || "")
         if (isGroup && mark && mark > 0) {
-          count++;
+          count++
         }
       }
-      return count;
+      return count
     },
 
     areRequirementsComplete: (title: FortyTwoTitle | null) => {
-      if (!title) return false;
-      const state = get();
-      const currentXP = state.getSelectedXP();
-      const currentLevel = state.getLevel(currentXP);
+      if (!title) return false
+      const state = get()
+      const currentXP = state.getSelectedXP()
+      const currentLevel = state.getLevel(currentXP)
 
-      const experienceProjectIds = (title as any).experience?.projects || [];
-      let experiencesCount = 0;
+      const experienceProjectIds = (title as any).experience?.projects || []
+      let experiencesCount = 0
       for (const projectId of experienceProjectIds) {
         if (state.projectMarks.has(projectId)) {
-          experiencesCount++;
+          experiencesCount++
         }
       }
-      return currentLevel >= title.level && experiencesCount >= title.number_of_experiences;
+      return currentLevel >= title.level && experiencesCount >= title.number_of_experiences
     },
-
-
   }))
 }
 
@@ -495,60 +537,56 @@ export interface FortyTwoStoreProviderProps {
   projects: Record<number, FortyTwoProject>
 }
 
-import { useEffect } from "react";
-
 export const FortyTwoStoreProvider = ({ children, cursus, levels, titles, projects }: FortyTwoStoreProviderProps) => {
-  const storeRef = useRef<FortyTwoStoreApi | null>(null);
-  const [, forceRerender] = useState(0);
+  const storeRef = useRef<FortyTwoStoreApi | null>(null)
+  const [, forceRerender] = useState(0)
+
   if (!storeRef.current) {
-    storeRef.current = createFortyTwoStore({ cursus, levels, titles, projects });
+    storeRef.current = createFortyTwoStore({ cursus, levels, titles, projects })
   }
 
-  // Synchronise la progression après le mount côté client
   useEffect(() => {
-    const restored = loadProgressionFromStorage();
+    const restored = loadProgressionFromStorage()
     if (restored) {
-      const current = storeRef.current?.getState();
-      let events = current?.events ?? 0;
-      let eventsFetchedAt = current?.eventsFetchedAt ?? 0;
+      const current = storeRef.current?.getState()
+      let events = current?.events ?? 0
+      let eventsFetchedAt = current?.eventsFetchedAt ?? 0
+
       if (
-        typeof restored.events === 'number' &&
-        typeof restored.eventsFetchedAt === 'number' &&
+        typeof restored.events === "number" &&
+        typeof restored.eventsFetchedAt === "number" &&
         restored.eventsFetchedAt > eventsFetchedAt
       ) {
-        events = restored.events;
-        eventsFetchedAt = restored.eventsFetchedAt;
+        events = restored.events
+        eventsFetchedAt = restored.eventsFetchedAt
       }
+
       storeRef.current?.setState({
         projectMarks: restored.projectMarks,
         professionalExperiences: restored.professionalExperiences,
-        coalitionProjects: restored.coalitionProjects, // Restore coalition projects
+        coalitionProjects: restored.coalitionProjects,
         events,
         eventsFetchedAt,
-      });
-      forceRerender(x => x + 1);
+      })
+      forceRerender((x) => x + 1)
+
       setTimeout(() => {
-        storeRef.current?.getState().setHydrated(true);
-      }, 0);
+        storeRef.current?.getState().setHydrated(true)
+      }, 0)
     } else {
-      storeRef.current?.getState().setHydrated(true);
+      storeRef.current?.getState().setHydrated(true)
     }
-  }, []);
+  }, [])
 
-  return <FortyTwoStoreContext.Provider value={storeRef.current}>{children}</FortyTwoStoreContext.Provider>;
-};
+  return <FortyTwoStoreContext.Provider value={storeRef.current}>{children}</FortyTwoStoreContext.Provider>
+}
 
-// On étend le type pour inclure les nouvelles fonctions
-type FullStore = FortyTwoStore & ReturnType<ReturnType<typeof createFortyTwoStore>["getState"]>;
+type FullStore = FortyTwoStore & ReturnType<ReturnType<typeof createFortyTwoStore>["getState"]>
 
-
-export const useFortyTwoStore = <T,>(
-  selector: (store: FullStore) => T,
-  equalityFn?: (a: T, b: T) => boolean
-): T => {
-  const fortyTwoStoreContext = useContext(FortyTwoStoreContext);
+export const useFortyTwoStore = <T,>(selector: (store: FullStore) => T, equalityFn?: (a: T, b: T) => boolean): T => {
+  const fortyTwoStoreContext = useContext(FortyTwoStoreContext)
   if (!fortyTwoStoreContext) {
-    throw new Error("useFortyTwoStore must be used within FortyTwoStoreProvider");
+    throw new Error("useFortyTwoStore must be used within FortyTwoStoreProvider")
   }
-  return useStoreWithEqualityFn(fortyTwoStoreContext, selector, equalityFn);
-};
+  return useStoreWithEqualityFn(fortyTwoStoreContext, selector, equalityFn)
+}
