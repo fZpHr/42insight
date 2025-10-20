@@ -54,8 +54,12 @@ model UpdateTimestamp {
   updatedAt DateTime @updatedAt
 }
 
-model FindPeers {
-  id          Int    @id @default(autoincrement())
-  projectName String
-  subscribers String @db.LongText
+model Project {
+  id          Int      @id
+  name        String
+  subscribers Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
 }
