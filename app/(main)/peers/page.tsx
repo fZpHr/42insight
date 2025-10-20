@@ -38,6 +38,7 @@ interface Subscriber {
     login: string;
     photoUrl: string | null;
     validated: boolean | null;
+    status: string;
 }
 
 interface Project {
@@ -321,6 +322,9 @@ export default function PeersPage() {
                                                         onClick={() => handleLoginClick(subscriber.login)}
                                                     >
                                                         {subscriber.login}
+                                                    </span>
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {subscriber.status}
                                                     </span>
                                                 </div>
                                             ))}
