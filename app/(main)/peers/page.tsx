@@ -3,12 +3,22 @@ import React from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardTitle } from "@/components/ui/card";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
 } from "@/components/ui/accordion"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Spinner } from "@/components/ui/spinner";
+import {
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from "@/components/ui/empty"
+import { TriangleAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 async function fetchPeersData() {
     try {
@@ -34,6 +44,8 @@ interface Project {
     id: number;
     name: string;
     subscribers: Subscriber[];
+    createdAt: string;
+    updatedAt: string
 }
 
 // thks find-peers https://github.com/codam-coding-college/find-peers/blob/main/env/projectIDs.json
@@ -210,17 +222,46 @@ export default function PeersPage() {
     });
 
     if (isLoading) {
-        return <div className="container mx-auto p-6">Loading...</div>;
+        return <div className="flex items-center justify-center h-full w-full">
+            <Spinner className="size-8" />
+        </div>;
     }
 
     if (error) {
-        return <div className="container mx-auto p-6">Error loading peers data.</div>;
+        return <div className="flex items-center justify-center h-full w-full">
+            <Empty>
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <TriangleAlert />
+                    </EmptyMedia>
+                    <EmptyTitle>No Peers found</EmptyTitle>
+                </EmptyHeader>
+                <EmptyContent>
+                    <Button variant="outline" size="sm">
+                        Refresh
+                    </Button>
+                </EmptyContent>
+            </Empty>
+        </div>;
+    }
+
+    function formatDate(isoString: string) {
+        const d = new Date(isoString);
+
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+
+        const hour = String(d.getHours()).padStart(2, "0");
+        const minute = String(d.getMinutes()).padStart(2, "0");
+
+        return `${day}/${month}/${year} - ${hour}:${minute}`;
     }
 
     const sortedProjects = data?.slice().sort((a, b) => {
         const orderA = Object.values(PROJECT_ORDER).indexOf(a.id);
         const orderB = Object.values(PROJECT_ORDER).indexOf(b.id);
-        
+
         if (orderA !== -1 && orderB !== -1) {
             return orderA - orderB;
         }
@@ -234,7 +275,15 @@ export default function PeersPage() {
     };
 
     return (
-        <div className="container mx-auto p-6">
+        <div className="container mx-auto px-2 py-6">
+            <div className="flex items-center justify-between mb-6">
+                <p className="text-xl font-semibold">
+                    Last Updated:{" "}
+                    {sortedProjects && sortedProjects.length > 0
+                        ? formatDate(sortedProjects[0].updatedAt)
+                        : "N/A"}
+                </p>
+            </div>
             {sortedProjects?.map((project) => {
                 const nonValidatedSubscribers = project.subscribers.filter(
                     subscriber => subscriber.validated === false
@@ -246,28 +295,36 @@ export default function PeersPage() {
                     <Card key={project.id} className="mb-6 p-4">
                         <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value={`project-${project.id}`}>
-                                <AccordionTrigger className="text-2xl font-semibold">
-                                    {project.name}
+                                <AccordionTrigger className="text-2xl font-semibold flex items-center gap-2">
+                                    <div className="flex items-center gap-3 text-left">
+                                        <span className="truncate">{project.name}</span>
+                                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs text-foreground/70">
+                                            {nonValidatedSubscribers.length == 1 ? "1 subscriber" : `${nonValidatedSubscribers.length} subscribers`}
+                                        </span>
+                                    </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
-                                        {nonValidatedSubscribers.map((subscriber) => (
-                                            <div 
-                                                key={subscriber.userId} 
-                                                className="flex flex-col items-center space-y-2"
-                                            >
-                                                <Avatar className="w-20 h-20 object-cover rounded-full">
-                                                    <AvatarImage src={subscriber.photoUrl || undefined} alt={subscriber.login} />
-                                                    <AvatarFallback>{subscriber.login.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                                </Avatar>
-                                                <span 
-                                                    className="text-lg font-medium cursor-pointer  hover:underline transition-colors"
-                                                    onClick={() => handleLoginClick(subscriber.login)}
+                                    <div className="pt-4">
+                                        <div className="flex gap-4 overflow-x-auto no-scrollbar">
+                                            {nonValidatedSubscribers.map((subscriber) => (
+                                                <div
+                                                    key={subscriber.userId}
+                                                    className="flex-shrink-0 flex flex-col items-center space-y-2 gap-2 pb-4"
                                                 >
-                                                    {subscriber.login}
-                                                </span>
-                                            </div>
-                                        ))}
+                                                    <img
+                                                        className="h-20 w-20 rounded-lg object-cover"
+                                                        src={subscriber.photoUrl || undefined}
+                                                        alt={subscriber.login}
+                                                    />
+                                                    <span
+                                                        className="text-lg font-medium cursor-pointer hover:underline transition-colors"
+                                                        onClick={() => handleLoginClick(subscriber.login)}
+                                                    >
+                                                        {subscriber.login}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
