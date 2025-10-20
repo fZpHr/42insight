@@ -2,8 +2,7 @@
 
 import { shallow } from "zustand/shallow"
 import { useFortyTwoStore } from "@/providers/forty-two-store-provider"
-import { useContext } from "react"
-import { FortyTwoStoreContext } from "@/providers/forty-two-store-provider"
+// ...existing code...
 import type { FortyTwoTitle } from "@/types/forty-two"
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 
@@ -14,6 +13,8 @@ import Link from "next/link"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { useWindowSize } from "react-use"
+import { useContext } from "react"
+import { FortyTwoStoreContext } from "@/providers/forty-two-store-provider"
 import ReactConfetti from "react-confetti"
 import { useSession } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
@@ -34,6 +35,7 @@ async function fetchUserEvents(login: string) {
 }
 
 export default function RNCPSimulator() {
+  const storeContext = useContext(FortyTwoStoreContext);
   const { data: session } = useSession({ required: true });
   const { width, height } = useWindowSize();
 
@@ -157,7 +159,9 @@ export default function RNCPSimulator() {
   return (
     <>
       {showConfetti && <ReactConfetti width={width} height={height} recycle={false} />}
-      <TitleSelector titles={titles} activeTitle={activeTitle} setActiveTitle={setActiveTitle} />
+      {activeTitle && (
+        <TitleSelector titles={titles} activeTitle={activeTitle} setActiveTitle={setActiveTitle} />
+      )}
 
       <Separator className="my-6" />
       <div className="flex items-center gap-2 mb-2">
@@ -195,11 +199,8 @@ export default function RNCPSimulator() {
           </Link>
         </p>
         <div className="flex gap-2 mt-2">
-          <Button variant="destructive" onClick={resetAll} type="button">
-            Reset all
-          </Button>
           <Button
-            variant="outline"
+            variant="destructive"
             onClick={() => {
               softReset();
               window.dispatchEvent(new Event('manualProjectsReset'));
@@ -207,22 +208,28 @@ export default function RNCPSimulator() {
                 localStorage.setItem(manualProjectsKey, JSON.stringify([]));
                 setManualProjects([]);
               }
+              // Relance le traitement des données pour sortir du loading
+              if (userIntraInfo && activeTitle) {
+                processInitialData(userIntraInfo, activeTitle);
+              }
             }}
             type="button"
           >
-            Soft reset
+            Reset
           </Button>
         </div>
       </div>
 
       <TitleRequirements
-        title={activeTitle}
+  title={activeTitle ?? titles[0]}
         manualProjects={manualProjects}
         onManualProjectsChange={onManualProjectsChange}
         className="my-6"
         autoExtraProjects={persistedOldProjects}
       />
-      <TitleOptions title={activeTitle} onCompletionChange={setOptionStatuses} />
+      {activeTitle && (
+        <TitleOptions title={activeTitle} onCompletionChange={setOptionStatuses} />
+      )}
       <div className="fixed bottom-2 left-0 w-full text-center text-xs text-muted-foreground pointer-events-none z-50">
         This project is inspired by a similar tool from the staff of 42 Angoulême, with their agreement.
       </div>

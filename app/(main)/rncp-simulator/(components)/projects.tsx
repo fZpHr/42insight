@@ -204,7 +204,7 @@ function Project({
                 type="number"
                 className={cn(
                   "h-8 w-20",
-                  displayMark > 0 ? "bg-green-50 text-green-800 border-green-300 focus:ring-2 focus:ring-green-300" : ""
+                  displayMark > 0 ? "bg-green-50 border-green-300 focus:ring-2 focus:ring-green-300" : ""
                 )}
                 value={displayMark}
                 onChange={(e) => setProjectMark(project.id, parseInt(e.target.value, 10) || 0)}

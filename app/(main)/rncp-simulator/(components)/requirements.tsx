@@ -240,7 +240,9 @@ export function TitleRequirements({ title, className, autoExtraProjects = [], ma
                     key={exp.id}
                     className={cn(
                       "flex items-center gap-1 px-2 py-1 rounded border text-xs",
-                      isActive ? "bg-primary/20 border-primary" : "bg-blue-50 hover:bg-blue-100 cursor-pointer",
+                      isActive
+                        ? "bg-primary/20 border-primary"
+                        : "bg-[var(--card)] hover:bg-[var(--muted)] cursor-pointer",
                       isAuto && "opacity-70 cursor-not-allowed border-dashed"
                     )}
                     title={

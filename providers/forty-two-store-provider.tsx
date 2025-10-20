@@ -9,9 +9,9 @@ const STORAGE_KEY = "rncp_simulator_progression"
 const EVENTS_TTL = 10 * 60 * 1000; // 10 minutes en ms
 function saveProgressionToStorage(state: any) {
   const data = {
-    projectMarks: Array.from(state.projectMarks.entries()),
-    professionalExperiences: Array.from(state.professionalExperiences),
-    coalitionProjects: Array.from(state.coalitionProjects.values()), // Save coalition projects
+    projectMarks: Array.from((state.projectMarks ?? new Map()).entries()),
+    professionalExperiences: Array.from(state.professionalExperiences ?? []),
+    coalitionProjects: Array.from((state.coalitionProjects ?? new Set()).values()), // Save coalition projects
     events: state.events ?? 0,
     eventsFetchedAt: state.eventsFetchedAt ?? 0,
     ts: Date.now(),
@@ -198,10 +198,23 @@ const createFortyTwoStore = (initProps: {
     }),
 
     softReset: () => set((state) => {
-      const newMarks = new Map(state.autoFetchedProjectMarks)
-      const newProExp: Set<string> = new Set(state.autoFetchedProfessionalExperiences)
-      saveProgressionToStorage({ projectMarks: newMarks, professionalExperiences: newProExp })
-      return { projectMarks: newMarks, professionalExperiences: newProExp, coalitionProjects: new Set(), isDataProcessed: false }
+      const newMarks = new Map(state.autoFetchedProjectMarks ?? [])
+      const newProExp: Set<string> = new Set(state.autoFetchedProfessionalExperiences ?? [])
+      saveProgressionToStorage({
+        projectMarks: newMarks,
+        professionalExperiences: newProExp,
+        coalitionProjects: state.coalitionProjects ?? new Set(),
+        events: state.events,
+        eventsFetchedAt: state.eventsFetchedAt,
+      })
+      return {
+        projectMarks: newMarks,
+        professionalExperiences: newProExp,
+        coalitionProjects: new Set(),
+        events: state.events,
+        eventsFetchedAt: state.eventsFetchedAt,
+        isDataProcessed: false,
+      }
     }),
 
     initialXPDelta: 0,
