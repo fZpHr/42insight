@@ -278,7 +278,8 @@ export default function PeersPage() {
     return (
         <div className="container mx-auto px-2 py-6">
             <div className="flex items-center justify-between mb-6">
-                <p className="text-xl font-semibold">
+                <CardTitle className="text-3xl font-bold">Find Peers</CardTitle>
+                <p className="text-sm text-muted-foreground">
                     Last Updated:{" "}
                     {sortedProjects && sortedProjects.length > 0
                         ? formatDate(sortedProjects[0].updatedAt)
@@ -317,15 +318,17 @@ export default function PeersPage() {
                                                         src={subscriber.photoUrl || undefined}
                                                         alt={subscriber.login}
                                                     />
-                                                    <span
-                                                        className="text-lg font-medium cursor-pointer hover:underline transition-colors"
-                                                        onClick={() => handleLoginClick(subscriber.login)}
-                                                    >
-                                                        {subscriber.login}
-                                                    </span>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {subscriber.status}
-                                                    </span>
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span
+                                                            className="text-lg font-medium cursor-pointer hover:underline transition-colors"
+                                                            onClick={() => handleLoginClick(subscriber.login)}
+                                                        >
+                                                            {subscriber.login}
+                                                        </span>
+                                                        <span className="text-sm text-muted-foreground mt-1">
+                                                            {subscriber.status}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

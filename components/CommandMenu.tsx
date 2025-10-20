@@ -9,7 +9,7 @@ import {
     CommandList,
     CommandSeparator,
 } from "@/components/ui/command"
-import { Calendar, FileText, LayoutDashboard, Link, Search, Trophy, Users, Waves } from "lucide-react"
+import { Calendar, FileText, LayoutDashboard, Link, Search, Trophy, Users, Waves, UserRoundSearch, Map } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { signOut } from "next-auth/react"
 
@@ -60,6 +60,10 @@ export function CommandMenu() {
                         <Users className="mr-2 h-4 w-4" />
                         <span>Trombinoscope</span>
                     </CommandItem>
+                    <CommandItem onSelect={() => { setOpen(false); Router.push("/peers") }}>
+                        <UserRoundSearch className="mr-2 h-4 w-4" />
+                        <span>Find-Peers</span>
+                    </CommandItem>
                     <CommandItem onSelect={() => { setOpen(false); Router.push("/exam-tracker") }}>
                         <FileText className="mr-2 h-4 w-4" />
                         <span>Exam-tracker</span>
@@ -82,6 +86,10 @@ export function CommandMenu() {
                 </CommandGroup>
                 <CommandSeparator />
                 <CommandGroup heading="Others">
+                    <CommandItem onSelect={() => { setOpen(false); Router.push("/cluster-map") }}>
+                        <Map className="mr-2 h-4 w-4" />
+                        <span>Cluster Map</span>
+                    </CommandItem>
                     <CommandItem onSelect={() => { setOpen(false); Router.push("/query") }}>
                         <Search className="mr-2 h-4 w-4" />
                         <span>Query</span>

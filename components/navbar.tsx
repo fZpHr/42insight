@@ -16,7 +16,9 @@ import {
   WavesLadder,
   Calendar,
   Activity,
+  UserRoundSearch,
   LayoutGrid,
+  BookUser,
   Workflow,
 } from "lucide-react";
 
@@ -75,6 +77,12 @@ const navigationData = {
           url: "/trombinoscope",
           icon: Users,
           description: "Student photo gallery",
+        },
+        {
+          title: "Find Peers",
+          url: "/peers",
+          icon: UserRoundSearch,
+          description: "Locate and connect with fellow students",
         },
         {
           title: "Exam Tracker",
