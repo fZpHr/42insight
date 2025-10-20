@@ -8,6 +8,11 @@ const poolRestrictedRoutes = [
   "/piscine/rankings",
 ]
 
+const adminStaffOnlyRoutes = [
+  "/cluster-map",
+  "/peers",
+]
+
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token
@@ -23,6 +28,15 @@ export default withAuth(
       }
     }
 
+    if (token?.role === "student") {
+      const adminStaffOnlyRoutesAccess = adminStaffOnlyRoutes.some(route =>
+        pathname.startsWith(route)
+      )
+      
+      if (adminStaffOnlyRoutesAccess) {
+        return NextResponse.redirect(new URL("/error/forbidden", req.url))
+      }
+    }
     return NextResponse.next()
   },
   {
@@ -39,6 +53,8 @@ export const config = {
     "/query/:path*", 
     "/rankings/:path*",
     "/events/:path*",
+    "/cluster-map/:path*",
+    "/peers/:path*",
     "/exam-tracker/:path*", 
     "/piscine/:path*", 
     "/links/:path*", 
