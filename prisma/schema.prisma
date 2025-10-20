@@ -13,6 +13,7 @@ model Student {
   level                Float
   photoUrl             String
   location             String
+  work                 Int     @default(0)
   correctionTotal      Int     @default(0)
   correctionPositive   Int     @default(0)
   correctionNegative   Int     @default(0)
@@ -24,7 +25,7 @@ model Student {
   blackholeTimer       Int
   campus               String?
   relation             String  @db.LongText
-  work                 Int     @default(0)
+  has_validated        Boolean @default(false)
 }
 
 model PoolUser {
@@ -45,6 +46,7 @@ model PoolUser {
   year                 Int
   wallet               Int
   isPoolUser           Boolean  @default(false)
+  has_succeeded        Boolean  @default(false)
 }
 
 model UpdateTimestamp {
