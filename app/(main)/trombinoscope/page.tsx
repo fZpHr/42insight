@@ -30,7 +30,7 @@ const LOAD_MORE = 10;
 
 const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
   try {
-    console.log("Fetching students for campus:", campus);
+    //console.log("Fetching students for campus:", campus);
     const response = await fetch(`/api/users/campus/${campus}`);
     if (!response.ok) {
       throw new Error("Failed to fetch students");

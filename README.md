@@ -39,22 +39,22 @@ We welcome contributions from everyone ! So if you want something missing or fix
 
 1. Fork the repository
 2. Create a feature branch:
-```bash
+\`\`\`bash
 git checkout -b feature/your-feature-name
-```
+\`\`\`
 3. Commit your changes:
-```bash
+\`\`\`bash
 git commit -m "Add your message here"
-```
+\`\`\`
 4. Push to your branch:
-```
+\`\`\`
 git push origin feature/your-feature-name
-```
+\`\`\`
 5. Open a pull request
 
 ## Creators
 
-- [fZpHr](https://github.com/fZpHr)
+- [Zeph](https://github.com/fZpHr)
 - [Haletran](https://github.com/Haletran)
 
 Feel free to reach out to us for any questions or suggestions!

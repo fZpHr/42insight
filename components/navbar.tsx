@@ -13,7 +13,6 @@ import {
   Github,
   MoreHorizontal,
   Database,
-  WavesLadder,
   Calendar,
   Activity,
   UserRoundSearch,
@@ -21,6 +20,7 @@ import {
   LayoutGrid,
   BookUser,
   Workflow,
+  Award,
 } from "lucide-react";
 
 import {
@@ -99,6 +99,12 @@ const navigationData = {
         //   badge: "Active",
         //   description: "Visualize your connections",
         // }
+        {
+          title: "RNCP Simulator",
+          url: "/rncp-simulator",
+          icon: Award, // Icône diplôme
+          description: "Simulate your RNCP progress",
+        }
       ],
     },
     {
@@ -113,7 +119,7 @@ const navigationData = {
         {
           title: "Piscine Trombi",
           url: "/piscine/trombinoscope",
-          icon: WavesLadder,
+          icon: Waves,
           description: "Piscine student gallery",
         },
       ],
@@ -164,7 +170,7 @@ const restrictednavigationData = {
         {
           title: "Piscine Trombi",
           url: "/piscine/trombinoscope",
-          icon: WavesLadder,
+          icon: Waves,
           description: "Piscine student gallery",
         },
         {
@@ -263,6 +269,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         asChild
                         isActive={pathname === item.url}
                         tooltip={item.description}
+                        className={
+                          ["stage", "alternance", "apprentissage", "emploi"].some(keyword => item.title.toLowerCase().includes(keyword))
+                            ? "relative z-10 border-2 border-primary/80 shadow-lg"
+                            : undefined
+                        }
                       >
                         <Link href={item.url}>
                           <item.icon />

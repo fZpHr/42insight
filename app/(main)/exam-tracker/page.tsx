@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ExamStudent } from "@/types"
+import { useState } from "react"
 
 
 function getExamName(examId: string) {
@@ -37,6 +38,7 @@ function getExamName(examId: string) {
 }
 
 export default function ExamTracker() {
+    const [campusTab, setCampusTab] = useState<'Angouleme' | 'Nice'>('Angouleme');
     
     // const isToday = (): boolean => {
     //     const today = new Date();
@@ -76,12 +78,30 @@ export default function ExamTracker() {
         return 'bg-red-500'
     }
 
-    const averageGrade = Array.isArray(students) && students.length > 0
-        ? students.reduce((sum, student) => sum + (student.grade || 0), 0) / students.length
+    const studentsNice = students.filter((s: any) => s.campus === "Nice");
+    const studentsAngouleme = students.filter((s: any) => s.campus === "Angouleme");
+    const studentsToShow = campusTab === 'Angouleme' ? studentsAngouleme : studentsNice;
+
+    const averageGrade = Array.isArray(studentsToShow) && studentsToShow.length > 0
+        ? studentsToShow.reduce((sum, student) => sum + (student.grade || 0), 0) / studentsToShow.length
         : 0;
 
     return (
         <div className="max-w-7xl mx-auto px-4">
+            <div className="mb-4 flex gap-2 items-center">
+                <button
+                    className={`px-3 py-1 rounded font-semibold border ${campusTab === 'Angouleme' ? 'bg-blue-100 border-blue-400 text-blue-900' : 'bg-muted border-muted-foreground text-muted-foreground'}`}
+                    onClick={() => setCampusTab('Angouleme')}
+                >
+                    Angoulême
+                </button>
+                <button
+                    className={`px-3 py-1 rounded font-semibold border ${campusTab === 'Nice' ? 'bg-blue-100 border-blue-400 text-blue-900' : 'bg-muted border-muted-foreground text-muted-foreground'}`}
+                    onClick={() => setCampusTab('Nice')}
+                >
+                    Nice
+                </button>
+            </div>
             <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
@@ -137,7 +157,7 @@ export default function ExamTracker() {
                         </Table>
                     )}
 
-                    {students.length === 0 && !isLoading && !error && (
+                    {studentsToShow.length === 0 && !isLoading && !error && (
                         <Alert variant="default" className="mt-5">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>No students found</AlertTitle>
@@ -145,9 +165,9 @@ export default function ExamTracker() {
                         </Alert>
                     )}
 
-                    {students.length > 0 && (
+                    {studentsToShow.length > 0 && (
                         <>
-                            <p><strong>Total Students:</strong> {students.length}</p>
+                            <p><strong>Total Students:</strong> {studentsToShow.length}</p>
                             <p><strong>Average Grade:</strong> {averageGrade.toFixed(2)}%</p>
                             <div className="mt-4 mb-6"></div>
                             <div className="overflow-x-auto">
@@ -161,7 +181,7 @@ export default function ExamTracker() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {students.map((student: ExamStudent) => (
+                                        {studentsToShow.map((student: ExamStudent) => (
                                             <TableRow key={student.id}>
                                                 <TableCell className="font-medium">
                                                     <div className="flex items-center space-x-3">
