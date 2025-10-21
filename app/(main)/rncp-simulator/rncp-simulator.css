@@ -1,10 +1,10 @@
 /* RNCP Simulator theme - reprend exactement les couleurs de ton exemple */
 
-.rncp-simulator-theme {
+.dark .rncp-simulator-theme {
   --background: oklch(0.1822 0 0);
   --foreground: oklch(0.9288 0.0126 255.5078);
   --card: oklch(0.2046 0 0);
-  --card-foreground: oklch(0.9288 0.0126 255.5078)
+  --card-foreground: oklch(0.9288 0.0126 255.5078);
   --popover: oklch(0.2603 0 0);
   --popover-foreground: oklch(52.993% 0.21305 28.772);
   --primary: oklch(71.831% 0.22942 144.24 / 0.717);
@@ -51,4 +51,34 @@
   --shadow-lg: 0px 1px 3px 0px hsl(0 0% 0% / 0.17), 0px 4px 6px -1px hsl(0 0% 0% / 0.17);
   --shadow-xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.17), 0px 8px 10px -1px hsl(0 0% 0% / 0.17);
   --shadow-2xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.43);
+}
+
+.rncp-simulator-theme.light {
+  --background: #ffffff;
+  --foreground: #0f1720;
+  --card: #f8fafc; /* slightly off-white */
+  --card-foreground: #0f1720;
+  --popover: #f7f9fc; /* subtle difference from card */
+  --popover-foreground: #0f1720;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #f6f9fb;
+  --secondary-foreground: #0f1720;
+  --muted: #f9fbfd;
+  --muted-foreground: #6b7280;
+  --accent: #eef2ff;
+  --accent-foreground: #0f1720;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e6e9ef;
+  --input: #f3f5f7;
+  --ring: rgba(37,99,235,0.12);
+  --sidebar: #fbfdff;
+  --sidebar-foreground: #0f1720;
+  --sidebar-primary: #eb9525;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef2ff;
+  --sidebar-accent-foreground: #0f1720;
+  --sidebar-border: #e6e9ef;
+  --sidebar-ring: #c7ddff;
 }
