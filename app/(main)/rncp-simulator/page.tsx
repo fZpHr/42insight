@@ -12,8 +12,6 @@ import Link from "next/link"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { useWindowSize } from "react-use"
-import { useContext } from "react"
-import { FortyTwoStoreContext } from "@/providers/forty-two-store-provider"
 import ReactConfetti from "react-confetti"
 import { useSession } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
@@ -32,7 +30,6 @@ async function fetchUserEvents(login: string) {
 }
 
 export default function RNCPSimulator() {
-  const storeContext = useContext(FortyTwoStoreContext)
   const { data: session } = useSession({ required: true })
   const { width, height } = useWindowSize()
 
