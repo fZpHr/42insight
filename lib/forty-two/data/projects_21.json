@@ -398,7 +398,7 @@
       "children": [],
       "is_solo": true
     },
-        {
+    {
       "id": 2309,
       "name": "CPP Module 09",
       "slug": "cpp-module-09",
@@ -6100,6 +6100,20 @@
       "parent": null,
       "children": [],
       "is_solo": true
+    },
+    {
+      "id": 2600,
+      "name": "TokenizeArt",
+      "slug": "tokenizeart",
+      "difficulty": 9450,
+      "duration": 352800,
+      "completions": 44,
+      "created_at": "2024-04-17T15:48:31.104Z",
+      "updated_at": "2025-06-25T15:23:07.208Z",
+      "is_solo": true,
+      "parent": null,
+      "children": [],
+      "exam": false
     },
     {
       "id": 2520,
