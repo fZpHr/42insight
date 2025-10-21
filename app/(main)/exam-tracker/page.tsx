@@ -40,11 +40,11 @@ function getExamName(examId: string) {
 export default function ExamTracker() {
     const [campusTab, setCampusTab] = useState<'Angouleme' | 'Nice'>('Angouleme');
     
-    const isToday = (): boolean => {
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
-    }
+    // const isToday = (): boolean => {
+    //     const today = new Date();
+    //     const dayOfWeek = today.getDay();
+    //     return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
+    // }
 
     const { data: students = [], isLoading, error } = useQuery({
         queryKey: ['current_exam'],
@@ -64,7 +64,6 @@ export default function ExamTracker() {
                 : data;
         },
         refetchInterval: 600000,
-        enabled: isToday(),
     })
 
 
