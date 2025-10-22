@@ -215,7 +215,7 @@ export function TitleRequirements({
           {/* Résumé expériences pro */}
           <div className="md:col-span-3 flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <span className="font-medium">Expériences pro validées :</span>
+              <span className="font-medium">Validated professional experiences :</span>
               <span
                 className={cn(
                   "px-2 py-0.5 rounded-full text-xs font-semibold",
@@ -284,7 +284,7 @@ export function TitleRequirements({
             className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 transition border border-primary/20 shadow-sm focus:outline-none"
             onClick={() => setShowManualTab((v) => !v)}
             aria-label={
-              showManualTab ? "Masquer l’ajout manuel de projets hors RNCP" : "Ajouter un projet hors RNCP manuellement"
+              showManualTab ? "Hide manual non-RNCP project addition" : "Add the non-RNCP project manually"
             }
             type="button"
           >
@@ -310,14 +310,14 @@ export function TitleRequirements({
             </svg>
           </button>
           <div className="absolute left-1/2 -translate-x-1/2 mt-2 px-3 py-1 rounded bg-primary text-primary-foreground text-xs opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10 shadow-lg">
-            {showManualTab ? "Masquer l’ajout manuel de projet hors RNCP" : "Ajouter un projet hors RNCP manuellement"}
+            {showManualTab ? "Hide manual non-RNCP project addition" : "Add the non-RNCP project manually"}
           </div>
         </div>
       </div>
       {showManualTab && (
         <Card className="my-4">
           <CardHeader>
-            <CardTitle>Ajout manuel de projets</CardTitle>
+            <CardTitle>Manual Project Addition</CardTitle>
           </CardHeader>
           <CardContent>
             <ManualProjectForm
@@ -442,11 +442,11 @@ function ManualProjectForm({
   const handleAdd = () => {
     const project = options.find((p: any) => p.name === selected) as FortyTwoProject | undefined
     if (!project) {
-      setError("Sélectionne un projet valide.")
+      setError("Select a valid project.")
       return
     }
     if (manualProjects.some((a) => a.id === project.id)) {
-      setError("Projet déjà ajouté.")
+      setError("Project already added.")
       return
     }
     const xp = typeof project.experience === "number" ? project.experience : (project as any).xp
@@ -515,11 +515,11 @@ function ManualProjectForm({
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
-          <span>Voir anciens projets hors RNCP ({oldProjects.length})</span>
+          <span>View old non-RNCP projects ({oldProjects.length})</span>
         </button>
         {showOld && (
           <ul className="mt-2 pl-4 text-xs text-muted-foreground/70 space-y-1">
-            {oldProjects.length === 0 && <li>Aucun projet</li>}
+            {oldProjects.length === 0 && <li>No projects</li>}
             {oldProjects.map((p) => (
               <li key={p.id} className="flex items-center gap-2">
                 <span>
@@ -553,10 +553,10 @@ function ManualProjectForm({
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
         >
-          <option value="">Sélectionner un projet…</option>
+          <option value="">Select a project…</option>
           {options.map((p: any) => (
             <option key={p.name} value={p.name}>
-              {p.name} (+{p.xp} XP)
+              {p.name} (+{p.difficulty} XP)
             </option>
           ))}
         </select>
@@ -567,11 +567,11 @@ function ManualProjectForm({
         onClick={handleAdd}
         disabled={!selected}
       >
-        Ajouter à la jauge de level
+        Add the project
       </button>
       {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
       <div className="mt-4">
-        <div className="font-semibold text-sm mb-2">Projets ajoutés :</div>
+        <div className="font-semibold text-sm mb-2">Added projects:</div>
         <ul className="list-disc pl-5 text-sm text-muted-foreground">
           {manualProjects.map((a) => (
             <li key={a.id} className="flex items-center gap-2">

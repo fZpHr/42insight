@@ -94,6 +94,7 @@ export default function Rankings() {
 
 
   const campusOptions = [
+    { value: "Global", label: "Global" },
     { value: "Nice", label: "Nice" },
     { value: "Angouleme", label: "Angoulême" },
   ];
@@ -107,21 +108,43 @@ export default function Rankings() {
     queryFn: async () => {
       const campus = selectedCampus || user?.campus;
       if (!campus) return [];
-      const response = await fetchCampusStudents(campus);
-      if (!response || response.length === 0) {
-        toast.error("No students found for this campus", {
-          duration: 2000,
-          position: "bottom-right",
-        });
-        return [];
+      if (campus === "Global") {
+        const [nice, angouleme] = await Promise.all([
+          fetchCampusStudents("Nice"),
+          fetchCampusStudents("Angouleme"),
+        ]);
+        const all = [...(nice || []), ...(angouleme || [])];
+        if (all.length === 0) {
+          toast.error("No students found for Global", {
+            duration: 2000,
+            position: "bottom-right",
+          });
+          return [];
+        }
+        return all.map((student: Student) => ({
+          ...student,
+          activityData:
+            typeof student.activityData === "string"
+              ? JSON.parse(student.activityData)
+              : student.activityData,
+        }));
+      } else {
+        const response = await fetchCampusStudents(campus);
+        if (!response || response.length === 0) {
+          toast.error("No students found for this campus", {
+            duration: 2000,
+            position: "bottom-right",
+          });
+          return [];
+        }
+        return response.map((student: Student) => ({
+          ...student,
+          activityData:
+            typeof student.activityData === "string"
+              ? JSON.parse(student.activityData)
+              : student.activityData,
+        }));
       }
-      return response.map((student: Student) => ({
-        ...student,
-        activityData:
-          typeof student.activityData === "string"
-            ? JSON.parse(student.activityData)
-            : student.activityData,
-      }));
     },
     enabled: !!(selectedCampus || user?.campus),
     staleTime: 10 * 60 * 1000,
