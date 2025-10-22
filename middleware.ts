@@ -10,7 +10,6 @@ const poolRestrictedRoutes = [
 
 const adminStaffOnlyRoutes = [
   "/cluster-map",
-  "/peers",
 ]
 
 export default withAuth(
@@ -50,7 +49,8 @@ export const config = {
   matcher: [
     "/dashboard/:path*", 
     "/trombinoscope/:path*", 
-    "/query/:path*", 
+    "/query/:path*",
+    "/rncp-simulator/:path*",
     "/rankings/:path*",
     "/events/:path*",
     "/cluster-map/:path*",

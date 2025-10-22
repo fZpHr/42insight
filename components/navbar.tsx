@@ -15,7 +15,10 @@ import {
   Database,
   Calendar,
   Activity,
+  UserRoundSearch,
+  Map,
   LayoutGrid,
+  BookUser,
   Workflow,
   Award,
 } from "lucide-react";
@@ -77,6 +80,12 @@ const navigationData = {
           description: "Student photo gallery",
         },
         {
+          title: "Find Peers",
+          url: "/peers",
+          icon: UserRoundSearch,
+          description: "Locate and connect with fellow students",
+        },
+        {
           title: "Exam Tracker",
           url: "/exam-tracker",
           icon: FileText,
@@ -118,6 +127,12 @@ const navigationData = {
     {
       title: "Resources",
       items: [
+        {
+          title: "Cluster Map",
+          url: "/cluster-map",
+          icon: Map,
+          description: "Visual representation of cluster status",
+        },
         {
           title: "Useful Links",
           url: "/links",
