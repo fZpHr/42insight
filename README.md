@@ -13,6 +13,7 @@ All of the Old Features from our existing website have been moved to one website
 - 🏆 Rankings (Level, Correcteur, ...)
 - 👥 Trombinoscope
 - 📈 Exam tracker
+- RNCP Simulator
 - Pool Rankings
 - Tree Graph Relation
 
