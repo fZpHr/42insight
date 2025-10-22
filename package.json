@@ -26,6 +26,7 @@
     "@radix-ui/react-select": "latest",
     "@radix-ui/react-separator": "latest",
     "@radix-ui/react-slot": "latest",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toggle": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@remixicon/react": "^4.6.0",

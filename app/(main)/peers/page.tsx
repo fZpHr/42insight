@@ -292,12 +292,7 @@ export default function PeersPage() {
                 Find a peer for your group project
             </Button>
             {sortedProjects?.map((project) => {
-                const nonValidatedSubscribers = project.subscribers.filter(
-                    subscriber => subscriber.validated === false
-                );
-
-                if (nonValidatedSubscribers.length === 0) return null;
-
+                const nonValidatedSubscribers = project.subscribers;
                 return (
                     <Card key={project.id} className="mb-6 p-4">
                         <Accordion type="single" collapsible className="w-full">
