@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ExamStudent } from "@/types"
-import { useState } from "react"
+import { useSession } from "next-auth/react"
 
 
 function getExamName(examId: string) {
@@ -38,7 +38,8 @@ function getExamName(examId: string) {
 }
 
 export default function ExamTracker() {
-    const [campusTab, setCampusTab] = useState<'Angouleme' | 'Nice'>('Angouleme');
+    const { data: session, status } = useSession();
+    const campus = session?.user?.campus;
     
     // const isToday = (): boolean => {
     //     const today = new Date();
@@ -80,7 +81,7 @@ export default function ExamTracker() {
 
     const studentsNice = students.filter((s: any) => s.campus === "Nice");
     const studentsAngouleme = students.filter((s: any) => s.campus === "Angouleme");
-    const studentsToShow = campusTab === 'Angouleme' ? studentsAngouleme : studentsNice;
+    const studentsToShow = campus === "Angouleme" ? studentsAngouleme : campus === "Nice" ? studentsNice : students;
 
     const averageGrade = Array.isArray(studentsToShow) && studentsToShow.length > 0
         ? studentsToShow.reduce((sum, student) => sum + (student.grade || 0), 0) / studentsToShow.length
@@ -88,34 +89,12 @@ export default function ExamTracker() {
 
     return (
         <div className="max-w-7xl mx-auto px-4">
-            <div className="mb-4 flex gap-2 items-center">
-                <button
-                    className={`px-3 py-1 rounded font-semibold border ${campusTab === 'Angouleme' ? 'bg-blue-100 border-blue-400 text-blue-900' : 'bg-muted border-muted-foreground text-muted-foreground'}`}
-                    onClick={() => setCampusTab('Angouleme')}
-                >
-                    Angoulême
-                </button>
-                <button
-                    className={`px-3 py-1 rounded font-semibold border ${campusTab === 'Nice' ? 'bg-blue-100 border-blue-400 text-blue-900' : 'bg-muted border-muted-foreground text-muted-foreground'}`}
-                    onClick={() => setCampusTab('Nice')}
-                >
-                    Nice
-                </button>
-            </div>
             <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
                     <p className="text-muted-foreground">Data is updated every 10 min</p> 
                 </CardHeader>
                 <CardContent>
-                    {error && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle className="font-bold">Error</AlertTitle>
-                            <AlertDescription className="text-muted-foreground">{error instanceof Error ? error.message : String(error)}</AlertDescription>
-                        </Alert>
-                    )}
-
                     {isLoading && students.length === 0 && (
                         <Table className="mt-5">
                             <TableHeader>
@@ -157,7 +136,7 @@ export default function ExamTracker() {
                         </Table>
                     )}
 
-                    {studentsToShow.length === 0 && !isLoading && !error && (
+                    {studentsToShow.length === 0 && !isLoading &&  (
                         <Alert variant="default" className="mt-5">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>No students found</AlertTitle>

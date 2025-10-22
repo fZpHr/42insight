@@ -19,6 +19,9 @@ import {
 } from "@/components/ui/empty"
 import { Search, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Project } from "@/types";
+import { useSession } from 'next-auth/react';
+import { TransparentBadge } from '@/components/TransparentBadge';
 
 async function fetchPeersData() {
     try {
@@ -33,21 +36,6 @@ async function fetchPeersData() {
     }
 }
 
-interface Subscriber {
-    userId: number;
-    login: string;
-    photoUrl: string | null;
-    validated: boolean | null;
-    status: string;
-}
-
-interface Project {
-    id: number;
-    name: string;
-    subscribers: Subscriber[];
-    createdAt: string;
-    updatedAt: string
-}
 
 // thks find-peers https://github.com/codam-coding-college/find-peers/blob/main/env/projectIDs.json
 const PROJECT_ORDER: { [key: string]: number } = {
@@ -216,14 +204,16 @@ const PROJECT_ORDER: { [key: string]: number } = {
 };
 
 export default function PeersPage() {
-
+    const { data: session, status } = useSession();
     const { data, error, isLoading } = useQuery<Project[]>({
         queryKey: ['peersData'],
         queryFn: fetchPeersData,
+        staleTime: 30 * 60 * 1000, // 30 minutes
     });
 
     if (isLoading) {
         return <div className="flex items-center justify-center h-full w-full">
+            {/* change to a skeleton later */}
             <Spinner className="size-8" />
         </div>;
     }
@@ -286,11 +276,16 @@ export default function PeersPage() {
                         : "N/A"}
                 </p>
             </div>
+            <div className="gap-6 mb-5">
+                {session?.user?.campus !== 'Angouleme' && (
+                    <TransparentBadge
+                        text="⚠️ Only available for Angouleme campus for now"
+                        bgColor="bg-red-400/20"
+                        textColor="text-red-300"
+                    />
+                )}
+            </div>
             {/* load all people that dont have groups for your current project and make a tinder like choice to send a dm or a mail to the chosen group user */}
-            <Button className="mb-6" onClick={() => { window.location.reload(); }}>
-                <Search className="mr-2 h-4 w-4" />
-                Find a peer for your group project
-            </Button>
             {sortedProjects?.map((project) => {
                 const nonValidatedSubscribers = project.subscribers;
                 return (

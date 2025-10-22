@@ -10,7 +10,6 @@ const poolRestrictedRoutes = [
 
 const adminStaffOnlyRoutes = [
   "/cluster-map",
-  "/peers",
 ]
 
 export default withAuth(

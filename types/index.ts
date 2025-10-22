@@ -369,3 +369,19 @@ export type ClusterUser = {
         "active?": boolean;
     };
 };
+
+export interface Subscriber {
+    userId: number;
+    login: string;
+    photoUrl: string | null;
+    validated: boolean | null;
+    status: string;
+}
+
+export interface Project {
+    id: number;
+    name: string;
+    subscribers: Subscriber[];
+    createdAt: string;
+    updatedAt: string
+}
