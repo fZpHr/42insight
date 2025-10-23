@@ -392,13 +392,14 @@ const createFortyTwoStore = (initProps: {
 
       let totalXP = 0
 
-      // Calculate professional experience XP
       for (const experience of state.professionalExperiences) {
-        const mark = state.professionalExperienceMarks.get(experience) ?? 100
-        totalXP += (professionalExperienceXp[experience] || 0) * (mark / 100)
+        const mark = state.professionalExperienceMarks.get(experience)
+        // console.log("Experience:", experience, "Mark:", mark)
+        if (mark == null) {
+          totalXP += professionalExperienceXp[experience] || 0
+        }
       }
 
-      // Calculate project XP
       for (const [projectId, mark] of state.projectMarks) {
         const project = state.projects[projectId]
         if (project) {
