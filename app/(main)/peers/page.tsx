@@ -205,6 +205,14 @@ const PROJECT_ORDER: { [key: string]: number } = {
 
 export default function PeersPage() {
     const { data: session, status } = useSession();
+    const userCampus = session?.user?.campus;
+    const [selectedCampus, setSelectedCampus] = React.useState<string>("");
+
+    React.useEffect(() => {
+        if (userCampus === "Nice") setSelectedCampus("nice");
+        else if (userCampus === "Angouleme") setSelectedCampus("angouleme");
+    }, [userCampus]);
+
     const { data, error, isLoading } = useQuery<Project[]>({
         queryKey: ['peersData'],
         queryFn: fetchPeersData,
@@ -213,7 +221,6 @@ export default function PeersPage() {
 
     if (isLoading) {
         return <div className="flex items-center justify-center h-full w-full">
-            {/* change to a skeleton later */}
             <Spinner className="size-8" />
         </div>;
     }
@@ -238,21 +245,29 @@ export default function PeersPage() {
 
     function formatDate(isoString: string) {
         const d = new Date(isoString);
-
         const day = String(d.getDate()).padStart(2, "0");
         const month = String(d.getMonth() + 1).padStart(2, "0");
         const year = d.getFullYear();
-
         const hour = String(d.getHours()).padStart(2, "0");
         const minute = String(d.getMinutes()).padStart(2, "0");
-
         return `${day}/${month}/${year} - ${hour}:${minute}`;
     }
 
-    const sortedProjects = data?.slice().sort((a, b) => {
+    // Filtrage des subscribers selon le campus sélectionné
+    const filteredProjects = data?.map((project) => {
+        let filteredSubscribers = project.subscribers;
+        if (selectedCampus === "nice") {
+            filteredSubscribers = project.subscribers?.filter(sub => sub.campus?.toLowerCase() === "nice");
+        }
+        if (selectedCampus === "angouleme") {
+            filteredSubscribers = project.subscribers?.filter(sub => sub.campus?.toLowerCase() === "angouleme");
+        }
+        return { ...project, subscribers: filteredSubscribers };
+    })?.filter(project => project.subscribers && project.subscribers.length > 0) ?? [];
+
+    const sortedProjects = filteredProjects.slice().sort((a, b) => {
         const orderA = Object.values(PROJECT_ORDER).indexOf(a.id);
         const orderB = Object.values(PROJECT_ORDER).indexOf(b.id);
-
         if (orderA !== -1 && orderB !== -1) {
             return orderA - orderB;
         }
@@ -263,6 +278,10 @@ export default function PeersPage() {
 
     const handleLoginClick = (login: string) => {
         window.open(`https://profile.intra.42.fr/users/${login}`, '_blank');
+    };
+
+    const handleCampusChange = (value: string) => {
+        setSelectedCampus(value);
     };
 
     return (
@@ -276,16 +295,17 @@ export default function PeersPage() {
                         : "N/A"}
                 </p>
             </div>
-            <div className="gap-6 mb-5">
-                {session?.user?.campus !== 'Angouleme' && (
-                    <TransparentBadge
-                        text="⚠️ Only available for Angouleme campus for now"
-                        bgColor="bg-red-400/20"
-                        textColor="text-red-300"
-                    />
-                )}
+            <div className="flex items-center gap-4 mb-5">
+                <span className="font-medium">Campus :</span>
+                <select
+                    value={selectedCampus}
+                    onChange={e => handleCampusChange(e.target.value)}
+                    className="border rounded px-2 py-1 bg-background text-foreground"
+                >
+                    <option value="angouleme">Angouleme</option>
+                    <option value="nice">Nice</option>
+                </select>
             </div>
-            {/* load all people that dont have groups for your current project and make a tinder like choice to send a dm or a mail to the chosen group user */}
             {sortedProjects?.map((project) => {
                 const nonValidatedSubscribers = project.subscribers;
                 return (

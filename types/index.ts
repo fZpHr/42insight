@@ -371,11 +371,12 @@ export type ClusterUser = {
 };
 
 export interface Subscriber {
-    userId: number;
-    login: string;
-    photoUrl: string | null;
-    validated: boolean | null;
-    status: string;
+  userId: number;
+  login: string;
+  photoUrl: string | null;
+  validated: boolean | null;
+  status: string;
+  campus?: string;
 }
 
 export interface Project {
