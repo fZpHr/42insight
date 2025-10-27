@@ -370,18 +370,20 @@ export type ClusterUser = {
     };
 };
 
-export interface Subscriber {
+export interface ProjectSubscriber {
     userId: number;
     login: string;
     photoUrl: string | null;
     validated: boolean | null;
     status: string;
+    campus: string;
+
 }
 
 export interface Project {
     id: number;
     name: string;
-    subscribers: Subscriber[];
+    subscribers: ProjectSubscriber[];
     createdAt: string;
     updatedAt: string
 }

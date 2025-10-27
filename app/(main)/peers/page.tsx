@@ -205,10 +205,11 @@ const PROJECT_ORDER: { [key: string]: number } = {
 
 export default function PeersPage() {
     const { data: session, status } = useSession();
+    const user = session?.user;
     const { data, error, isLoading } = useQuery<Project[]>({
         queryKey: ['peersData'],
         queryFn: fetchPeersData,
-        staleTime: 30 * 60 * 1000, // 30 minutes
+        staleTime: 30 * 60 * 1000,
     });
 
     if (isLoading) {
@@ -218,7 +219,45 @@ export default function PeersPage() {
         </div>;
     }
 
-    if (error) {
+
+    function formatDate(isoString: string) {
+        const d = new Date(isoString);
+
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+
+        const hour = String(d.getHours()).padStart(2, "0");
+        const minute = String(d.getMinutes()).padStart(2, "0");
+
+        return `${day}/${month}/${year} - ${hour}:${minute}`;
+    }
+
+    const filteredProjects = data?.map((project) => {
+        let filteredSubscribers = project.subscribers;
+        filteredSubscribers = project.subscribers?.filter(sub =>
+            user?.campus ? sub.campus?.toLowerCase() === user.campus.toLowerCase() : true
+        );
+        return { ...project, subscribers: filteredSubscribers };
+    })?.filter(project => project.subscribers && project.subscribers.length > 0) ?? [];
+
+    const sortedProjects = filteredProjects?.slice().sort((a, b) => {
+        const orderA = Object.values(PROJECT_ORDER).indexOf(a.id);
+        const orderB = Object.values(PROJECT_ORDER).indexOf(b.id);
+
+        if (orderA !== -1 && orderB !== -1) {
+            return orderA - orderB;
+        }
+        if (orderA !== -1) return -1;
+        if (orderB !== -1) return 1;
+        return 0;
+    });
+
+    const handleLoginClick = (login: string) => {
+        window.open(`https://profile.intra.42.fr/users/${login}`, '_blank');
+    };
+
+    if (error || !sortedProjects || sortedProjects.length === 0) {
         return <div className="flex items-center justify-center h-full w-full">
             <Empty>
                 <EmptyHeader>
@@ -236,35 +275,6 @@ export default function PeersPage() {
         </div>;
     }
 
-    function formatDate(isoString: string) {
-        const d = new Date(isoString);
-
-        const day = String(d.getDate()).padStart(2, "0");
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const year = d.getFullYear();
-
-        const hour = String(d.getHours()).padStart(2, "0");
-        const minute = String(d.getMinutes()).padStart(2, "0");
-
-        return `${day}/${month}/${year} - ${hour}:${minute}`;
-    }
-
-    const sortedProjects = data?.slice().sort((a, b) => {
-        const orderA = Object.values(PROJECT_ORDER).indexOf(a.id);
-        const orderB = Object.values(PROJECT_ORDER).indexOf(b.id);
-
-        if (orderA !== -1 && orderB !== -1) {
-            return orderA - orderB;
-        }
-        if (orderA !== -1) return -1;
-        if (orderB !== -1) return 1;
-        return 0;
-    });
-
-    const handleLoginClick = (login: string) => {
-        window.open(`https://profile.intra.42.fr/users/${login}`, '_blank');
-    };
-
     return (
         <div className="container mx-auto px-2 py-6">
             <div className="flex items-center justify-between mb-6">
@@ -276,15 +286,15 @@ export default function PeersPage() {
                         : "N/A"}
                 </p>
             </div>
-            <div className="gap-6 mb-5">
-                {session?.user?.campus !== 'Angouleme' && (
+            {/* <div className="gap-6 mb-5">
+                {session?.user?.campus !== 'Angouleme' &&  session?.user.campus !== "Nice" && (
                     <TransparentBadge
                         text="⚠️ Only available for Angouleme campus for now"
                         bgColor="bg-red-400/20"
                         textColor="text-red-300"
                     />
                 )}
-            </div>
+            </div> */}
             {/* load all people that dont have groups for your current project and make a tinder like choice to send a dm or a mail to the chosen group user */}
             {sortedProjects?.map((project) => {
                 const nonValidatedSubscribers = project.subscribers;
