@@ -113,6 +113,7 @@ export default function Trombinoscope() {
     setSelectedCampus(value);
   };
 
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-3">
       <div className="flex justify-between items-center mb-3">
@@ -147,7 +148,7 @@ export default function Trombinoscope() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="angouleme">
-                {user?.campus === "Angoulême" && (
+                {user?.campus === "Angouleme" && (
                   <Star className="h-4 w-4 mr-1" />
                 )}
                 Angoulême
