@@ -1,6 +1,6 @@
 # 🌐 42Insight
 
-Welcome to ```42Insight```, the ultimate all-in-one solution for students of 42 Angoulême! 
+Welcome to `42Insight`, the ultimate all-in-one solution for students of 42 Angoulême! 
 
 This website aims to centralize all the essential tools and resources students need, making your journey at 42 easier and more efficient. From rankings to trombinoscope and much more to come, we’ve got you covered.
 
@@ -19,7 +19,7 @@ All of the Old Features from our existing website have been moved to one website
 
 ### 🚀 Upcoming Features : 
 
-- Our own ``find-peers`` since the current one is not regurlarly updated
+- Our own `find-peers` since the current one is not regurlarly updated
 - A `Correction Slots` feature to help you make slots even on mobile devices
 
 ## Stack
@@ -38,20 +38,27 @@ All of the Old Features from our existing website have been moved to one website
 
 We welcome contributions from everyone ! So if you want something missing or fix some bugs : 
 
-1. Fork the repository
-2. Create a feature branch:
-\`\`\`bash
+1. [Fork](https://github.com/fZpHr/42insight/fork) the repository
+2. Clone the forked repository and cd into it:
+```bash
+git clone <your repo> my-42insight-fork
+cd my-42insight-fork
+```
+2. Create a new branch; for example:
+```bash
 git checkout -b feature/your-feature-name
-\`\`\`
+# Or
+git checkout -b fix/that-one-bug
+```
 3. Commit your changes:
-\`\`\`bash
-git commit -m "Add your message here"
-\`\`\`
+```bash
+git commit -m "A descriptive commit message here"
+```
 4. Push to your branch:
-\`\`\`
+```bash
 git push origin feature/your-feature-name
-\`\`\`
-5. Open a pull request
+```
+5. Open a pull request describing your changes
 
 ## Creators
 
