@@ -4,31 +4,30 @@ Welcome to `42Insight`, the ultimate all-in-one solution for students of 42 Ango
 
 This website aims to centralize all the essential tools and resources students need, making your journey at 42 easier and more efficient. From rankings to trombinoscope and much more to come, we’ve got you covered.
 
+> [!WARNING]  
+> Most of the features are only available for Angoulême and Nice campus
+
 => Access the website here : [42Insight](https://www.42insight.tech/)
 
 ## Features
 
 All of the Old Features from our existing website have been moved to one website such as :
 
-- 🏆 Rankings (Level, Correcteur, ...)
-- 👥 Trombinoscope
-- 📈 Exam tracker
+- Rankings (Level, Corrector, ...)
+- Trombinoscope
+- Exam tracker
 - RNCP Simulator
 - Pool Rankings
-- Tree Graph Relation
+- Find-Peers
+- Tree Graph Relation (in reworking for now)
 
-### 🚀 Upcoming Features : 
-
-- Our own `find-peers` since the current one is not regurlarly updated
-- A `Correction Slots` feature to help you make slots even on mobile devices
-
-## Stack
+## Tech-Stack
 
 - Frontend: React.js with Next.js, components from ShadCN, design mostly from V0.dev
 - Backend: Next.js API routes
-- State Management: Context API
+- State Management: Zustand (only for RNCP Simulator)
 - Tanstack: TanStack Query (React Query)
-- Authentication: OAuth2 (42 API)
+- Authentication: next-auth (FortyTwo Oauth2Provider)
 - Database: Mariadb
 - ORM: Prisma
 - Caching: Redis (Upstash)
