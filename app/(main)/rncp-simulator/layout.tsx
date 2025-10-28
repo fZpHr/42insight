@@ -36,7 +36,7 @@ export default function RNCPSimulatorLayout({
   children: React.ReactNode
 }>) {
   return (
-    <main className="rncp-simulator-theme @container flex grow items-start justify-center p-4 md:p-12 lg:p-24">
+    <main className="rncp-simulator-theme @container flex grow items-start justify-center p-4 md:p-12 lg:p-12">
       <Card className="@max-[1400px]:w-full @min-[1400px]:w-[1400px] bg-card/5 backdrop-blur-sm">
         <CardHeader>
           <CardTitle tag="h1">RNCP Simulator</CardTitle>
