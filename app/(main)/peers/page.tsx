@@ -17,7 +17,7 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from "@/components/ui/empty"
-import { Search, TriangleAlert } from "lucide-react";
+import { Search, TriangleAlert, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Project } from "@/types";
 import { useSession } from 'next-auth/react';
@@ -278,7 +278,13 @@ export default function PeersPage() {
     return (
         <div className="container mx-auto px-2 py-6">
             <div className="flex items-center justify-between mb-6">
-                <CardTitle className="text-3xl font-bold">Find Peers</CardTitle>
+                <p className="text-xl font-bold">
+                    <MapPin className="inline-block mr-2 mb-1" />
+                    {user?.campus}
+                    <span className="text-sm text-muted-foreground">
+                        {" "}({sortedProjects.reduce((acc, project) => acc + project.subscribers.length, 0)} studs)
+                    </span>
+                </p>
                 <p className="text-sm text-muted-foreground">
                     Last Updated:{" "}
                     {sortedProjects && sortedProjects.length > 0
