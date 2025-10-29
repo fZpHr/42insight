@@ -156,7 +156,7 @@ const navigationData = {
   ],
 };
 
-const restrictednavigationData = {
+const piscinenavigationData = {
   navMain: [
     {
       title: "Overview",
@@ -325,7 +325,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ))}
 
         {user?.role == "pisciner" &&
-          restrictednavigationData.navMain.map((group) => (
+          piscinenavigationData.navMain.map((group) => (
             <SidebarGroup key={group.title}>
               <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
               <SidebarGroupContent>
