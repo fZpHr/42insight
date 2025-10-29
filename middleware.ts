@@ -12,6 +12,21 @@ const adminStaffOnlyRoutes = [
   "/cluster-map",
 ]
 
+const supportedCampuses = [
+  "Angouleme",
+  "Nice"
+]
+
+const campusRestrictedRoutes = [
+  "/rankings",
+  "/exam-tracker",
+  "/trombinoscope",
+  "/cluster-map",
+  "/peers",
+  "/piscine/:path*",
+]
+
+
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token
@@ -27,15 +42,27 @@ export default withAuth(
       }
     }
 
-    if (token?.role === "student") {
-      const adminStaffOnlyRoutesAccess = adminStaffOnlyRoutes.some(route =>
-        pathname.startsWith(route)
-      )
+    // if (token?.role === "student") {
+    //   const adminStaffOnlyRoutesAccess = adminStaffOnlyRoutes.some(route =>
+    //     pathname.startsWith(route)
+    //   )
       
-      if (adminStaffOnlyRoutesAccess) {
+    //   if (adminStaffOnlyRoutesAccess) {
+    //     return NextResponse.redirect(new URL("/error/forbidden", req.url))
+    //   }
+    // }
+
+    if (token?.campus) {
+      const isCampusRestrictedRoute = campusRestrictedRoutes.some(route => {
+        const base = route.replace(":path*", "").replace(/\/$/, "")
+        return pathname === base || pathname.startsWith(base + "/")
+      })
+
+      if (isCampusRestrictedRoute && !supportedCampuses.includes(token.campus)) {
         return NextResponse.redirect(new URL("/error/forbidden", req.url))
       }
     }
+
     return NextResponse.next()
   },
   {
