@@ -107,23 +107,23 @@ const navigationData = {
         }
       ],
     },
-    {
-      title: "Current Piscine",
-      items: [
-        {
-          title: "Piscine Ranking",
-          url: "/piscine/rankings",
-          icon: Waves,
-          description: "Piscine progress and rankings",
-        },
-        {
-          title: "Piscine Trombi",
-          url: "/piscine/trombinoscope",
-          icon: Waves,
-          description: "Piscine student gallery",
-        },
-      ],
-    },
+    // {
+    //   title: "Current Piscine",
+    //   items: [
+    //     {
+    //       title: "Piscine Ranking",
+    //       url: "/piscine/rankings",
+    //       icon: Waves,
+    //       description: "Piscine progress and rankings",
+    //     },
+    //     {
+    //       title: "Piscine Trombi",
+    //       url: "/piscine/trombinoscope",
+    //       icon: Waves,
+    //       description: "Piscine student gallery",
+    //     },
+    //   ],
+    // },
     {
       title: "Resources",
       items: [
