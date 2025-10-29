@@ -9,7 +9,7 @@ import {
     CommandList,
     CommandSeparator,
 } from "@/components/ui/command"
-import { Calendar, FileText, LayoutDashboard, Link, Search, Trophy, Users, Waves, UserRoundSearch, Map } from "lucide-react"
+import { Calendar, FileText, LayoutDashboard, Link, Search, Trophy, Users, Waves, UserRoundSearch, Map, Award } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { signOut } from "next-auth/react"
 
@@ -60,6 +60,10 @@ export function CommandMenu() {
                         <Users className="mr-2 h-4 w-4" />
                         <span>Trombinoscope</span>
                     </CommandItem>
+                    <CommandItem onSelect={() => { setOpen(false); Router.push("/rncp-simulator") }}>
+                        <Award className="mr-2 h-4 w-4" />
+                        <span>RNCP simulator</span>
+                    </CommandItem>
                     <CommandItem onSelect={() => { setOpen(false); Router.push("/peers") }}>
                         <UserRoundSearch className="mr-2 h-4 w-4" />
                         <span>Find-Peers</span>
@@ -73,7 +77,7 @@ export function CommandMenu() {
                         <span>Events</span>
                     </CommandItem>
                 </CommandGroup>
-                <CommandSeparator />
+                {/* <CommandSeparator />
                 <CommandGroup heading="Piscine">
                     <CommandItem onSelect={() => { setOpen(false); Router.push("/piscine/rankings") }}>
                         <Waves className="mr-2 h-4 w-4" />
@@ -83,7 +87,7 @@ export function CommandMenu() {
                         <Waves className="mr-2 h-4 w-4" />
                         <span>Pool-Trombinoscope</span>
                     </CommandItem>
-                </CommandGroup>
+                </CommandGroup> */}
                 <CommandSeparator />
                 <CommandGroup heading="Others">
                     <CommandItem onSelect={() => { setOpen(false); Router.push("/cluster-map") }}>
