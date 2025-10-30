@@ -75,7 +75,7 @@ export default function ClusterMap() {
         if (!map) return null;
 
         return (
-            <div className="inline-block">
+            <div className="flex justify-center w-full">
                 <div className="flex flex-col gap-[2px]">
                     {map.map((row, rowIndex) => (
                         <div key={rowIndex} className="flex gap-[2px]">
