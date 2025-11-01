@@ -190,7 +190,11 @@ export function TitleRequirements({
 
   return (
     <>
-      <Card className={cn(className, requirementsComplete && "border-primary")}>
+      <Card className={cn(
+        className,
+        "border-2",
+        requirementsComplete ? "border-primary" : "border-muted"
+      )}>
         <CardHeader className="pb-4">
           <CardTitle className="text-xl">Requirements</CardTitle>
         </CardHeader>
