@@ -14,10 +14,9 @@ const TitleOption = memo(function TitleOption({ option, isComplete }: { option: 
   return (
     <Card
       className={cn(
-        'min-h-[638px] border-2 border-transparent',
-        isComplete && 'border-green-500'
+        'min-h-[638px] border-2',
+        isComplete ? 'border-green-500' : 'border-muted'
       )}
-      style={isComplete ? { border: '2px solid green' } : undefined}
     >
       <CardHeader className="pb-4">
           <CardTitle className="truncate text-xl">
@@ -118,6 +117,36 @@ export function TitleOptions({ title, className, onCompletionChange }: TitleOpti
     onCompletionChange?.(completionStatuses)
   }, [completionStatuses, onCompletionChange])
 
+  if (options.length <= 4) {
+    // grille responsive selon le nombre d'options
+    let gridCols = 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'
+    if (options.length === 3) gridCols = 'grid-cols-1 md:grid-cols-3 xl:grid-cols-3'
+    if (options.length === 2) gridCols = 'grid-cols-1 md:grid-cols-2 xl:grid-cols-2'
+    return (
+      <div className="bg-muted/10 rounded-xl py-4 w-full">
+        <div className={`grid ${gridCols} gap-4`}>
+          {options.map((option, index) => {
+            const isOptionComplete = completionStatuses[option.title]
+            return (
+              <div key={index}>
+                <TitleOption option={{ ...option, projects: (() => {
+                  const projectsToShow = Array.isArray(option.projects)
+                    ? option.projects
+                    : Object.keys(option.projects).map(Number)
+                  return projectsToShow.reduce((acc: Record<number, any>, id: number) => {
+                    const proj = projects[Number(id)] || projects[id]
+                    if (proj) acc[Number(id)] = proj
+                    return acc
+                  }, {} as Record<number, any>)
+                })() }} isComplete={isOptionComplete} />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+  // fallback: carousel pour > 4 options
   return (
     <div className="bg-muted/10 rounded-xl py-4 w-full">
       <Carousel
@@ -130,7 +159,6 @@ export function TitleOptions({ title, className, onCompletionChange }: TitleOpti
         <CarouselContent className="w-full">
           {options.map((option, index) => {
               const isOptionComplete = completionStatuses[option.title]
-
               return (
                 <TitleOptionItem 
                   key={index}
