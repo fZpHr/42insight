@@ -174,7 +174,8 @@ const createFortyTwoStore = (initProps: {
     setProfessionalExperienceMark: (experience: string, mark: number) =>
       set((state) => {
         const newMarks = new Map(state.professionalExperienceMarks)
-        newMarks.set(experience, Math.max(0, Math.min(mark, 100)))
+        const maxMark = ["stage_1", "stage_2", "startup_experience"].includes(experience) ? 125 : 100;
+        newMarks.set(experience, Math.max(0, Math.min(mark, maxMark)))
         return { professionalExperienceMarks: newMarks }
       }),
 
