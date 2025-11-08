@@ -106,10 +106,10 @@ export default function RNCPSimulator() {
   })
 
   useEffect(() => {
-    if (userIntraInfo && activeTitle) {
+    if (userIntraInfo && activeTitle && !isDataProcessed) {
       processInitialData(userIntraInfo, activeTitle)
     }
-  }, [userIntraInfo, activeTitle, processInitialData])
+  }, [userIntraInfo, isDataProcessed, processInitialData])
 
   useEffect(() => {
     if (Array.isArray(userEvents)) {
