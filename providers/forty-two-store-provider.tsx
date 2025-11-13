@@ -19,7 +19,11 @@ function saveProgressionToStorage(state: any) {
     const data = {
       projectMarks: Array.from((state.projectMarks ?? new Map()).entries()),
       professionalExperiences: Array.from(state.professionalExperiences ?? []),
+      professionalExperienceMarks: Array.from((state.professionalExperienceMarks ?? new Map()).entries()),
       coalitionProjects: Array.from((state.coalitionProjects ?? new Set()).values()),
+      autoFetchedProjectMarks: Array.from((state.autoFetchedProjectMarks ?? new Map()).entries()),
+      autoFetchedProfessionalExperiences: Array.from(state.autoFetchedProfessionalExperiences ?? []),
+      initialXPDelta: state.initialXPDelta ?? 0,
       events: state.events ?? 0,
       eventsFetchedAt: state.eventsFetchedAt ?? 0,
       ts: Date.now(),
@@ -51,7 +55,11 @@ function loadProgressionFromStorage() {
     return {
       projectMarks: new Map<number, number>(data.projectMarks as [number, number][]),
       professionalExperiences: new Set<string>(data.professionalExperiences as string[]),
+      professionalExperienceMarks: new Map<string, number>(data.professionalExperienceMarks as [string, number][]),
       coalitionProjects: new Set<number>(data.coalitionProjects as number[]),
+      autoFetchedProjectMarks: new Map<number, number>(data.autoFetchedProjectMarks as [number, number][]),
+      autoFetchedProfessionalExperiences: new Set<string>(data.autoFetchedProfessionalExperiences as string[]),
+      initialXPDelta: data.initialXPDelta ?? 0,
       events,
       eventsFetchedAt,
     }
@@ -208,9 +216,9 @@ const createFortyTwoStore = (initProps: {
     resetAll: () =>
       set(() => {
         const emptyState = {
-          projectMarks: new Map(),
-          professionalExperiences: new Set(),
-          coalitionProjects: new Set(),
+          projectMarks: new Map<number, number>(),
+          professionalExperiences: new Set<string>(),
+          coalitionProjects: new Set<number>(),
           events: 0,
           eventsFetchedAt: 0,
           persistedOldProjects: [],
@@ -228,7 +236,7 @@ const createFortyTwoStore = (initProps: {
         const resetState = {
           projectMarks: newMarks,
           professionalExperiences: newProExp,
-          coalitionProjects: new Set(),
+          coalitionProjects: new Set<number>(),
           events: state.events,
           eventsFetchedAt: state.eventsFetchedAt,
           isDataProcessed: false,
@@ -315,8 +323,10 @@ const createFortyTwoStore = (initProps: {
           ? userInfo.projects_users
           : oldProjects.map((p: any) => ({ project: { id: p.id }, final_mark: p.mark }))
 
+      const apiProjectIds = new Set<number>()
       for (const project of mainProjects) {
         if (typeof project.final_mark === "number" && project.final_mark > 0) {
+          apiProjectIds.add(project.project.id)
           newMarks.set(project.project.id, project.final_mark)
           newAutoMarks.set(project.project.id, project.final_mark)
         }
@@ -324,6 +334,12 @@ const createFortyTwoStore = (initProps: {
         if (expKey) {
           newProExp.add(expKey)
           newAutoProExp.add(expKey)
+        }
+      }
+
+      for (const [projectId, mark] of state.projectMarks) {
+        if (!apiProjectIds.has(projectId)) {
+          newMarks.set(projectId, mark)
         }
       }
 
@@ -358,7 +374,7 @@ const createFortyTwoStore = (initProps: {
       }
 
       let totalXP = 0
-      for (const [projectId, mark] of newMarks) {
+      for (const [projectId, mark] of newAutoMarks) {
         const project = state.projects[projectId]
         if (project) {
           totalXP += (project.experience || project.difficulty || 0) * (mark / 100)
@@ -377,8 +393,10 @@ const createFortyTwoStore = (initProps: {
         isDataProcessed: true,
       }
 
-      set(finalState)
-      saveProgressionToStorage({ ...get(), ...finalState })
+      set((state) => {
+        saveProgressionToStorage({ ...state, ...finalState })
+        return finalState
+      })
     },
 
     getSelectedXP: () => {
@@ -395,7 +413,6 @@ const createFortyTwoStore = (initProps: {
 
       for (const experience of state.professionalExperiences) {
         const mark = state.professionalExperienceMarks.get(experience)
-        // console.log("Experience:", experience, "Mark:", mark)
         if (mark == null) {
           totalXP += professionalExperienceXp[experience] || 0
         }
@@ -566,7 +583,11 @@ export const FortyTwoStoreProvider = ({ children, cursus, levels, titles, projec
       storeRef.current?.setState({
         projectMarks: restored.projectMarks,
         professionalExperiences: restored.professionalExperiences,
+        professionalExperienceMarks: restored.professionalExperienceMarks || new Map(),
         coalitionProjects: restored.coalitionProjects,
+        autoFetchedProjectMarks: restored.autoFetchedProjectMarks || new Map(),
+        autoFetchedProfessionalExperiences: restored.autoFetchedProfessionalExperiences || new Set(),
+        initialXPDelta: restored.initialXPDelta ?? 0,
         events,
         eventsFetchedAt,
       })

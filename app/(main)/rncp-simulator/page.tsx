@@ -165,6 +165,28 @@ export default function RNCPSimulator() {
     [manualProjectsKey],
   )
 
+  const { setProjectMark, toggleCoalitionBonus, coalitionProjects } = useFortyTwoStore(
+    (state) => ({
+      setProjectMark: state.setProjectMark,
+      toggleCoalitionBonus: state.toggleCoalitionBonus,
+      coalitionProjects: state.coalitionProjects,
+    }),
+    shallow,
+  )
+
+  const hasRestoredManualProjects = useRef(false)
+  useEffect(() => {
+    if (isDataProcessed && manualProjects.length > 0 && !hasRestoredManualProjects.current) {
+      hasRestoredManualProjects.current = true
+      manualProjects.forEach((project) => {
+        setProjectMark(project.id, project.mark, true)
+        if (project.coa && !coalitionProjects.has(project.id)) {
+          toggleCoalitionBonus(project.id)
+        }
+      })
+    }
+  }, [isDataProcessed, manualProjects, setProjectMark, toggleCoalitionBonus, coalitionProjects])
+
   const isLoading = !hydrated || isIntraLoading || areEventsLoading || !isDataProcessed
 
   if (isLoading) {
