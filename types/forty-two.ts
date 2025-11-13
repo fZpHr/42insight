@@ -11,11 +11,10 @@ export interface FortyTwoProject {
   exam: boolean
   parent: { name: string; id: number; slug: string } | null
   children: { name: string; id: number; slug: string }[]
-  // User-specific fields
   mark?: number
   bonus?: boolean
   validated?: boolean
-  is_solo?: boolean // Added for group project detection
+  is_solo?: boolean
 }
 export interface FortyTwoCursus {
   id: number
@@ -73,7 +72,7 @@ export interface FortyTwoStore {
   projects: Record<number, FortyTwoProject>;
   titles: FortyTwoTitle[];
   projectMarks: Map<number, number>;
-  setProjectMark: (projectId: number, mark: number) => void;
+  setProjectMark: (projectId: number, mark: number, onlySelf?: boolean) => void;
   removeProject: (projectId: number) => void;
   getSelectedXP: () => number;
   getProjectXP: (project: FortyTwoProject) => number;
@@ -84,7 +83,6 @@ export interface FortyTwoStore {
   isProjectModuleComplete: (project: FortyTwoProject) => boolean;
   getExperienceForOption: (option: FortyTwoTitleOption) => number;
   getLevel: (experience: number) => number;
-  // Added for requirements UI
   professionalExperiences: Set<string>;
   toggleProfessionalExperience: (experience: string) => void;
   setProfessionalExperienceMark: (experience: string, mark: number) => void;
