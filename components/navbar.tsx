@@ -417,7 +417,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <div>
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-gray-800 to-black text-sidebar-primary-foreground">
                     <img
-                      src={user?.image || "/default-avatar.png"}
+                      src={user?.image || "/placeholder-user.jpg"}
                       alt="User Avatar"
                       className="h-8 w-8 rounded-lg object-cover"
                     />

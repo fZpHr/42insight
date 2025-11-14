@@ -412,10 +412,9 @@ const createFortyTwoStore = (initProps: {
       let totalXP = 0
 
       for (const experience of state.professionalExperiences) {
-        const mark = state.professionalExperienceMarks.get(experience)
-        if (mark == null) {
-          totalXP += professionalExperienceXp[experience] || 0
-        }
+        const mark = state.professionalExperienceMarks.get(experience) ?? 100
+        const baseXp = professionalExperienceXp[experience] || 0
+        totalXP += Math.round(baseXp * (mark / 100))
       }
 
       for (const [projectId, mark] of state.projectMarks) {

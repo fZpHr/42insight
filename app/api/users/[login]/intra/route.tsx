@@ -1,67 +1,11 @@
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
+import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
 // In-memory cache for user intra data
 const intraCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-type ApiClient = {
-  get: (path: string) => Promise<Response>;
-};
-
-let apiClient: ApiClient | null = null;
-
-const getApiClient = async (): Promise<ApiClient> => {
-  if (apiClient) {
-    return apiClient;
-  }
-
-  const clientId = process.env.NEXT_PUBLIC_CLIENT_ID!;
-  const clientSecret = process.env.CLIENT_SECRET_NEXT1!;
-
-  try {
-    const tokenResponse = await fetch("https://api.intra.42.fr/oauth/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const errorBody = await tokenResponse.text();
-      console.error("FATAL: Failed to get 42 API token.", {
-        status: tokenResponse.status,
-        body: errorBody,
-      });
-      throw new Error(`API Authentication failed: ${tokenResponse.statusText}`);
-    }
-
-    const tokenData = await tokenResponse.json();
-    const accessToken = tokenData.access_token;
-
-    if (!accessToken) {
-      throw new Error("Access token was not found in the API response.");
-    }
-
-    apiClient = {
-      get: (path: string) => {
-        return fetch(`https://api.intra.42.fr/v2${path}`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-      },
-    };
-
-    return apiClient;
-  } catch (error) {
-    apiClient = null;
-    console.error("ERROR in getApiClient:", error);
-    throw error;
-  }
-};
 
 export async function GET(
   request: Request,
@@ -84,10 +28,14 @@ export async function GET(
   }
 
   try {
-    const client = await getApiClient();
-    const response = await client.get(`/users/${login}`);
+    const response = await apiRateLimiter.fetch(`/users/${login}`);
 
     if (!response.ok) {
+      // If rate limited and we have cached data, return stale cache
+      if (response.status === 429 && cached) {
+        console.warn(`[WARN] Rate limited fetching user ${login}. Serving stale cache.`);
+        return NextResponse.json(cached.data);
+      }
       return NextResponse.json(
         { error: `Failed to fetch from 42 API: ${response.statusText}` },
         { status: response.status },
@@ -103,7 +51,7 @@ export async function GET(
     let projectsPage;
 
     do {
-      const projectsResponse = await client.get(`/users/${user.id}/projects_users?per_page=${perPage}&page=${page}`);
+      const projectsResponse = await apiRateLimiter.fetch(`/users/${user.id}/projects_users?per_page=${perPage}&page=${page}`);
       if (!projectsResponse.ok) {
         if (projectsResponse.status === 429 && cached) {
           console.warn(`[WARN] Rate limited fetching projects for ${login}. Serving stale cache.`);

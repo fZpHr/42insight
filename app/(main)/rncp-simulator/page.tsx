@@ -18,6 +18,7 @@ import ReactConfetti from "react-confetti"
 import { useSession } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
+import { Loader2, GraduationCap, Trophy, Award } from "lucide-react"
 
 function getManualProjectsKey(session: any) {
   return session?.user?.login ? `manualProjects_${session.user.login}` : undefined
@@ -189,16 +190,65 @@ export default function RNCPSimulator() {
 
   const isLoading = !hydrated || isIntraLoading || areEventsLoading || !isDataProcessed
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh] text-muted-foreground text-lg">
-        Chargement des données du simulateur...
-      </div>
-    )
-  }
-
   return (
-    <>
+    <div className="relative min-h-screen">
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="sticky top-0 left-0 right-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm min-h-screen">
+          <div className="flex flex-col items-center justify-center gap-8 p-8 rounded-lg bg-card border shadow-2xl">
+            <div className="relative">
+              {/* Animated rotating circles */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-32 h-32 border-4 border-primary/20 rounded-full animate-pulse"></div>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center animate-spin">
+                <div className="w-24 h-24 border-4 border-transparent border-t-primary rounded-full"></div>
+              </div>
+              
+              {/* Center icon with animation */}
+              <div className="relative flex items-center justify-center w-32 h-32">
+                <div className="absolute animate-ping">
+                  <GraduationCap className="w-12 h-12 text-primary/40" />
+                </div>
+                <GraduationCap className="w-12 h-12 text-primary" />
+              </div>
+            </div>
+
+            {/* Animated text */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <h2 className="text-xl font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  Chargement du simulateur RNCP
+                </h2>
+              </div>
+              
+              {/* Loading steps */}
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 animate-pulse">
+                  <Trophy className="w-4 h-4" />
+                  <span className={isIntraLoading ? "text-primary" : "text-muted-foreground/50"}>
+                    {isIntraLoading ? "Récupération des projets..." : "✓ Projets chargés"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 animate-pulse" style={{ animationDelay: "150ms" }}>
+                  <Award className="w-4 h-4" />
+                  <span className={areEventsLoading ? "text-primary" : "text-muted-foreground/50"}>
+                    {areEventsLoading ? "Chargement des événements..." : "✓ Événements chargés"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 animate-pulse" style={{ animationDelay: "300ms" }}>
+                  <GraduationCap className="w-4 h-4" />
+                  <span className={!isDataProcessed ? "text-primary" : "text-muted-foreground/50"}>
+                    {!isDataProcessed ? "Calcul des titres RNCP..." : "✓ Calculs terminés"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showConfetti && <ReactConfetti width={width} height={height} recycle={false} />}
       {activeTitle && <TitleSelector titles={titles} activeTitle={activeTitle} setActiveTitle={setActiveTitle} />}
 
@@ -284,6 +334,6 @@ export default function RNCPSimulator() {
       <div className="fixed bottom-2 left-0 w-full text-center text-xs text-muted-foreground pointer-events-none z-50">
         This project is inspired by a similar tool from the staff of 42 Angoulême, with their agreement.
       </div>
-    </>
+    </div>
   )
 }
