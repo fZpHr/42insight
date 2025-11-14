@@ -1,68 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-
-type ApiClient = {
-  get: (path: string) => Promise<Response>;
-};
-
-let apiClient: ApiClient | null = null;
-
-const getApiClient = async (): Promise<ApiClient> => {
-  if (apiClient) {
-    return apiClient;
-  }
-
-  //console.log("INFO: Creating new 42 API client...");
-  const clientId = process.env.NEXT_PUBLIC_CLIENT_ID!;
-  const clientSecret = process.env.CLIENT_SECRET_NEXT1!;
-
-  try {
-    const tokenResponse = await fetch("https://api.intra.42.fr/oauth/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const errorBody = await tokenResponse.text();
-      console.error("FATAL: Failed to get 42 API token.", {
-        status: tokenResponse.status,
-        body: errorBody,
-      });
-      throw new Error(`API Authentication failed: ${tokenResponse.statusText}`);
-    }
-
-    const tokenData = await tokenResponse.json();
-    const accessToken = tokenData.access_token;
-
-    if (!accessToken) {
-      throw new Error("Access token was not found in the API response.");
-    }
-
-    //console.log("INFO: 42 API client created and authenticated successfully.");
-
-    // On crée notre client personnalisé avec le token obtenu
-    apiClient = {
-      get: (path: string) => {
-        return fetch(`https://api.intra.42.fr/v2${path}`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-      },
-    };
-
-    return apiClient;
-  } catch (error) {
-    // Si une erreur survient, on s'assure que le client n'est pas mis en cache dans un état invalide
-    apiClient = null;
-    console.error("ERROR in getApiClient:", error);
-    throw error; // Propage l'erreur
-  }
-};
+import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
 export async function GET(
   request: Request,
@@ -87,9 +26,8 @@ export async function GET(
       return NextResponse.json({ error: "Campus not found" }, { status: 404 });
     }
     ///events/35288/events_users?page[size]=100&page[number]=1
-    const client = await getApiClient();
-    const response = await client.get(
-      `/events/${params.event_id}/feedbacks?page[size]=100&page[number]=1 `,
+    const response = await apiRateLimiter.fetch(
+      `/events/${params.event_id}/feedbacks?page[size]=100&page[number]=1`,
     );
 
     if (!response.ok) {
