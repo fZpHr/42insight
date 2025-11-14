@@ -27,7 +27,7 @@ export async function GET(
     }
     ///events/35288/events_users?page[size]=100&page[number]=1
     const response = await apiRateLimiter.fetch(
-      `/events/${params.event_id}/feedbacks?page[size]=100&page[number]=1 `,
+      `/events/${params.event_id}/feedbacks?page[size]=100&page[number]=1`,
     );
 
     if (!response.ok) {
