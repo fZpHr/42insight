@@ -105,6 +105,7 @@ const createFortyTwoStore = (initProps: {
     hydrated: boolean
     setHydrated: (hydrated: boolean) => void
     isDataProcessed: boolean
+    dataProcessedAt: number
     coalitionProjects: Set<number>
     toggleCoalitionBonus: (projectId: number) => void
   }
@@ -121,6 +122,7 @@ const createFortyTwoStore = (initProps: {
     persistedOldProjects: [],
     hydrated: false,
     isDataProcessed: false,
+    dataProcessedAt: 0,
     coalitionProjects: new Set<number>(),
 
     setHydrated: (hydrated: boolean) => set({ hydrated }),
@@ -184,7 +186,9 @@ const createFortyTwoStore = (initProps: {
         const newMarks = new Map(state.professionalExperienceMarks)
         const maxMark = ["stage_1", "stage_2", "startup_experience"].includes(experience) ? 125 : 100;
         newMarks.set(experience, Math.max(0, Math.min(mark, maxMark)))
-        return { professionalExperienceMarks: newMarks }
+        const next = { professionalExperienceMarks: newMarks }
+        saveProgressionToStorage({ ...state, ...next })
+        return next
       }),
 
     setProjectMark: (projectId: number, mark: number, onlySelf = false) =>
@@ -233,9 +237,17 @@ const createFortyTwoStore = (initProps: {
       set((state) => {
         const newMarks = new Map(state.autoFetchedProjectMarks ?? [])
         const newProExp = new Set(state.autoFetchedProfessionalExperiences ?? [])
+        
+        // Reset professional experience marks to 100% (default)
+        const resetProExpMarks = new Map<string, number>()
+        for (const exp of newProExp) {
+          resetProExpMarks.set(exp, 100)
+        }
+        
         const resetState = {
           projectMarks: newMarks,
           professionalExperiences: newProExp,
+          professionalExperienceMarks: resetProExpMarks,
           coalitionProjects: new Set<number>(),
           events: state.events,
           eventsFetchedAt: state.eventsFetchedAt,
@@ -327,7 +339,23 @@ const createFortyTwoStore = (initProps: {
       for (const project of mainProjects) {
         if (typeof project.final_mark === "number" && project.final_mark > 0) {
           apiProjectIds.add(project.project.id)
-          newMarks.set(project.project.id, project.final_mark)
+          
+          // Check if user has manually modified this project's mark
+          const existingMark = state.projectMarks.get(project.project.id)
+          const autoMark = state.autoFetchedProjectMarks.get(project.project.id)
+          
+          // If user modified the mark (existing mark differs from auto mark), keep user's modification
+          const hasUserModification = existingMark !== undefined && autoMark !== undefined && existingMark !== autoMark
+          
+          if (hasUserModification) {
+            // Keep user's manual modification
+            newMarks.set(project.project.id, existingMark)
+          } else {
+            // Use API mark (either first time or no manual modification)
+            newMarks.set(project.project.id, project.final_mark)
+          }
+          
+          // Always update autoFetchedProjectMarks with the latest API value
           newAutoMarks.set(project.project.id, project.final_mark)
         }
         const expKey = projectToExperience[project.project.id]
