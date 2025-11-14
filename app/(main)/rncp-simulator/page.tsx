@@ -231,13 +231,13 @@ export default function RNCPSimulator() {
                     {isIntraLoading ? "Récupération des projets..." : "✓ Projets chargés"}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 animate-pulse" style={{ animationDelay: "150ms" }}>
+                <div className="flex items-center gap-2 animate-pulse [animation-delay:150ms]">
                   <Award className="w-4 h-4" />
                   <span className={areEventsLoading ? "text-primary" : "text-muted-foreground/50"}>
                     {areEventsLoading ? "Chargement des événements..." : "✓ Événements chargés"}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 animate-pulse" style={{ animationDelay: "300ms" }}>
+                <div className="flex items-center gap-2 animate-pulse [animation-delay:300ms]">
                   <GraduationCap className="w-4 h-4" />
                   <span className={!isDataProcessed ? "text-primary" : "text-muted-foreground/50"}>
                     {!isDataProcessed ? "Calcul des titres RNCP..." : "✓ Calculs terminés"}
