@@ -1,40 +1,40 @@
 # API Rate Limiter
 
-Ce système de rate limiting optimise les appels à l'API 42 pour éviter les erreurs 429 (Too Many Requests).
+This rate limiting system optimizes calls to the 42 API to avoid 429 (Too Many Requests) errors.
 
-## Fonctionnalités
+## Features
 
-### 1. **Queue System (File d'attente)**
-Toutes les requêtes API passent par une queue qui les traite séquentiellement, évitant ainsi de surcharger l'API.
+### 1. **Queue System**
+All API requests go through a queue that processes them sequentially, preventing API overload.
 
-### 2. **Token Rotation (Rotation des tokens)**
-Le système utilise jusqu'à 6 tokens API différents en rotation, permettant de multiplier la limite de rate par le nombre de tokens disponibles.
+### 2. **Token Rotation**
+The system uses up to 6 different API tokens in rotation, multiplying the rate limit by the number of available tokens.
 
-### 3. **Retry avec Exponential Backoff**
-En cas d'erreur 429:
-- Première tentative: attend 1 seconde
-- Deuxième tentative: attend 2 secondes  
-- Troisième tentative: attend 4 secondes
-- Maximum 3 tentatives avant d'abandonner
+### 3. **Retry with Exponential Backoff**
+In case of 429 error:
+- First attempt: waits 1 second
+- Second attempt: waits 2 seconds
+- Third attempt: waits 4 seconds
+- Maximum 3 attempts before giving up
 
-### 4. **Délai minimum entre requêtes**
-Un délai de 100ms minimum est respecté entre chaque requête pour éviter de spam l'API.
+### 4. **Minimum delay between requests**
+A minimum delay of 100ms is enforced between each request to avoid spamming the API.
 
-### 5. **Cache avec données stale**
-Si le rate limit est atteint et qu'il existe des données en cache (même périmées), celles-ci sont retournées plutôt que d'échouer complètement.
+### 5. **Cache with stale data**
+If the rate limit is reached and cached data exists (even if expired), it is returned rather than completely failing.
 
 ## Configuration
 
-### Variables d'environnement requises
+### Required environment variables
 
-Le système essaie d'utiliser jusqu'à 6 paires de credentials:
+The system tries to use up to 6 credential pairs:
 
 ```env
-# Token 1 (requis)
+# Token 1 (required)
 NEXT_PUBLIC_CLIENT_ID=your_client_id
 CLIENT_SECRET_NEXT1=your_client_secret
 
-# Tokens 2-6 (optionnels, mais recommandés)
+# Tokens 2-6 (optional, but recommended)
 CLIENT_ID2=your_client_id_2
 CLIENT_SECRET2=your_client_secret_2
 
@@ -51,60 +51,60 @@ CLIENT_ID6=your_client_id_6
 CLIENT_SECRET6=your_client_secret_6
 ```
 
-Plus vous avez de tokens, meilleure sera la performance et la résilience face au rate limiting.
+The more tokens you have, the better the performance and resilience against rate limiting.
 
-## Utilisation
+## Usage
 
-### Dans les routes API
+### In API routes
 
 ```typescript
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
-// Au lieu de:
+// Instead of:
 // const response = await fetch(`https://api.intra.42.fr/v2/users/${login}`);
 
-// Utilisez:
+// Use:
 const response = await apiRateLimiter.fetch(`/users/${login}`);
 ```
 
-Le rate limiter s'occupe automatiquement de:
-- Gérer le token d'authentification
-- Mettre la requête en queue
-- Respecter les délais
-- Retry en cas d'erreur 429
+The rate limiter automatically handles:
+- Managing the authentication token
+- Queueing the request
+- Respecting delays
+- Retrying on 429 errors
 
 ### Monitoring
 
 ```typescript
-// Voir la taille actuelle de la queue
+// See current queue size
 const queueSize = apiRateLimiter.getQueueSize();
-console.log(`Requêtes en attente: ${queueSize}`);
+console.log(`Pending requests: ${queueSize}`);
 
-// Vider la queue (utile pour le cleanup)
+// Clear the queue (useful for cleanup)
 apiRateLimiter.clearQueue();
 ```
 
-## Fichiers modifiés
+## Modified files
 
-Les fichiers suivants ont été mis à jour pour utiliser le rate limiter:
+The following files have been updated to use the rate limiter:
 
-- `/app/api/users/[login]/intra/route.tsx` - Données utilisateur
-- `/app/api/users/[login]/events/route.tsx` - Événements utilisateur
-- `/app/api/events/[campus_name]/route.tsx` - Événements campus
-- `/app/api/events/[campus_name]/[event_id]/subscribers/route.tsx` - Abonnés événements
-- `/app/api/events/[campus_name]/[event_id]/feedbacks/route.tsx` - Feedbacks événements
+- `/app/api/users/[login]/intra/route.tsx` - User data
+- `/app/api/users/[login]/events/route.tsx` - User events
+- `/app/api/events/[campus_name]/route.tsx` - Campus events
+- `/app/api/events/[campus_name]/[event_id]/subscribers/route.tsx` - Event subscribers
+- `/app/api/events/[campus_name]/[event_id]/feedbacks/route.tsx` - Event feedbacks
 
-## Avantages
+## Benefits
 
-1. **Réduction drastique des erreurs 429** - Les requêtes sont espacées et gérées intelligemment
-2. **Meilleure utilisation des quotas** - La rotation de tokens multiplie la capacité
-3. **Résilience** - En cas de rate limit, retry automatique ou retour de cache stale
-4. **Performance** - Les requêtes parallèles du client sont séquencées côté serveur
-5. **Transparence** - Le code client n'a pas besoin d'être modifié, juste remplacer `fetch` par `apiRateLimiter.fetch`
+1. **Drastic reduction of 429 errors** - Requests are spaced out and intelligently managed
+2. **Better quota utilization** - Token rotation multiplies capacity
+3. **Resilience** - In case of rate limit, automatic retry or stale cache fallback
+4. **Performance** - Client-side parallel requests are sequenced server-side
+5. **Transparency** - Client code doesn't need to be modified, just replace `fetch` with `apiRateLimiter.fetch`
 
 ## Logs
 
-Le système log les informations importantes:
+The system logs important information:
 
 ```
 [API Rate Limiter] Initialized with 6 tokens
@@ -115,7 +115,7 @@ Le système log les informations importantes:
 
 ## Notes
 
-- Le système est un singleton, il n'y a qu'une seule instance partagée dans toute l'application
-- Les tokens sont récupérés au premier appel et réutilisés
-- La queue est automatiquement processée dès qu'une requête arrive
-- En production, configurez autant de tokens que possible pour de meilleures performances
+- The system is a singleton, there's only one shared instance in the entire application
+- Tokens are retrieved on first call and reused
+- The queue is automatically processed as soon as a request arrives
+- In production, configure as many tokens as possible for better performance

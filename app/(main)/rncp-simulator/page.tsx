@@ -75,7 +75,32 @@ export default function RNCPSimulator() {
     shallow,
   )
 
-  const [activeTitle, setActiveTitle] = useState<FortyTwoTitle | null>(titles[0] ?? null)
+  const [activeTitle, setActiveTitle] = useState<FortyTwoTitle | null>(() => {
+    // Try to restore the last active title from localStorage
+    if (typeof window !== "undefined") {
+      try {
+        const savedTitleName = localStorage.getItem("rncp_active_title_name")
+        if (savedTitleName) {
+          const savedTitle = titles.find(t => t.title === savedTitleName)
+          if (savedTitle) return savedTitle
+        }
+      } catch {
+        // Silently fail if localStorage is not available
+      }
+    }
+    return titles[0] ?? null
+  })
+
+  // Save active title to localStorage when it changes
+  useEffect(() => {
+    if (activeTitle && typeof window !== "undefined") {
+      try {
+        localStorage.setItem("rncp_active_title_name", activeTitle.title)
+      } catch {
+        // Silently fail if localStorage is not available
+      }
+    }
+  }, [activeTitle])
 
   const storeState = useFortyTwoStore(
     (state) => ({
