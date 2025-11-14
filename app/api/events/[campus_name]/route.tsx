@@ -27,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: "Campus not found" }, { status: 404 });
     }
 
-    const response = await apiRateLimiter.fetch(`/campus/${campusId}/events `);
+    const response = await apiRateLimiter.fetch(`/campus/${campusId}/events`);
 
     if (!response.ok) {
       return NextResponse.json(
