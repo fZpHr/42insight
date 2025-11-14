@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Star } from "lucide-react";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { Bug, Activity } from "lucide-react";
 import { signIn } from "next-auth/react";
@@ -51,11 +51,19 @@ export default function Home() {
             </Button>
             <div className="flex gap-4">
               <a
+                href="https://github.com/fzphr/42insight"
+                target="_blank"
+                className="text-sm text-muted-foreground underline hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
+                Star the repository
+              </a>
+              <a
                 href="https://github.com/fzphr/42insight/issues/new?title=[ISSUE]&body=Describe%20your%20issue%20here...&labels=issue"
                 target="_blank"
                 className="text-sm text-muted-foreground underline hover:text-foreground transition-colors flex items-center gap-1"
               >
-                <Bug className="h-3 w-3" />
+                <Bug className="h-3 w-3 text-red-400" />
                 Report an issue
               </a>
               <a
@@ -63,7 +71,7 @@ export default function Home() {
                 target="_blank"
                 className="text-sm text-muted-foreground underline hover:text-foreground transition-colors flex items-center gap-1"
               >
-                <Activity className="h-3 w-3" />
+                <Activity className="h-3 w-3 text-green-400" />
                 Service Status
               </a>
             </div>
