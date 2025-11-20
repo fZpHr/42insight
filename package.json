@@ -12,7 +12,7 @@
     "@auth/core": "latest",
     "@codam/fast42": "latest",
     "@emotion/is-prop-valid": "latest",
-    "@prisma/client": "5.16.1",
+    "@prisma/client": "latest",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-avatar": "latest",
     "@radix-ui/react-checkbox": "latest",
