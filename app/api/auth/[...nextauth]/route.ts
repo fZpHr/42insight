@@ -11,7 +11,7 @@ export const authOptions: NextAuthOptions = {
       profile(profile) {
         const cursusName = profile.cursus_users?.[1]?.cursus?.name ?? profile.cursus_users?.[0]?.cursus?.name ?? "no-cursus";
         const isPisciner = cursusName === "C Piscine" && profile.staff === false;
-        
+
         return {
           id: profile.id.toString(),
           name: `${profile.first_name} ${profile.last_name}`,
@@ -28,8 +28,13 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  
+
   secret: process.env.JWT_SECRET,
+  session: {
+    strategy: "jwt",
+    maxAge: 60 * 60, 
+    updateAge: 0,
+  },
   pages: {
     signIn: "/",
     signOut: "/",
@@ -64,17 +69,17 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-        if (url.includes('/signout') || url === baseUrl) {
-          return baseUrl;
-        }
-        if (url.startsWith("/")) {
-          return `${baseUrl}${url}`;
-        }
-        if (new URL(url).origin === baseUrl) {
-          return url;
-        }
-        return `${baseUrl}/dashboard`;
-      },
+      if (url.includes('/signout') || url === baseUrl) {
+        return baseUrl;
+      }
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+      if (new URL(url).origin === baseUrl) {
+        return url;
+      }
+      return `${baseUrl}/dashboard`;
+    },
   },
 };
 
