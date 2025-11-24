@@ -50,6 +50,7 @@ export default function Trombinoscope() {
   );
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [showingName, setShowingName] = useState(true);
+  const [year, setYear] = useState<string>("all");
   const observerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -63,9 +64,16 @@ export default function Trombinoscope() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const filteredStudents = students.filter((student) => student.photoUrl);
+  const filteredStudents = students
+    .filter((student) => student.photoUrl)
+    .filter((student) => {
+      if (year === "all") return true;
+      return String((student as any).year) === year;
+    });
+
   const visibleStudents = filteredStudents.slice(0, visibleCount);
   const hasMore = visibleCount < filteredStudents.length;
+
 
   const loadMore = useCallback(() => {
     if (hasMore) {
@@ -113,6 +121,20 @@ export default function Trombinoscope() {
     setSelectedCampus(value);
   };
 
+  const handleYearChange = (value: string) => {
+    setYear(value);
+    setVisibleCount(INITIAL_LOAD);
+  };
+
+  const getAvailableYears = () => {
+    const yearsSet = new Set<string>();
+    students.forEach((student) => {
+      if ((student as any).year) {
+        yearsSet.add(String((student as any).year));
+      }
+    });
+    return Array.from(yearsSet).sort().reverse();
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-3">
@@ -142,6 +164,19 @@ export default function Trombinoscope() {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <Select value={year} onValueChange={handleYearChange}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Select year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All years</SelectItem>
+              {getAvailableYears().map((yr) => (
+                <SelectItem key={yr} value={yr}>
+                  {yr}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={selectedCampus} onValueChange={handleCampusChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select campus" />
@@ -157,56 +192,6 @@ export default function Trombinoscope() {
                 {user?.campus === "Nice" && <Star className="h-4 w-4 mr-1" />}
                 Nice
               </SelectItem>
-              {(user?.role == "admin" || user?.role == "staff" ) && (
-                <>
-                  <SelectItem value="amsterdam">Amsterdam</SelectItem>
-                  <SelectItem value="paris">Paris</SelectItem>
-                  <SelectItem value="lyon">Lyon</SelectItem>
-                  <SelectItem value="brussels">Brussels</SelectItem>
-                  <SelectItem value="helsinki">Helsinki</SelectItem>
-                  <SelectItem value="khouribga">Khouribga</SelectItem>
-                  <SelectItem value="moscow">Moscow</SelectItem>
-                  <SelectItem value="sao-paulo">São Paulo</SelectItem>
-                  <SelectItem value="benguerir">Benguerir</SelectItem>
-                  <SelectItem value="madrid">Madrid</SelectItem>
-                  <SelectItem value="kazan">Kazan</SelectItem>
-                  <SelectItem value="quebec">Quebec</SelectItem>
-                  <SelectItem value="tokyo">Tokyo</SelectItem>
-                  <SelectItem value="rio-de-janeiro">Rio de Janeiro</SelectItem>
-                  <SelectItem value="seoul">Seoul</SelectItem>
-                  <SelectItem value="rome">Rome</SelectItem>
-                  <SelectItem value="yerevan">Yerevan</SelectItem>
-                  <SelectItem value="bangkok">Bangkok</SelectItem>
-                  <SelectItem value="kuala-lumpur">Kuala Lumpur</SelectItem>
-                  <SelectItem value="adelaide">Adelaide</SelectItem>
-                  <SelectItem value="malaga">Malaga</SelectItem>
-                  <SelectItem value="lisboa">Lisboa</SelectItem>
-                  <SelectItem value="heilbronn">Heilbronn</SelectItem>
-                  <SelectItem value="urduliz">Urduliz</SelectItem>
-                  <SelectItem value="42network">42Network</SelectItem>
-                  <SelectItem value="abu-dhabi">Abu Dhabi</SelectItem>
-                  <SelectItem value="wolfsburg">Wolfsburg</SelectItem>
-                  <SelectItem value="alicante">Alicante</SelectItem>
-                  <SelectItem value="barcelona">Barcelona</SelectItem>
-                  <SelectItem value="lausanne">Lausanne</SelectItem>
-                  <SelectItem value="mulhouse">Mulhouse</SelectItem>
-                  <SelectItem value="istanbul">Istanbul</SelectItem>
-                  <SelectItem value="kocaeli">Kocaeli</SelectItem>
-                  <SelectItem value="berlin">Berlin</SelectItem>
-                  <SelectItem value="florence">Florence</SelectItem>
-                  <SelectItem value="vienna">Vienna</SelectItem>
-                  <SelectItem value="tetouan">Tétouan</SelectItem>
-                  <SelectItem value="prague">Prague</SelectItem>
-                  <SelectItem value="london">London</SelectItem>
-                  <SelectItem value="porto">Porto</SelectItem>
-                  <SelectItem value="le-havre">Le Havre</SelectItem>
-                  <SelectItem value="singapore">Singapore</SelectItem>
-                  <SelectItem value="antananarivo">Antananarivo</SelectItem>
-                  <SelectItem value="warsaw">Warsaw</SelectItem>
-                  <SelectItem value="luanda">Luanda</SelectItem>
-                  <SelectItem value="gyeongsan">Gyeongsan</SelectItem>
-                </>
-              )}
             </SelectContent>
           </Select>
         </div>
