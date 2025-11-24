@@ -50,6 +50,7 @@ export default function Trombinoscope() {
   );
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [showingName, setShowingName] = useState(true);
+  const [year, setYear] = useState<string>("all");
   const observerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -63,9 +64,16 @@ export default function Trombinoscope() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const filteredStudents = students.filter((student) => student.photoUrl);
+  const filteredStudents = students
+    .filter((student) => student.photoUrl)
+    .filter((student) => {
+      if (year === "all") return true;
+      return String((student as any).year) === year;
+    });
+
   const visibleStudents = filteredStudents.slice(0, visibleCount);
   const hasMore = visibleCount < filteredStudents.length;
+
 
   const loadMore = useCallback(() => {
     if (hasMore) {
@@ -113,6 +121,20 @@ export default function Trombinoscope() {
     setSelectedCampus(value);
   };
 
+  const handleYearChange = (value: string) => {
+    setYear(value);
+    setVisibleCount(INITIAL_LOAD);
+  };
+
+  const getAvailableYears = () => {
+    const yearsSet = new Set<string>();
+    students.forEach((student) => {
+      if ((student as any).year) {
+        yearsSet.add(String((student as any).year));
+      }
+    });
+    return Array.from(yearsSet).sort().reverse();
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-3">
@@ -142,6 +164,19 @@ export default function Trombinoscope() {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <Select value={year} onValueChange={handleYearChange}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Select year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All years</SelectItem>
+              {getAvailableYears().map((yr) => (
+                <SelectItem key={yr} value={yr}>
+                  {yr}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={selectedCampus} onValueChange={handleCampusChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select campus" />
