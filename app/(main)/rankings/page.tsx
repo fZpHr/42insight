@@ -38,6 +38,16 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { debounce } from "@tanstack/pacer";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { useSession } from "next-auth/react";
 
 const sortOptions: StudentSortOption[] = [
@@ -62,19 +72,19 @@ const sortOptions: StudentSortOption[] = [
   { value: "work_study", label: "En alternance", key: "work" },
 ];
 
-  const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
-    try {
-      //console.log("Fetching students for campus:", campus);
-      const response = await fetch(`/api/users/campus/${campus}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch students");
-      }
-      return response.json();
-    } catch (error) {
-      console.error("Error fetching students:", error);
-      throw error;
+const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
+  try {
+    //console.log("Fetching students for campus:", campus);
+    const response = await fetch(`/api/users/campus/${campus}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch students");
     }
-  };
+    return response.json();
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    throw error;
+  }
+};
 
 type SortDirection = "asc" | "desc";
 
@@ -91,6 +101,9 @@ export default function Rankings() {
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const { data: session, status } = useSession();
   const user = session?.user;
+
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
 
 
   const campusOptions = [
@@ -177,7 +190,7 @@ export default function Rankings() {
       sortBy === "internship" || sortBy === "work_study"
         ? ("level" as keyof Student)
         : ((sortOptions.find((o) => o.value === sortBy)?.key ||
-            "level") as keyof Student);
+          "level") as keyof Student);
 
     return sortStudents(students, sortKey, sortDirection);
   }, [students, sortBy, sortDirection]);
@@ -585,9 +598,8 @@ export default function Rankings() {
                           size="sm"
                           onClick={toggleSortDirection}
                           className="flex items-center gap-1 px-3 bg-transparent w-full"
-                          title={`Sort ${
-                            sortDirection === "asc" ? "ascending" : "descending"
-                          }`}
+                          title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"
+                            }`}
                         >
                           {getSortIcon()}
                           <span>
@@ -688,13 +700,12 @@ export default function Rankings() {
                   <div
                     key={student.id}
                     ref={isCurrentUser ? userRowRef : null}
-                    className={`flex items-center gap-4 p-4 transition-all duration-200 hover:bg-muted/50 ${
-                      isCurrentUser && highlightUser
-                        ? "bg-primary/10 border-l-4 border-primary"
-                        : isCurrentUser
-                          ? "bg-muted/30"
-                          : ""
-                    }`}
+                    className={`flex items-center gap-4 p-4 transition-all duration-200 hover:bg-muted/50 ${isCurrentUser && highlightUser
+                      ? "bg-primary/10 border-l-4 border-primary"
+                      : isCurrentUser
+                        ? "bg-muted/30"
+                        : ""
+                      }`}
                   >
                     <div className="flex items-center justify-center w-12 h-12 flex-shrink-0">
                       {position <= 3 && sortDirection === "desc" ? (
@@ -703,50 +714,54 @@ export default function Rankings() {
                         </div>
                       ) : (
                         <div
-                          className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                            isCurrentUser
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          }`}
+                          className={`flex items-center justify-center w-8 h-8 rounded-full ${isCurrentUser
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted"
+                            }`}
                         >
                           <span
-                            className={`text-sm font-bold ${
-                              isCurrentUser
-                                ? "text-primary-foreground"
-                                : "text-muted-foreground"
-                            }`}
+                            className={`text-sm font-bold ${isCurrentUser
+                              ? "text-primary-foreground"
+                              : "text-muted-foreground"
+                              }`}
                           >
                             {position}
                           </span>
                         </div>
                       )}
                     </div>
-
-                    <Avatar className="h-12 w-12 flex-shrink-0 hidden sm:block">
-                      <AvatarImage
-                        src={student.photoUrl || "/placeholder.svg"}
-                        alt={student.name}
-                        className="object-cover"
-                      />
-                      <AvatarFallback
-                        className={
-                          isCurrentUser ? "bg-primary/20 text-primary" : ""
-                        }
-                      >
-                        {student.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div
+                      onClick={() => {
+                        setSelectedPhoto(student.photoUrl || "/placeholder.svg");
+                        setSelectedName(student.name);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <Avatar className="h-12 w-12 flex-shrink-0 sm:block">
+                        <AvatarImage
+                          src={student.photoUrl || "/placeholder.svg"}
+                          alt={student.name}
+                          className="object-cover"
+                        />
+                        <AvatarFallback
+                          className={
+                            isCurrentUser ? "bg-primary/20 text-primary" : ""
+                          }
+                        >
+                          {student.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <h3
-                          className={`font-semibold truncate ${
-                            isCurrentUser ? "text-primary" : ""
-                          }`}
+                          className={`font-semibold truncate ${isCurrentUser ? "text-primary" : ""
+                            }`}
                         >
                           {student.name}
                           {isCurrentUser && (
@@ -775,11 +790,10 @@ export default function Rankings() {
                             <span className="text-muted-foreground">
                               Correction:{" "}
                               <span
-                                className={`font-medium ${
-                                  sortBy === "correctionPercentage"
-                                    ? "text-primary"
-                                    : "text-foreground"
-                                }`}
+                                className={`font-medium ${sortBy === "correctionPercentage"
+                                  ? "text-primary"
+                                  : "text-foreground"
+                                  }`}
                               >
                                 {student.correctionPercentage}%
                               </span>
@@ -806,11 +820,10 @@ export default function Rankings() {
                           <span className="text-muted-foreground">
                             Correction Points:{" "}
                             <span
-                              className={`font-medium ${
-                                sortBy === "correctionPoints"
-                                  ? "text-primary"
-                                  : "text-foreground"
-                              }`}
+                              className={`font-medium ${sortBy === "correctionPoints"
+                                ? "text-primary"
+                                : "text-foreground"
+                                }`}
                             >
                               {student.correctionPoints}
                             </span>
@@ -820,11 +833,10 @@ export default function Rankings() {
                           <span className="text-muted-foreground">
                             Wallet:{" "}
                             <span
-                              className={`font-medium ${
-                                sortBy === "wallet"
-                                  ? "text-primary"
-                                  : "text-foreground"
-                              }`}
+                              className={`font-medium ${sortBy === "wallet"
+                                ? "text-primary"
+                                : "text-foreground"
+                                }`}
                             >
                               {student.wallet}₳
                             </span>
@@ -832,7 +844,7 @@ export default function Rankings() {
                         </div>
                       </div>
                     </div>
-                    {student.activityData && (
+                    {/* {student.activityData && (
                       <div className="flex items-center gap-3">
                         <div className="w-16 h-8 relative sm:w-24 sm:h-10">
                           <ResponsiveContainer width="100%" height="100%">
@@ -877,7 +889,7 @@ export default function Rankings() {
                             )}
                         </div>
                       </div>
-                    )}
+                    )} */}
                     <div className="flex items-center">
                       <Button
                         variant="ghost"
@@ -928,6 +940,36 @@ export default function Rankings() {
           </CardContent>
         </Card>
       )}
+      <Dialog
+        open={!!selectedPhoto}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedPhoto(null);
+            setSelectedName(null);
+          }
+        }}
+      >
+        <DialogContent
+          className="max-w-3xl border-0 bg-transparent p-0 shadow-none"
+        >
+          <DialogTitle className="sr-only">
+          </DialogTitle>
+          <DialogClose
+            className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white text-sm hover:bg-black/80 focus:outline-none"
+          >
+            ✕
+          </DialogClose>
+          {selectedPhoto && (
+            <div className="w-full">
+              <img
+                src={selectedPhoto}
+                alt={selectedName || "Avatar"}
+                className="w-full h-auto max-h-[90vh] object-contain rounded-md"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
