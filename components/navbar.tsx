@@ -20,6 +20,7 @@ import {
   LayoutGrid,
   BookUser,
   Workflow,
+  GamepadIcon,
   Award,
 } from "lucide-react";
 
@@ -132,6 +133,12 @@ const navigationData = {
           url: "/cluster-map",
           icon: Map,
           description: "Visual representation of cluster status",
+        },
+        {
+          title: "Games",
+          url: "/games",
+          icon: GamepadIcon,
+          description: "Play and compete with fellow students",
         },
         {
           title: "Useful Links",
