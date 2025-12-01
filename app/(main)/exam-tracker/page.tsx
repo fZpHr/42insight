@@ -40,17 +40,11 @@ function getExamName(examId: string) {
 export default function ExamTracker() {
     const { data: session, status } = useSession();
     const campus = session?.user?.campus;
-    
-    // const isToday = (): boolean => {
-    //     const today = new Date();
-    //     const dayOfWeek = today.getDay();
-    //     return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
-    // }
 
     const { data: students = [], isLoading, error } = useQuery({
         queryKey: ['current_exam'],
         queryFn: async () => {
-            
+
             const response = await fetch("/api/current_exam");
             if (!response.ok) {
                 throw new Error('Failed to fetch students');

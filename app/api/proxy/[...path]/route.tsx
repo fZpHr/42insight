@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Redis } from "@upstash/redis";
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-
-const redis = new Redis({
-    url: process.env.REDIS_URL,
-    token: process.env.REDIS_PASSWORD,
-});
-
-const RATE_LIMIT = 10
-const RATE_KEY = "rate_limit"
 
 
 export async function GET(
