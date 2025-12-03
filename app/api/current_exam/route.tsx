@@ -20,26 +20,6 @@ export async function GET() {
         )
     }
     try {
-        const examsResponse = await apiRateLimiter.fetch(`/campus/31/exams`);
-
-        if (!examsResponse || !Array.isArray(examsResponse) || examsResponse.length === 0) {
-            return NextResponse.json([], { status: 200 });
-        }
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const hasExamToday = examsResponse.some((exam: any) => {
-            const examDate = new Date(exam.begin_at);
-            examDate.setHours(0, 0, 0, 0);
-            return examDate.getTime() === today.getTime();
-        });
-
-        if (!hasExamToday) {
-            console.log(hasExamToday)
-            return NextResponse.json([], { status: 200 });
-        }
-
         const cachedData = await redis.get(CACHE_KEY);
         if (cachedData) {
             try {

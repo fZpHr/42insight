@@ -12,7 +12,8 @@ import { ExternalLink } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ExamStudent } from "@/types"
 import { useSession } from "next-auth/react"
-
+import { useExamFriends } from "@/hooks/use-exam-friends"
+import { TransparentBadge } from "@/components/TransparentBadge";
 
 function getExamName(examId: string) {
     switch (examId) {
@@ -40,6 +41,7 @@ function getExamName(examId: string) {
 export default function ExamTracker() {
     const { data: session, status } = useSession();
     const campus = session?.user?.campus;
+    const { friends, toggleFriend, isFriend } = useExamFriends();
 
     const { data: students = [], isLoading, error } = useQuery({
         queryKey: ['current_exam'],
@@ -75,7 +77,19 @@ export default function ExamTracker() {
 
     const studentsNice = students.filter((s: any) => s.campus === "Nice");
     const studentsAngouleme = students.filter((s: any) => s.campus === "Angouleme");
-    const studentsToShow = campus === "Angouleme" ? studentsAngouleme : campus === "Nice" ? studentsNice : students;
+    const studentsFiltered = campus === "Angouleme" ? studentsAngouleme : campus === "Nice" ? studentsNice : students;
+
+    const studentsToShow = React.useMemo(() => {
+        return [...studentsFiltered].sort((a: ExamStudent, b: ExamStudent) => {
+            const aIsFriend = isFriend(a.id);
+            const bIsFriend = isFriend(b.id);
+
+            if (aIsFriend && !bIsFriend) return -1;
+            if (!aIsFriend && bIsFriend) return 1;
+
+            return b.grade - a.grade;
+        });
+    }, [studentsFiltered, friends]);
 
     const averageGrade = Array.isArray(studentsToShow) && studentsToShow.length > 0
         ? studentsToShow.reduce((sum, student) => sum + (student.grade || 0), 0) / studentsToShow.length
@@ -86,7 +100,7 @@ export default function ExamTracker() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
-                    <p className="text-muted-foreground">Data is updated every 10 min</p> 
+                    <p className="text-muted-foreground">Data is updated every 10 min</p>
                 </CardHeader>
                 <CardContent>
                     {isLoading && students.length === 0 && (
@@ -130,7 +144,7 @@ export default function ExamTracker() {
                         </Table>
                     )}
 
-                    {studentsToShow.length === 0 && !isLoading &&  (
+                    {studentsToShow.length === 0 && !isLoading && (
                         <Alert variant="default" className="mt-5">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>No students found</AlertTitle>
@@ -143,6 +157,13 @@ export default function ExamTracker() {
                             <p><strong>Total Students:</strong> {studentsToShow.length}</p>
                             <p><strong>Average Grade:</strong> {averageGrade.toFixed(2)}%</p>
                             <div className="mt-4 mb-6"></div>
+                                                        <TransparentBadge
+                                text="🫂 Click on a student row to highlight them"
+                                bgColor="bg-green-400/20"
+                                textColor="text-green-300"
+                            />
+                            <div className="mt-4 mb-3"></div>
+
                             <div className="overflow-x-auto">
                                 <Table className="min-w-full">
                                     <TableHeader>
@@ -151,42 +172,50 @@ export default function ExamTracker() {
                                             <TableHead className="min-w-[100px]">Grade</TableHead>
                                             <TableHead className="min-w-[120px] hidden md:table-cell">Last push</TableHead>
                                             <TableHead className="min-w-[60px] hidden lg:table-cell">Try</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {studentsToShow.map((student: ExamStudent) => (
-                                            <TableRow key={student.id}>
-                                                <TableCell className="font-medium">
-                                                    <div className="flex items-center space-x-3">
-                                                        <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
-                                                            <AvatarImage src={student.photo} alt={student.name} style={{ objectFit: 'cover' }} />
-                                                            <AvatarFallback className="text-xs sm:text-sm">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="min-w-0">
-                                                            <p className="truncate font-medium" title={student.name}>{student.name}</p>
-                                                            <p
-                                                                className="truncate text-sm text-muted-foreground"
-                                                                title={getExamName(student.examId) ?? `Exam ${student.examId}`}
-                                                            >
-                                                                {getExamName(student.examId) ?? `Exam ${student.examId}`}
-                                                            </p>
+                                        {studentsToShow.map((student: ExamStudent) => {
+                                            const isStudentFriend = isFriend(student.id);
+                                            return (
+                                                <TableRow
+                                                    key={student.id}
+                                                    onClick={() => toggleFriend(student.id)}
+                                                    className={`cursor-pointer ${isStudentFriend ? "bg-muted hover:bg-muted/80" : "hover:bg-muted/50"}`}
+                                                >
+                                                    <TableCell className="font-medium">
+                                                        <div className="flex items-center space-x-3">
+                                                            <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                                                                <AvatarImage src={student.photo} alt={student.name} style={{ objectFit: 'cover' }} />
+                                                                <AvatarFallback className="text-xs sm:text-sm">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="min-w-0">
+                                                                <p className="truncate font-medium" title={student.name}>{student.name}</p>
+                                                                <p
+                                                                    className="truncate text-sm text-muted-foreground"
+                                                                    title={getExamName(student.examId) ?? `Exam ${student.examId}`}
+                                                                >
+                                                                    {getExamName(student.examId) ?? `Exam ${student.examId}`}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge className={getGradeBadgeColor(student.grade || 0)}>
-                                                        {student.grade !== undefined ? `${student.grade}%` : 'N/A'}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="hidden md:table-cell">{new Date(student.lastUpdate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
-                                                <TableCell className="hidden lg:table-cell">{student.occurence}</TableCell>
-                                                <TableCell>
-                                                    <Link href={`https://profile.intra.42.fr/users/${student.name}`} target="_blank" className="flex items-center text-muted-foreground   hover:underline">
-                                                        <ExternalLink className="ml-1 h-4 w-4 flex-shrink-0" />
-                                                    </Link>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge className={getGradeBadgeColor(student.grade || 0)}>
+                                                            {student.grade !== undefined ? `${student.grade}%` : 'N/A'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="hidden md:table-cell">{new Date(student.lastUpdate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                                                    <TableCell className="hidden lg:table-cell">{student.occurence}</TableCell>
+                                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                                        <Link href={`https://profile.intra.42.fr/users/${student.name}`} target="_blank" className="flex items-center text-muted-foreground hover:underline">
+                                                            <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                                                        </Link>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
                                     </TableBody>
                                 </Table>
                             </div>
