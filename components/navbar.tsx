@@ -135,12 +135,6 @@ const navigationData = {
           description: "Visual representation of cluster status",
         },
         {
-          title: "Games",
-          url: "/games",
-          icon: GamepadIcon,
-          description: "Play and compete with fellow students",
-        },
-        {
           title: "Useful Links",
           url: "/links",
           icon: LinkIcon,
