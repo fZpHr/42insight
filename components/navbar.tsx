@@ -20,6 +20,7 @@ import {
   LayoutGrid,
   BookUser,
   Workflow,
+  GamepadIcon,
   Award,
 } from "lucide-react";
 

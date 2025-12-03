@@ -2,6 +2,7 @@ import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
+import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
 const redis = new Redis({
     url: process.env.REDIS_URL,
@@ -18,7 +19,7 @@ export async function GET() {
             { status: 401 }
         )
     }
-    try { 
+    try {
         const cachedData = await redis.get(CACHE_KEY);
         if (cachedData) {
             try {
