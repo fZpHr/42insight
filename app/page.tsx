@@ -14,8 +14,6 @@ import {
   useAnimation 
 } from "framer-motion";
 
-// --- DATA & CONSTANTS ---
-
 const allFloatingStats = [
   { label: "Unique Users", value: "623", subtitle: "Last 30 days", color: "text-blue-400" },
   { label: "API Requests", value: "5.8M+", subtitle: "Total", color: "text-yellow-400" },
@@ -23,13 +21,13 @@ const allFloatingStats = [
   { label: "Visitors", value: "906", trend: "+9%", subtitle: "Last 30 days", color: "text-blue-400" },
   { label: "Page Views", value: "4,357", trend: "+3%", subtitle: "Last 30 days", color: "text-purple-400" },
   { label: "Bounce Rate", value: "20%", trend: "-3%", subtitle: "Last 30 days", color: "text-green-400" },
-  { label: "/dashboard", value: "657", subtitle: "Last 30 days", color: "text-cyan-400" },
-  { label: "/rankings", value: "495", subtitle: "Last 30 days", color: "text-pink-400" },
-  { label: "/trombinoscope", value: "278", subtitle: "Last 30 days", color: "text-orange-400" },
-  { label: "/rncp-simulator", value: "207", subtitle: "Last 30 days", color: "text-yellow-400" },
-  { label: "/exam-tracker", value: "205", subtitle: "Last 30 days", color: "text-lime-400" },
-  { label: "/peers", value: "159", subtitle: "Last 30 days", color: "text-indigo-400" },
-  { label: "/cluster-map", value: "151", subtitle: "Last 30 days", color: "text-rose-400" },
+  { label: "/dashboard", value: "72.5%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/rankings", value: "54.6%", subtitle: "of visitors", color: "text-pink-400" },
+  { label: "/trombinoscope", value: "30.7%", subtitle: "of visitors", color: "text-orange-400" },
+  { label: "/rncp-simulator", value: "22.8%", subtitle: "of visitors", color: "text-yellow-400" },
+  { label: "/exam-tracker", value: "22.6%", subtitle: "of visitors", color: "text-lime-400" },
+  { label: "/peers", value: "17.5%", subtitle: "of visitors", color: "text-indigo-400" },
+  { label: "/cluster-map", value: "16.7%", subtitle: "of visitors", color: "text-rose-400" },
   { label: "France", value: "98%", subtitle: "Last 30 days", color: "text-blue-500" },
   { label: "Desktop", value: "69%", subtitle: "Last 30 days", color: "text-violet-400" },
   { label: "Mobile", value: "31%", subtitle: "Last 30 days", color: "text-fuchsia-400" },
@@ -44,8 +42,6 @@ const allFloatingStats = [
   { label: "Avg job run time", value: "5.18 min", subtitle: "Last 30 days", color: "text-pink-400" },
 ];
 
-// --- UTILS ---
-
 const useWrapPosition = (
   initialPos: number, 
   cameraValue: MotionValue<number>, 
@@ -57,9 +53,6 @@ const useWrapPosition = (
   });
 };
 
-// --- SUB-COMPONENTS ---
-
-// --- COMPOSANT ÉTOILE FILANTE AMÉLIORÉ ---
 const ShootingStarItem = ({ delay }: { delay: number }) => {
   const controls = useAnimation();
 
@@ -67,70 +60,53 @@ const ShootingStarItem = ({ delay }: { delay: number }) => {
     let isMounted = true;
 
     const sequence = async () => {
-      // Petit délai initial aléatoire
       await new Promise(r => setTimeout(r, delay * 2000 + Math.random() * 2000));
 
       while (isMounted) {
-        // 1. DÉFINITION DES POSITIONS (Logique de Spawn Aléatoire)
-        // On choisit au hasard si ça part de l'axe X (gauche/droite) ou Y (haut/bas)
         const isVerticalStart = Math.random() > 0.5;
         
         let startX, startY, endX, endY;
 
         if (isVerticalStart) {
-          // Commence en HAUT ou en BAS (mais on évite bas vers haut car c'est bizarre)
-          startX = Math.random() * 120 - 10; // Entre -10% et 110%
-          startY = -10; // Commence toujours au dessus
+          startX = Math.random() * 120 - 10;
+          startY = -10;
           
           endX = Math.random() * 120 - 10;
-          endY = 120; // Finit en bas
+          endY = 120;
         } else {
-          // Commence à GAUCHE ou à DROITE
           const fromLeft = Math.random() > 0.5;
           
           startX = fromLeft ? -10 : 110;
-          startY = Math.random() * 80; // 0 à 80% de hauteur
+          startY = Math.random() * 80; 
           
           endX = fromLeft ? 110 : -10;
-          endY = Math.random() * 100 + 20; // Finit un peu plus bas pour l'effet gravité
+          endY = Math.random() * 100 + 20; 
         }
-
-        // 2. CALCUL DE L'ANGLE (Trigonométrie)
-        // On calcule l'angle entre le point A et le point B pour orienter la ligne
-        // Note: On multiplie par un ratio approximatif (1.7) car l'écran n'est pas carré (16:9)
         const angle = Math.atan2(endY - startY, (endX - startX) * 1.7) * (180 / Math.PI);
 
-        // 3. RESET (Positionnement invisible)
         if (!isMounted) break;
         await controls.set({
           left: `${startX}%`,
           top: `${startY}%`,
-          rotate: angle, // On applique l'angle calculé
+          rotate: angle, 
           opacity: 0,
           scale: 0.5,
           width: Math.random() * 100 + 50 + "px",
         });
 
-        // 4. ANIMATION (Le tir)
-        // Durée rapide (0.8s à 1.5s)
         const duration = Math.random() * 0.7 + 0.8;
         
-        // On lance l'animation vers la destination
-        // Note: on utilise 'void' pour ne pas attendre la fin de l'anim avant de continuer la logique si besoin,
-        // mais ici on veut attendre la fin du mouvement.
+        
         controls.start({
           left: `${endX}%`,
           top: `${endY}%`,
-          opacity: [0, 1, 0], // Apparition -> Brillance -> Disparition
+          opacity: [0, 1, 0], 
           scale: [1, 1.2, 0.5],
           transition: { duration: duration, ease: "easeIn" }
         });
 
-        // Attente de la fin de l'animation
         await new Promise(r => setTimeout(r, duration * 1000));
 
-        // 5. PAUSE (Délai avant la prochaine étoile)
-        // Pause longue et aléatoire (entre 5 et 15 secondes)
         const waitTime = Math.random() * 10000 + 5000;
         await new Promise(r => setTimeout(r, waitTime));
       }
@@ -145,12 +121,10 @@ const ShootingStarItem = ({ delay }: { delay: number }) => {
       className="absolute z-0 pointer-events-none"
       animate={controls}
       style={{
-        height: "2px", // Finesse
-        // Dégradé : Tête blanche (droite) -> Queue transparente (gauche)
-        // Comme on rotate l'élément, la "tête" suit la direction
+        height: "2px", 
         background: "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 100%)",
         boxShadow: "0 0 15px 1px rgba(255, 255, 255, 0.5)",
-        transformOrigin: "left center" // Important pour la rotation
+        transformOrigin: "left center"
       }}
     />
   );
@@ -344,8 +318,6 @@ const HeartExplosion = ({ isHovered }: { isHovered: boolean }) => {
   );
 };
 
-// --- MAIN PAGE ---
-
 export default function Home() {
   const [loader, setLoader] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -374,10 +346,9 @@ export default function Home() {
     y: Math.random() * 10000,
   })), []);
 
-  // Données pour les étoiles filantes (juste besoin d'un ID et d'un délai initial)
   const shootingStarsData = useMemo(() => Array.from({ length: 3 }, (_, i) => ({
     id: `ss-${i}`,
-    initialDelay: Math.random() * 10 // Délai aléatoire au démarrage
+    initialDelay: Math.random() * 10 
   })), []);
 
   useEffect(() => {
@@ -574,7 +545,6 @@ export default function Home() {
                    target="_blank"
                    whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
                    whileTap={{ scale: 0.95 }}
-                   // Déclenche l'animation de coeurs au survol du bouton "Star"
                    onHoverStart={() => item.text === 'Star' && setIsStarHovered(true)}
                    onHoverEnd={() => item.text === 'Star' && setIsStarHovered(false)}
                    className="relative flex-1 min-w-[80px] flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border border-white/5 bg-white/5 backdrop-blur-sm transition-colors text-xs text-muted-foreground hover:text-white"
@@ -596,7 +566,7 @@ export default function Home() {
             animate={{ opacity: 1 }}
             transition={{ delay: 1 }}
           >
-            Built by{' '}
+            Created by{' '}
             <a 
               href="https://github.com/fzphr" 
               target="_blank" 
