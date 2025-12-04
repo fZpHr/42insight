@@ -7,6 +7,7 @@ import { TransparentBadge } from "@/components/TransparentBadge";
 import { Bug, Activity } from "lucide-react";
 import { signIn } from "next-auth/react";
 
+
 export default function Home() {
   const [loader, setLoader] = useState(false);
 
@@ -20,7 +21,7 @@ export default function Home() {
   return (
     <div className="relative">
       <div className="grid min-h-dvh grid-rows-[20px_1fr_auto] items-center justify-items-center p-8 pb-12 gap-12 sm:p-20 sm:pb-20 sm:gap-16 font-[family-name:var(--font-geist-sans)]">
-        <main className="flex flex-col gap-5 row-start-2 items-center sm:items-start">
+        <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
           <div className="text-center sm:text-left space-y-2">
             <h1 className="text-5xl font-bold text-white bg-clip-text p-1">
               42 Insight
@@ -76,6 +77,7 @@ export default function Home() {
               </a>
             </div>
           </div>
+
         </main>
 
         <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">

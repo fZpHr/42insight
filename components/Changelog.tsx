@@ -1,0 +1,86 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Commit } from "@/types";
+import { GitCommit } from "lucide-react";
+
+export function Changelog() {
+  const { data: commits, isLoading } = useQuery<Commit[]>({
+    queryKey: ["changelog"],
+    queryFn: async () => {
+      const response = await fetch("/api/changelog");
+      if (!response.ok) {
+        throw new Error("Failed to fetch changelog");
+      }
+      return response.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="w-[400px]">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GitCommit className="h-5 w-5" />
+            Recent Updates
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex gap-3">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!commits || commits.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="w-[425px]">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <GitCommit className="h-5 w-5" />
+          Recent Updates
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="max-h-[400px] overflow-y-auto space-y-4">
+        {commits.map((commit, index) => (
+          <div key={index} className="flex gap-3 items-start">
+            <Avatar className="h-10 w-10">
+              <img
+                src={commit.avatar}
+                alt={commit.author}
+                className="h-full w-full object-cover"
+              />
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {commit.message}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs text-muted-foreground">{commit.author}</p>
+                <span className="text-xs text-muted-foreground">•</span>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(commit.date).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}

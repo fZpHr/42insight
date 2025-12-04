@@ -387,3 +387,23 @@ export interface Project {
     createdAt: string;
     updatedAt: string
 }
+
+export interface Commit {
+	message: string;
+	author: string;
+	avatar: string;
+	date: string;
+}
+
+export interface Coalition {
+	id: number;
+	name: string;
+	slug: string;
+	image_url: string;
+	cover_url: string;
+	color: string;
+	score: number;
+	user_id: number;
+}
+
+
