@@ -18,6 +18,7 @@ import {
   TrendingUp,
   AlertCircle,
   Award,
+  Wallet,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
@@ -31,6 +32,9 @@ import { TransparentBadge } from "@/components/TransparentBadge";
 import { useSession } from "next-auth/react";
 import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
+import { Changelog } from "@/components/Changelog";
+import { CoalitionInfo } from "@/components/CoalitionInfo";
+import { PiscineStats } from "@/components/PiscineStats";
 
 interface StatCardProps {
   title: string;
@@ -362,7 +366,7 @@ export default function Dashboard() {
       {
         title: "Wallet",
         value: `${userIntraInfo?.wallet || 0} ₳`,
-        icon: Target,
+        icon: Wallet,
       },
       {
         title: "Evaluation Pts",
@@ -539,102 +543,166 @@ export default function Dashboard() {
       )}
       {!isStaff && (
         <>
-          <Card className="w-full">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {stats.map((stat, index) => {
-                  const Icon = stat.icon;
-                  if (intraLoading || rankLoading) {
+          <div className="flex flex-wrap gap-6">
+            <Card className="flex-1 min-w-[300px]">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                  {stats.map((stat, index) => {
+                    const Icon = stat.icon;
+                    if (intraLoading || rankLoading) {
+                      return (
+                        <div
+                          key={index}
+                          className="flex flex-col items-center justify-center text-center space-y-2"
+                        >
+                          <Skeleton className="h-8 w-8 rounded" />
+                          <Skeleton className="h-3 w-16" />
+                          <Skeleton className="h-6 w-12" />
+                        </div>
+                      );
+                    }
                     return (
                       <div
                         key={index}
-                        className="flex flex-col items-center text-center space-y-1 sm:space-y-2"
+                        className="flex flex-col items-center justify-center text-center space-y-2 min-w-0"
                       >
-                        <Skeleton className="h-5 w-5 sm:h-6 sm:w-6 rounded" />
-                        <Skeleton className="h-2 w-8 sm:h-3 sm:w-12" />
-                        <Skeleton className="h-4 w-6 sm:h-5 sm:w-10" />
+                        <Icon className="h-8 w-8 text-primary flex-shrink-0" />
+                        <p className="text-sm font-medium text-muted-foreground">
+                          {stat.title}
+                        </p>
+                        <p className="text-2xl font-bold">
+                          {stat.value}
+                        </p>
                       </div>
                     );
-                  }
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-col items-center text-center space-y-1 sm:space-y-2 min-w-0"
-                    >
-                      <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
-                      <p className="text-xs font-medium text-muted-foreground leading-tight">
-                        {stat.title}
-                      </p>
-                      <p className="text-lg sm:text-xl font-bold truncate w-full">
-                        {stat.value}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Progress and Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
-                  Cursus Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="font-medium">Level Progress</span>
-                      <span className="text-muted-foreground">{levelProgress.toFixed(1)}%</span>
-                    </div>
-                    <Progress value={levelProgress} className="h-3" />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Current Level: {currentCursus?.level?.toFixed(2) || "0.00"}
-                    </p>
-                  </div>
-
-                  {currentCursus?.blackholed_at && (
-                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">Black Hole</span>
-                        <span className="text-destructive font-medium">
-                          {new Date(currentCursus.blackholed_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  })}
                 </div>
               </CardContent>
-            </Card> */}
-            {/* Skills Section */}
-            {topSkills.length > 0 && <SkillBar skills={topSkills} />}
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <QuickAction href="https://find-peers.codam.nl/" icon={Users}>
-                  Find Study Partners
-                </QuickAction>
-                <QuickAction
-                  href="https://profile.intra.42.fr/slots"
-                  icon={Calendar}
-                >
-                  Book Evaluation Slot
-                </QuickAction>
-                <QuickAction
-                  href="https://profile.intra.42.fr/"
-                  icon={ExternalLink}
-                >
-                  Open Intranet
-                </QuickAction>
-              </CardContent>
             </Card>
+            <CoalitionInfo login={user?.login || ""} />
+          </div>
+
+          {/* Changelog, Piscine Stats and Skills */}
+          <div className="flex flex-wrap gap-6">
+            <Changelog />
+            <PiscineStats campus={user?.campus || ""} />
+            {/* Skills Section with Quick Actions */}
+            {topSkills.length > 0 && (
+              <Card className="w-full lg:flex-1 lg:min-w-[500px]">
+                <CardHeader>
+                  <CardTitle className="text-lg md:text-xl">Top Skills</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                    <div className="flex flex-col items-center text-center min-w-0 md:min-w-[100px]">
+                      <span className="text-2xl md:text-3xl mb-1">
+                        {(() => {
+                          const mainSkill = topSkills.reduce((prev, curr) =>
+                            curr.level > prev.level ? curr : prev,
+                          );
+                          const getSkillEmoji = (skillName: string) => {
+                            const name = skillName.toLowerCase();
+                            if (name.includes("network") || name.includes("system")) return "🌐";
+                            if (name.includes("rigor")) return "⚡";
+                            if (name.includes("web")) return "🕸️";
+                            if (name.includes("object-oriented") || name.includes("oop")) return "🧩";
+                            if (name.includes("group") || name.includes("interpersonal")) return "👥";
+                            if (name.includes("imperative") || name.includes("programming"))
+                              return "💻";
+                            return "⚙️";
+                          };
+                          return getSkillEmoji(mainSkill.name);
+                        })()}
+                      </span>
+                      <span className="text-sm md:text-base font-bold text-foreground">
+                        {topSkills.reduce((prev, curr) =>
+                          curr.level > prev.level ? curr : prev,
+                        ).name}
+                      </span>
+                      <span className="text-xs md:text-sm font-semibold text-muted-foreground mt-1">
+                        {topSkills.reduce((prev, curr) =>
+                          curr.level > prev.level ? curr : prev,
+                        ).level.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="w-full h-px md:w-px md:h-32 bg-border" />
+
+                    <div className="flex items-end justify-center md:justify-start gap-2 md:gap-4 flex-1 py-2 md:py-4 overflow-x-auto">
+                      {topSkills
+                        .filter((skill) => skill.id !== topSkills.reduce((prev, curr) =>
+                          curr.level > prev.level ? curr : prev,
+                        ).id)
+                        .map((skill) => {
+                          const height = Math.max(
+                            20,
+                            Math.min(80, (skill.level / 21) * 100),
+                          );
+                          const getSkillEmoji = (skillName: string) => {
+                            const name = skillName.toLowerCase();
+                            if (name.includes("network") || name.includes("system")) return "🌐";
+                            if (name.includes("rigor")) return "⚡";
+                            if (name.includes("web")) return "🕸️";
+                            if (name.includes("object-oriented") || name.includes("oop")) return "🧩";
+                            if (name.includes("group") || name.includes("interpersonal")) return "👥";
+                            if (name.includes("imperative") || name.includes("programming"))
+                              return "💻";
+                            return "⚙️";
+                          };
+                          return (
+                            <div
+                              key={skill.id}
+                              className="flex flex-col items-center min-w-[3rem] md:min-w-[5rem]"
+                            >
+                              <span className="text-xs md:text-sm font-semibold text-foreground mb-1">
+                                {skill.level.toFixed(2)}
+                              </span>
+                              <div
+                                className="w-3 md:w-4 rounded-full bg-primary mb-1 transition-all"
+                                style={{ height: `${height}px` }}
+                                title={skill.name}
+                              />
+                              <span className="text-base md:text-lg">
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    {getSkillEmoji(skill.name)}
+                                  </TooltipTrigger>
+                                  <TooltipContent className="text-sm">
+                                    {skill.name}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  <div className="w-full h-px bg-border my-6" />
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Quick Actions</h3>
+                    <div className="space-y-3">
+                      <QuickAction href="/peers" icon={Users}>
+                        Find Study Partners
+                      </QuickAction>
+                      <QuickAction
+                        href="/peers"
+                        icon={Calendar}
+                      >
+                        Book Evaluation Slot
+                      </QuickAction>
+                      <QuickAction
+                        href="https://profile.intra.42.fr/"
+                        icon={ExternalLink}
+                      >
+                        Open Intranet
+                      </QuickAction>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Projects and Achievements */}
