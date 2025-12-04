@@ -92,5 +92,6 @@ export const config = {
     "/api/users/:path*",
     "/api/staff/:path*",
     "/api/events/:path*",
+    "/api/changelog/:path*",
   ] 
 }
