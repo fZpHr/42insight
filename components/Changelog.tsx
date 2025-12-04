@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Commit } from "@/types";
-import { GitCommit } from "lucide-react";
+import { GitCommit, Sparkles } from "lucide-react";
 
 export function Changelog() {
   const { data: commits, isLoading } = useQuery<Commit[]>({
@@ -22,7 +23,7 @@ export function Changelog() {
 
   if (isLoading) {
     return (
-      <Card className="w-[400px]">
+      <Card className="w-[425px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <GitCommit className="h-5 w-5" />
@@ -58,7 +59,12 @@ export function Changelog() {
       </CardHeader>
       <CardContent className="max-h-[400px] overflow-y-auto space-y-4">
         {commits.map((commit, index) => (
-          <div key={index} className="flex gap-3 items-start">
+          <div
+            key={index}
+            className={`flex gap-3 items-start p-2 rounded-lg transition-colors ${
+              commit.new ? 'bg-primary/10 border-l-2 border-primary pl-3' : 'hover:bg-muted/50'
+            }`}
+          >
             <Avatar className="h-10 w-10">
               <img
                 src={commit.avatar}
@@ -67,9 +73,17 @@ export function Changelog() {
               />
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
-                {commit.message}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {commit.message}
+                </p>
+                {commit.new && (
+                  <Badge variant="default" className="flex items-center gap-1 text-xs">
+                    <Sparkles className="h-3 w-3" />
+                    New
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-xs text-muted-foreground">{commit.author}</p>
                 <span className="text-xs text-muted-foreground">•</span>

@@ -393,6 +393,7 @@ export interface Commit {
 	author: string;
 	avatar: string;
 	date: string;
+	new: boolean;
 }
 
 export interface Coalition {

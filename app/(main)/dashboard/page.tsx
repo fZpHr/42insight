@@ -34,6 +34,7 @@ import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 import { Changelog } from "@/components/Changelog";
 import { CoalitionInfo } from "@/components/CoalitionInfo";
+import { PiscineStats } from "@/components/PiscineStats";
 
 interface StatCardProps {
   title: string;
@@ -544,32 +545,32 @@ export default function Dashboard() {
         <>
           <div className="flex flex-wrap gap-6">
             <Card className="flex-1 min-w-[300px]">
-              <CardContent className="p-3">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                   {stats.map((stat, index) => {
                     const Icon = stat.icon;
                     if (intraLoading || rankLoading) {
                       return (
                         <div
                           key={index}
-                          className="flex flex-col items-center text-center space-y-1"
+                          className="flex flex-col items-center justify-center text-center space-y-2"
                         >
-                          <Skeleton className="h-4 w-4 sm:h-5 sm:w-5 rounded" />
-                          <Skeleton className="h-2 w-8 sm:h-3 sm:w-12" />
-                          <Skeleton className="h-4 w-6 sm:h-4 sm:w-10" />
+                          <Skeleton className="h-8 w-8 rounded" />
+                          <Skeleton className="h-3 w-16" />
+                          <Skeleton className="h-6 w-12" />
                         </div>
                       );
                     }
                     return (
                       <div
                         key={index}
-                        className="flex flex-col items-center text-center space-y-1 min-w-0"
+                        className="flex flex-col items-center justify-center text-center space-y-2 min-w-0"
                       >
-                        <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
-                        <p className="text-xs font-medium text-muted-foreground leading-tight">
+                        <Icon className="h-8 w-8 text-primary flex-shrink-0" />
+                        <p className="text-sm font-medium text-muted-foreground">
                           {stat.title}
                         </p>
-                        <p className="text-base sm:text-lg font-bold truncate w-full">
+                        <p className="text-2xl font-bold">
                           {stat.value}
                         </p>
                       </div>
@@ -581,18 +582,19 @@ export default function Dashboard() {
             <CoalitionInfo login={user?.login || ""} />
           </div>
 
-          {/* Changelog and Skills */}
+          {/* Changelog, Piscine Stats and Skills */}
           <div className="flex flex-wrap gap-6">
             <Changelog />
+            <PiscineStats campus={user?.campus || ""} />
             {/* Skills Section with Quick Actions */}
             {topSkills.length > 0 && (
-              <Card className="flex-1 min-w-[500px]">
+              <Card className="w-full lg:flex-1 lg:min-w-[500px]">
                 <CardHeader>
                   <CardTitle className="text-lg md:text-xl">Top Skills</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
-                    <div className="flex flex-col items-center text-center min-w-0 lg:min-w-[100px]">
+                  <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                    <div className="flex flex-col items-center text-center min-w-0 md:min-w-[100px]">
                       <span className="text-2xl md:text-3xl mb-1">
                         {(() => {
                           const mainSkill = topSkills.reduce((prev, curr) =>
@@ -624,9 +626,9 @@ export default function Dashboard() {
                       </span>
                     </div>
 
-                    <div className="w-full h-px lg:w-px lg:h-32 bg-border" />
+                    <div className="w-full h-px md:w-px md:h-32 bg-border" />
 
-                    <div className="flex items-end justify-center lg:justify-start gap-2 md:gap-4 flex-1 py-2 lg:py-4 overflow-x-auto">
+                    <div className="flex items-end justify-center md:justify-start gap-2 md:gap-4 flex-1 py-2 md:py-4 overflow-x-auto">
                       {topSkills
                         .filter((skill) => skill.id !== topSkills.reduce((prev, curr) =>
                           curr.level > prev.level ? curr : prev,

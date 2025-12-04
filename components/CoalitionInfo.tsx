@@ -25,7 +25,7 @@ export function CoalitionInfo({ login }: CoalitionInfoProps) {
 
   if (isLoading) {
     return (
-      <Card className="w-[400px]">
+      <Card className="w-full md:w-[200px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
@@ -34,10 +34,10 @@ export function CoalitionInfo({ login }: CoalitionInfoProps) {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
-            <Skeleton className="h-16 w-16 rounded-lg" />
+            <Skeleton className="h-12 md:h-16 w-12 md:w-16 rounded-lg" />
             <div className="flex-1 space-y-2">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 md:h-5 w-24 md:w-32" />
+              <Skeleton className="h-3 md:h-4 w-20 md:w-24" />
             </div>
           </div>
         </CardContent>
@@ -54,7 +54,7 @@ export function CoalitionInfo({ login }: CoalitionInfoProps) {
 
   return (
     <Card
-      className="w-[200px] h-full relative overflow-hidden"
+      className="w-full md:w-[200px] h-full relative overflow-hidden"
       style={{
         borderColor: coalition.color,
         borderWidth: '2px',
@@ -68,10 +68,10 @@ export function CoalitionInfo({ login }: CoalitionInfoProps) {
           backgroundPosition: 'center',
         }}
       />
-      <CardContent className="relative">
-        <div className="flex flex-col items-center justify-center gap-4 text-center">
+      <CardContent className="relative p-4 md:p-6">
+        <div className="flex flex-col items-center justify-center gap-2 md:gap-4 text-center">
           <div
-            className="h-20 w-20 rounded-lg flex items-center justify-center overflow-hidden"
+            className="h-12 w-12 md:h-20 md:w-20 rounded-lg flex items-center justify-center overflow-hidden"
             style={{ backgroundColor: coalition.color }}
           >
             {coalition.image_url ? (
@@ -81,12 +81,12 @@ export function CoalitionInfo({ login }: CoalitionInfoProps) {
                 className="h-full w-full object-contain"
               />
             ) : (
-              <Shield className="h-10 w-10 text-white" />
+              <Shield className="h-6 w-6 md:h-10 md:w-10 text-white" />
             )}
           </div>
           <div>
-            <h3 className="text-xl font-bold">{coalition.name}</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="text-base md:text-xl font-bold">{coalition.name}</h3>
+            <p className="text-xs md:text-sm text-muted-foreground">
               Score: <span className="font-semibold">{coalition.score.toLocaleString()}</span>
             </p>
           </div>
