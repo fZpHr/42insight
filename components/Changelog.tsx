@@ -23,7 +23,7 @@ export function Changelog() {
 
   if (isLoading) {
     return (
-      <Card className="w-[425px]">
+      <Card className="w-full min-w-[300px] lg:w-[425px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <GitCommit className="h-5 w-5" />
@@ -33,7 +33,7 @@ export function Changelog() {
         <CardContent className="space-y-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="flex gap-3">
-              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-3 w-1/2" />
@@ -50,7 +50,7 @@ export function Changelog() {
   }
 
   return (
-    <Card className="w-[425px]">
+    <Card className="w-full min-w-[300px] lg:w-[425px]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <GitCommit className="h-5 w-5" />
@@ -65,7 +65,7 @@ export function Changelog() {
               commit.new ? 'bg-primary/10 border-l-2 border-primary pl-3' : 'hover:bg-muted/50'
             }`}
           >
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-10 w-10 flex-shrink-0">
               <img
                 src={commit.avatar}
                 alt={commit.author}
@@ -73,21 +73,21 @@ export function Changelog() {
               />
             </Avatar>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-foreground truncate">
+              <div className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
+                <p className="text-sm font-medium text-foreground truncate flex-1">
                   {commit.message}
                 </p>
                 {commit.new && (
-                  <Badge variant="default" className="flex items-center gap-1 text-xs">
+                  <Badge variant="default" className="flex items-center gap-1 text-xs flex-shrink-0">
                     <Sparkles className="h-3 w-3" />
                     New
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-xs text-muted-foreground">{commit.author}</p>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <p className="text-xs text-muted-foreground truncate">{commit.author}</p>
                 <span className="text-xs text-muted-foreground">•</span>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
                   {new Date(commit.date).toLocaleDateString()}
                 </p>
               </div>
