@@ -145,6 +145,27 @@ function Project({
                   : (project.experience ?? 0).toLocaleString('fr-FR')
                 } XP
               </Badge>
+              {/* Group/Solo indicator */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge 
+                      variant="secondary" 
+                      className={cn(
+                        "rounded-lg text-xs px-2 py-0.5",
+                        project.is_solo 
+                          ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200" 
+                          : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
+                      )}
+                    >
+                      {project.is_solo ? "Solo" : "Group"}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{project.is_solo ? "Individual project" : "Group project"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -152,15 +173,18 @@ function Project({
                       variant="ghost"
                       size="icon"
                       className={cn(
-                        "size-7 p-0 border-none bg-transparent hover:bg-transparent focus:ring-0 focus:outline-none",
-                        isCoalition ? "text-cyan-500" : "text-gray-400 dark:text-zinc-600"
+                        "size-7 p-1 rounded-md transition-all cursor-pointer",
+                        "hover:bg-cyan-100 dark:hover:bg-cyan-900/30 hover:scale-110",
+                        isCoalition 
+                          ? "text-cyan-500 bg-cyan-100/50 dark:bg-cyan-900/20" 
+                          : "text-gray-400 dark:text-zinc-600 hover:text-cyan-500"
                       )}
                       tabIndex={-1}
                       onClick={e => {
                         e.stopPropagation();
                         toggleCoalitionBonus(project.id);
                       }}
-                      aria-label={isCoalition ? "Retirer le bonus de coalition" : "Mettre le bonus de coalition"}
+                      aria-label={isCoalition ? "Remove coalition bonus" : "Add coalition bonus"}
                     >
                       <UsersIcon className={cn("size-4")}
                         fill={isCoalition ? "currentColor" : "none"}
@@ -168,28 +192,40 @@ function Project({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Coalition</p>
+                    <p>{isCoalition ? "Coalition enabled (+4.2% XP)" : "Enable coalition bonus"}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "size-7 p-0 border-none bg-transparent hover:bg-transparent focus:ring-0 focus:outline-none",
-                  isBonus ? "text-yellow-500" : "text-gray-400 dark:text-zinc-600"
-                )}
-                tabIndex={-1}
-                onClick={e => {
-                  e.stopPropagation();
-                  setProjectMark(project.id, isBonus ? 100 : 125);
-                }}
-                aria-label={isBonus ? "Retirer le bonus" : "Mettre le bonus"}
-              >
-                <StarIcon className={cn("size-4")}
-                  fill={isBonus ? "currentColor" : "none"}
-                />
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "size-7 p-1 rounded-md transition-all cursor-pointer",
+                        "hover:bg-yellow-100 dark:hover:bg-yellow-900/30 hover:scale-110",
+                        isBonus 
+                          ? "text-yellow-500 bg-yellow-100/50 dark:bg-yellow-900/20" 
+                          : "text-gray-400 dark:text-zinc-600 hover:text-yellow-500"
+                      )}
+                      tabIndex={-1}
+                      onClick={e => {
+                        e.stopPropagation();
+                        setProjectMark(project.id, isBonus ? 100 : 125);
+                      }}
+                      aria-label={isBonus ? "Remove bonus" : "Add bonus"}
+                    >
+                      <StarIcon className={cn("size-4")}
+                        fill={isBonus ? "currentColor" : "none"}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{isBonus ? "Bonus enabled (125%)" : "Enable bonus (125%)"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
           <div
