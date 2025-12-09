@@ -323,6 +323,7 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isStarHovered, setIsStarHovered] = useState(false);
+  const [showApiWarning, setShowApiWarning] = useState(false);
 
   const cameraX = useMotionValue(0);
   const cameraY = useMotionValue(0);
@@ -350,6 +351,19 @@ export default function Home() {
     id: `ss-${i}`,
     initialDelay: Math.random() * 10 
   })), []);
+
+  useEffect(() => {
+    // Check for OAuth error in URL
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('error') === 'OAuthCallback') {
+        setShowApiWarning(true);
+        // Auto-hide after 15 seconds
+        const timer = setTimeout(() => setShowApiWarning(false), 15000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let animationFrameId: number;
@@ -408,8 +422,19 @@ export default function Home() {
   const handleLogin = async () => {
     setLoader(true);
     document.body.style.cursor = "wait";
+    
+    const warningTimer = setTimeout(() => {
+      setShowApiWarning(true);
+    }, 5000);
+    
     await new Promise((resolve) => setTimeout(resolve, 100));
-    signIn("42-school", { callbackUrl: `${window.location.origin}/dashboard` });
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const callbackUrl = urlParams.get('callbackUrl') || `${window.location.origin}/dashboard`;
+    
+    signIn("42-school", { callbackUrl });
+    
+    return () => clearTimeout(warningTimer);
   };
 
   return (
@@ -471,19 +496,50 @@ export default function Home() {
         ))}
       </div>
 
-      <motion.div
-        className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: [0, 1, 1, 0] }}
-        transition={{ duration: 4, delay: 1, times: [0, 0.2, 0.8, 1] }}
-      >
-        <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 shadow-xl">
-          <p className="text-[10px] text-muted-foreground flex items-center gap-2 uppercase tracking-widest">
-            <MousePointer className="h-3 w-3" />
-            Drag Space
-          </p>
-        </div>
-      </motion.div>
+      {!showApiWarning && (
+        <motion.div
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: [0, 1, 1, 0] }}
+          transition={{ duration: 4, delay: 1, times: [0, 0.2, 0.8, 1] }}
+        >
+          <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 shadow-xl">
+            <p className="text-[10px] text-muted-foreground flex items-center gap-2 uppercase tracking-widest">
+              <MousePointer className="h-3 w-3" />
+              Drag Space
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {showApiWarning && (
+        <motion.div
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-auto max-w-md"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="bg-yellow-500/10 backdrop-blur-md border border-yellow-500/30 rounded-lg px-4 py-3 shadow-xl">
+            <div className="flex items-start gap-3">
+              <Activity className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-yellow-200 mb-1">42 API Slow Response</p>
+                <p className="text-xs text-yellow-100/80 leading-relaxed">
+                  The 42 API is taking longer than usual to respond. This could be due to high traffic or caching. Please try again in a moment.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowApiWarning(false)}
+                className="text-yellow-400/60 hover:text-yellow-400 transition-colors"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       <div className="relative z-10 grid min-h-dvh grid-rows-[1fr_auto] items-center justify-items-center p-8 pb-12 gap-12 sm:p-20 sm:pb-20 sm:gap-16">
         <main className="flex flex-col gap-8 row-start-1 items-center relative w-full max-w-2xl">

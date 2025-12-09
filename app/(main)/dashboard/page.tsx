@@ -29,7 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TransparentBadge } from "@/components/TransparentBadge";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 import { Changelog } from "@/components/Changelog";
@@ -387,16 +387,8 @@ export default function Dashboard() {
   }
 
   if (!user) {
-    return (
-      <div className="container mx-auto p-6">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Please log in to view your dashboard.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
+    signOut({ callbackUrl: '/', redirect: true });
+    return <LoadingDashboard />;
   }
 
   if (intraError) {
