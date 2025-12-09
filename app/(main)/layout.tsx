@@ -47,23 +47,23 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         )}
-        <div className="flex items-center overflow-hidden justify-between gap-3 px-2 py-1 pt-3">
-          <div className="sticky top-2 left-2 z-30">
+        <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center justify-between gap-3 px-2 py-1 pt-3">
             <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <KbdGroup className="cursor-help">
+                    <Kbd>⌘</Kbd>
+                    <Kbd>K</Kbd>
+                  </KbdGroup>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Open quick shortcuts menu</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <KbdGroup className="cursor-help">
-                  <Kbd>⌘</Kbd>
-                  <Kbd>K</Kbd>
-                </KbdGroup>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Open quick shortcuts menu</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
         <div className="flex-1">
           <CommandMenu />

@@ -585,7 +585,7 @@ export default function Dashboard() {
             <PiscineStats campus={user?.campus || ""} />
             {/* Skills Section with Quick Actions */}
             {topSkills.length > 0 && (
-              <Card className="w-full lg:flex-1 lg:min-w-[500px]">
+              <Card className="w-full lg:flex-1 lg:min-w-[400px]">
                 <CardHeader>
                   <CardTitle className="text-lg md:text-xl">Top Skills</CardTitle>
                 </CardHeader>
