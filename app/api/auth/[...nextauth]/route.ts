@@ -7,9 +7,7 @@ export const authOptions: NextAuthOptions = {
     FortyTwoProvider({
       clientId: process.env.NEXT_PUBLIC_CLIENT_ID!,
       clientSecret: process.env.CLIENT_SECRET_NEXT1!,
-      httpOptions: {
-        timeout: 10000,
-      },
+
       profile(profile) {
         const cursusName = profile.cursus_users?.[1]?.cursus?.name ?? profile.cursus_users?.[0]?.cursus?.name ?? "no-cursus";
         const isPisciner = cursusName === "C Piscine" && profile.staff === false;
@@ -74,28 +72,12 @@ export const authOptions: NextAuthOptions = {
       if (url.includes('/signout') || url === baseUrl) {
         return baseUrl;
       }
-      
       if (url.startsWith("/")) {
         return `${baseUrl}${url}`;
       }
-      
       if (new URL(url).origin === baseUrl) {
         return url;
       }
-      
-      try {
-        const urlObj = new URL(url);
-        const callbackUrl = urlObj.searchParams.get('callbackUrl');
-        if (callbackUrl) {
-          if (callbackUrl.startsWith('/')) {
-            return `${baseUrl}${callbackUrl}`;
-          }
-          if (new URL(callbackUrl).origin === baseUrl) {
-            return callbackUrl;
-          }
-        }
-      } catch (e) {}
-      
       return `${baseUrl}/dashboard`;
     },
   },

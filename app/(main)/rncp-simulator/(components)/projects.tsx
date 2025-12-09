@@ -135,11 +135,11 @@ function Project({
         <ProjectSideIcon project={project} depth={depth} />
         <ProjectIcon isSelected={isSelected} />
 
-        <div className="flex w-full items-center gap-x-2 pr-2">
-          <div className="flex flex-col flex-1 min-w-0 items-center justify-center">
-            <span className="w-full text-center font-medium text-sm leading-tight hyphens-auto [overflow-wrap:anywhere]">{project.name}</span>
-            <div className="flex items-center justify-center gap-1 mt-1 flex-wrap max-w-full">
-              <Badge className="rounded-md text-[10px] px-1.5 py-0.5 whitespace-nowrap" variant="outline">
+        <div className="grid w-full grid-cols-[1fr_auto] items-center gap-x-2 pr-2">
+          <div className="flex flex-col w-full items-center justify-center">
+            <span className="break-words w-full text-center font-medium">{project.name}</span>
+            <div className="flex items-center justify-center gap-2 mt-1">
+              <Badge className="rounded-lg" variant="outline">
                 {project.children && project.children.length > 0
                   ? totalXP.toLocaleString('fr-FR')
                   : (project.experience ?? 0).toLocaleString('fr-FR')
@@ -152,7 +152,7 @@ function Project({
                     <Badge 
                       variant="secondary" 
                       className={cn(
-                        "rounded-md text-[10px] px-1.5 py-0.5 whitespace-nowrap",
+                        "rounded-lg text-xs px-2 py-0.5",
                         project.is_solo 
                           ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200" 
                           : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
@@ -173,7 +173,7 @@ function Project({
                       variant="ghost"
                       size="icon"
                       className={cn(
-                        "size-5 p-0 rounded-md transition-all cursor-pointer shrink-0",
+                        "size-7 p-1 rounded-md transition-all cursor-pointer",
                         "hover:bg-cyan-100 dark:hover:bg-cyan-900/30 hover:scale-110",
                         isCoalition 
                           ? "text-cyan-500 bg-cyan-100/50 dark:bg-cyan-900/20" 
@@ -186,7 +186,7 @@ function Project({
                       }}
                       aria-label={isCoalition ? "Remove coalition bonus" : "Add coalition bonus"}
                     >
-                      <UsersIcon className={cn("size-3")}
+                      <UsersIcon className={cn("size-4")}
                         fill={isCoalition ? "currentColor" : "none"}
                       />
                     </Button>
@@ -203,7 +203,7 @@ function Project({
                       variant="ghost"
                       size="icon"
                       className={cn(
-                        "size-5 p-0 rounded-md transition-all cursor-pointer shrink-0",
+                        "size-7 p-1 rounded-md transition-all cursor-pointer",
                         "hover:bg-yellow-100 dark:hover:bg-yellow-900/30 hover:scale-110",
                         isBonus 
                           ? "text-yellow-500 bg-yellow-100/50 dark:bg-yellow-900/20" 
@@ -216,7 +216,7 @@ function Project({
                       }}
                       aria-label={isBonus ? "Remove bonus" : "Add bonus"}
                     >
-                      <StarIcon className={cn("size-3")}
+                      <StarIcon className={cn("size-4")}
                         fill={isBonus ? "currentColor" : "none"}
                       />
                     </Button>
@@ -229,18 +229,18 @@ function Project({
             </div>
           </div>
           <div
-            className="flex items-center justify-end gap-1.5 shrink-0"
+            className="flex flex-wrap items-center justify-end gap-2"
             onClick={isSelected ? (e) => e.stopPropagation() : undefined}
           >
-            <Badge className="rounded-md text-[10px] px-1.5 py-0.5 bg-purple-100 border-purple-300 text-purple-800 border-2 dark:bg-purple-900 dark:border-purple-400 dark:text-purple-100 whitespace-nowrap" variant="secondary">
+            <Badge className="rounded-lg bg-purple-100 border-purple-300 text-purple-800 border-2 dark:bg-purple-900 dark:border-purple-400 dark:text-purple-100" variant="secondary">
               {(totalProjectXP || 0).toLocaleString('fr-FR')} XP
             </Badge>
             {isSelected && (
               <Input
                 type="number"
                 className={cn(
-                  "h-7 w-16 text-xs shrink-0",
-                  displayMark > 0 ? "bg-green-50 border-green-300 focus:ring-1 focus:ring-green-300" : ""
+                  "h-8 w-20",
+                  displayMark > 0 ? "bg-green-50 border-green-300 focus:ring-2 focus:ring-green-300" : ""
                 )}
                 value={displayMark}
                 onChange={(e) => setProjectMark(project.id, parseInt(e.target.value, 10) || 0)}
