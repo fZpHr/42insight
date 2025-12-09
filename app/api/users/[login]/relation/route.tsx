@@ -5,7 +5,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 export async function GET(
     request: Request,
-    { params }: { params: { login: string } }
+    { params }: { params: Promise<{ login: string }> }
 ) {
     const session = await getServerSession(authOptions)
     if (!session || !session.user) {
@@ -15,8 +15,9 @@ export async function GET(
         )
     }
     try {
+        const { login } = await params
         const user = await prisma.student.findFirst({
-            where: { name: params.login },
+            where: { name: login },
             select: { relation: true }
         })
         if (!user) {

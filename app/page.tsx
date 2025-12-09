@@ -251,21 +251,21 @@ const StatItem = ({ stat, cameraX, cameraY }: { stat: any, cameraX: MotionValue,
         animate={controls}
         className="relative"
       >
-        <div className="bg-card/40 backdrop-blur-md border border-white/10 rounded-lg px-3 py-2 shadow-2xl whitespace-nowrap hover:bg-card/60 transition-colors duration-500 cursor-default">
+        <div className="bg-card/60 dark:bg-card/40 backdrop-blur-md border border-border/50 dark:border-white/10 rounded-lg px-3 py-2 shadow-2xl whitespace-nowrap hover:bg-card/80 dark:hover:bg-card/60 transition-colors duration-500 cursor-default">
           <div className="flex flex-col gap-0.5">
             <span className={`text-[10px] font-bold tracking-wider uppercase opacity-80 ${stat.color}`}>
               {stat.label}
             </span>
             <div className="flex items-baseline gap-2">
-              <span className="text-sm font-bold text-foreground/90">{stat.value}</span>
+              <span className="text-sm font-bold text-foreground">{stat.value}</span>
               {stat.trend && (
-                <span className={`text-[10px] ${stat.trend.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`text-[10px] font-semibold ${stat.trend.startsWith('+') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {stat.trend}
                 </span>
               )}
             </div>
             {stat.subtitle && (
-              <p className="text-[9px] text-muted-foreground/70">{stat.subtitle}</p>
+              <p className="text-[9px] text-muted-foreground">{stat.subtitle}</p>
             )}
           </div>
           <motion.div 

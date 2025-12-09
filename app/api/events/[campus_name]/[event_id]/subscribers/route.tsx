@@ -5,7 +5,7 @@ import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
 export async function GET(
   request: Request,
-  { params }: { params: { campus_name: string; event_id: string } },
+  { params }: { params: Promise<{ campus_name: string; event_id: string }> },
 ) {
     const session = await getServerSession(authOptions)
     if (!session || !session.user) {
@@ -15,18 +15,19 @@ export async function GET(
         )
     }
   try {
+    const { campus_name, event_id } = await params
 
     const campusMapping: { [key: string]: number } = {
       Angouleme: 31,
       Nice: 41,
     };
 
-    const campusId = campusMapping[params.campus_name];
+    const campusId = campusMapping[campus_name];
     if (!campusId) {
       return NextResponse.json({ error: "Campus not found" }, { status: 404 });
     }
     const response = await apiRateLimiter.fetch(
-      `/events/${params.event_id}/events_users?page[size]=100&page[number]=1 `,
+      `/events/${event_id}/events_users?page[size]=100&page[number]=1 `,
     );
 
     if (!response.ok) {
@@ -39,8 +40,9 @@ export async function GET(
     const subscribers = await response.json();
     return NextResponse.json(subscribers);
   } catch (error: any) {
+    const { campus_name } = await params
     console.error(
-      `[FATAL ERROR] in /api/campus/${params.campus_name}/intra:`,
+      `[FATAL ERROR] in /api/campus/${campus_name}/intra:`,
       error.message,
     );
     return NextResponse.json(

@@ -5,7 +5,7 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { path: string[] } }
+    { params }: { params: Promise<{ path: string[] }> }
 ) {
     const session = await getServerSession(authOptions)
     if (!session || !session.user) {
@@ -15,7 +15,8 @@ export async function GET(
         )
     }
     try {
-        const apiPath = params.path.join('/')
+        const { path } = await params
+        const apiPath = path.join('/')
         const searchParams = request.nextUrl.searchParams.toString()
         const apiUrl = `https://api.intra.42.fr/v2/${apiPath}${searchParams ? `?${searchParams}` : ''}`
 
