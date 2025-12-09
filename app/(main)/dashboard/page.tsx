@@ -287,12 +287,18 @@ export function SkillBar({
 }
 
 export default function Dashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const user = session?.user;
   const isStaff = session?.user?.role?.includes("staff");
   const isAdmin = session?.user?.role?.includes("admin");
   const [loading, setLoading] = useState(false);
   const [showStaffDashboard, setShowStaffDashboard] = useState(false);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      signOut({ callbackUrl: '/', redirect: true });
+    }
+  }, [status]);
 
   const {
     data: userIntraInfo,
@@ -382,21 +388,12 @@ export default function Dashboard() {
     [currentCursus, userIntraInfo, campusRank],
   );
 
-  if (loading) {
+  if (loading || status === "loading") {
     return <LoadingDashboard />;
   }
 
-  if (!user) {
-    return (
-      <div className="container mx-auto p-6">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Please log in to view your dashboard.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
+  if (status === "unauthenticated") {
+    return <LoadingDashboard />;
   }
 
   if (intraError) {
