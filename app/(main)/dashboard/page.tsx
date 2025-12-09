@@ -29,7 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TransparentBadge } from "@/components/TransparentBadge";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 import { Changelog } from "@/components/Changelog";
