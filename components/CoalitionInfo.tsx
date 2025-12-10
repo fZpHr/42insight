@@ -45,8 +45,9 @@ export function CoalitionInfo({ login }: CoalitionInfoProps) {
     );
   }
 
-  // Get the last coalition in the array (the active campus coalition)
-  const coalition = coalitions?.[coalitions.length - 1];
+  
+  const coalition = coalitions?.[0];
+
 
   if (!coalition) {
     return null;

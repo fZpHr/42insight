@@ -23,6 +23,7 @@ function saveProgressionToStorage(state: any) {
       coalitionProjects: Array.from((state.coalitionProjects ?? new Set()).values()),
       autoFetchedProjectMarks: Array.from((state.autoFetchedProjectMarks ?? new Map()).entries()),
       autoFetchedProfessionalExperiences: Array.from(state.autoFetchedProfessionalExperiences ?? []),
+      autoFetchedProfessionalExperienceMarks: Array.from((state.autoFetchedProfessionalExperienceMarks ?? new Map()).entries()),
       initialXPDelta: state.initialXPDelta ?? 0,
       events: state.events ?? 0,
       eventsFetchedAt: state.eventsFetchedAt ?? 0,
@@ -59,6 +60,7 @@ function loadProgressionFromStorage() {
       coalitionProjects: new Set<number>(data.coalitionProjects as number[]),
       autoFetchedProjectMarks: new Map<number, number>(data.autoFetchedProjectMarks as [number, number][]),
       autoFetchedProfessionalExperiences: new Set<string>(data.autoFetchedProfessionalExperiences as string[]),
+      autoFetchedProfessionalExperienceMarks: new Map<string, number>(data.autoFetchedProfessionalExperienceMarks as [string, number][]),
       initialXPDelta: data.initialXPDelta ?? 0,
       events,
       eventsFetchedAt,
@@ -95,6 +97,7 @@ const createFortyTwoStore = (initProps: {
     toggleProfessionalExperience: (experience: string) => void
     setProfessionalExperience: (experience: string, enabled: boolean) => void
     autoFetchedProfessionalExperiences: Set<string>
+    autoFetchedProfessionalExperienceMarks: Map<string, number>
     clearAutoFetchedProfessionalExperiences: () => void
     resetAll: () => void
     softReset: () => void
@@ -119,6 +122,7 @@ const createFortyTwoStore = (initProps: {
     professionalExperienceMarks: new Map<string, number>(),
     autoFetchedProjectMarks: new Map<number, number>(),
     autoFetchedProfessionalExperiences: new Set<string>(),
+    autoFetchedProfessionalExperienceMarks: new Map<string, number>(),
     persistedOldProjects: [],
     hydrated: false,
     isDataProcessed: false,
@@ -238,11 +242,8 @@ const createFortyTwoStore = (initProps: {
         const newMarks = new Map(state.autoFetchedProjectMarks ?? [])
         const newProExp = new Set(state.autoFetchedProfessionalExperiences ?? [])
         
-        // Reset professional experience marks to 100% (default)
-        const resetProExpMarks = new Map<string, number>()
-        for (const exp of newProExp) {
-          resetProExpMarks.set(exp, 100)
-        }
+        // Reset professional experience marks to auto-fetched values
+        const resetProExpMarks = new Map(state.autoFetchedProfessionalExperienceMarks ?? [])
         
         const resetState = {
           projectMarks: newMarks,
@@ -304,6 +305,8 @@ const createFortyTwoStore = (initProps: {
       const newAutoMarks = new Map(state.autoFetchedProjectMarks)
       const newProExp = new Set(state.professionalExperiences)
       const newAutoProExp = new Set(state.autoFetchedProfessionalExperiences)
+      const newProExpMarks = new Map(state.professionalExperienceMarks)
+      const newAutoProExpMarks = new Map(state.autoFetchedProfessionalExperienceMarks)
 
       const projectToExperience: Record<number, string> = {
         1638: "stage_1",
@@ -340,28 +343,38 @@ const createFortyTwoStore = (initProps: {
         if (typeof project.final_mark === "number" && project.final_mark > 0) {
           apiProjectIds.add(project.project.id)
           
-          // Check if user has manually modified this project's mark
           const existingMark = state.projectMarks.get(project.project.id)
           const autoMark = state.autoFetchedProjectMarks.get(project.project.id)
           
-          // If user modified the mark (existing mark differs from auto mark), keep user's modification
           const hasUserModification = existingMark !== undefined && autoMark !== undefined && existingMark !== autoMark
           
           if (hasUserModification) {
-            // Keep user's manual modification
             newMarks.set(project.project.id, existingMark)
           } else {
-            // Use API mark (either first time or no manual modification)
             newMarks.set(project.project.id, project.final_mark)
           }
           
-          // Always update autoFetchedProjectMarks with the latest API value
           newAutoMarks.set(project.project.id, project.final_mark)
         }
         const expKey = projectToExperience[project.project.id]
         if (expKey) {
           newProExp.add(expKey)
           newAutoProExp.add(expKey)
+          
+          if (typeof project.final_mark === "number") {
+            const existingExpMark = state.professionalExperienceMarks.get(expKey)
+            const autoExpMark = state.autoFetchedProfessionalExperienceMarks.get(expKey)
+            
+            const hasUserExpModification = existingExpMark !== undefined && autoExpMark !== undefined && existingExpMark !== autoExpMark
+            
+            if (hasUserExpModification) {
+              newProExpMarks.set(expKey, existingExpMark)
+            } else {
+              newProExpMarks.set(expKey, project.final_mark)
+            }
+            
+            newAutoProExpMarks.set(expKey, project.final_mark)
+          }
         }
       }
 
@@ -416,6 +429,8 @@ const createFortyTwoStore = (initProps: {
         autoFetchedProjectMarks: newAutoMarks,
         professionalExperiences: newProExp,
         autoFetchedProfessionalExperiences: newAutoProExp,
+        professionalExperienceMarks: newProExpMarks,
+        autoFetchedProfessionalExperienceMarks: newAutoProExpMarks,
         initialXPDelta,
         persistedOldProjects: oldProjects,
         isDataProcessed: true,
@@ -440,6 +455,10 @@ const createFortyTwoStore = (initProps: {
       let totalXP = 0
 
       for (const experience of state.professionalExperiences) {
+        if (state.autoFetchedProfessionalExperienceMarks.has(experience)) {
+          continue
+        }
+        
         const mark = state.professionalExperienceMarks.get(experience) ?? 100
         const baseXp = professionalExperienceXp[experience] || 0
         totalXP += Math.round(baseXp * (mark / 100))
@@ -614,6 +633,7 @@ export const FortyTwoStoreProvider = ({ children, cursus, levels, titles, projec
         coalitionProjects: restored.coalitionProjects,
         autoFetchedProjectMarks: restored.autoFetchedProjectMarks || new Map(),
         autoFetchedProfessionalExperiences: restored.autoFetchedProfessionalExperiences || new Set(),
+        autoFetchedProfessionalExperienceMarks: restored.autoFetchedProfessionalExperienceMarks || new Map(),
         initialXPDelta: restored.initialXPDelta ?? 0,
         events,
         eventsFetchedAt,

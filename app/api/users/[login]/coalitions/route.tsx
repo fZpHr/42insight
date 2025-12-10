@@ -3,7 +3,6 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
-// In-memory cache for coalition data
 const coalitionCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
@@ -22,14 +21,12 @@ export async function GET(
     );
   }
 
-  // Check cache first
   const cached = coalitionCache.get(login);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
     return NextResponse.json(cached.data);
   }
 
   try {
-    // First get user ID
     const userResponse = await apiRateLimiter.fetch(`/users/${login}`);
     if (!userResponse.ok) {
       if (userResponse.status === 429 && cached) {
@@ -44,12 +41,10 @@ export async function GET(
 
     const user = await userResponse.json();
 
-    // Fetch coalition data
     const coalitionResponse = await apiRateLimiter.fetch(`/users/${user.id}/coalitions`);
 
     if (!coalitionResponse.ok) {
       if (coalitionResponse.status === 429 && cached) {
-        console.warn(`[WARN] Rate limited fetching coalition for ${login}. Serving stale cache.`);
         return NextResponse.json(cached.data);
       }
       return NextResponse.json(
@@ -59,11 +54,30 @@ export async function GET(
     }
 
     const coalitions = await coalitionResponse.json();
+    
+    const niceCoalitions = ['Corrino', 'Atreides', 'Harkonnen'];
+    const angoulemeCoalitions = ['Analyst', 'Architect', 'Seeker'];
+    const parisCoalitions = ['Alliance', 'Assembly', 'Federation', 'Order'];
+    
+    const campus = session.user?.campus || "";
+    let selectedCoalition;
+    
+    if (campus === "Nice") {
+      selectedCoalition = coalitions.find((c: any) => niceCoalitions.includes(c.name));
+    } else if (campus === "Angouleme") {
+      selectedCoalition = coalitions.find((c: any) => angoulemeCoalitions.includes(c.name));
+    } else {
+      selectedCoalition = coalitions.find((c: any) => parisCoalitions.includes(c.name));
+    }
+    
+    if (!selectedCoalition && coalitions.length > 0) {
+      selectedCoalition = coalitions[coalitions.length - 1];
+    }
 
-    // Store in cache before returning
-    coalitionCache.set(login, { data: coalitions, timestamp: Date.now() });
+    const result = selectedCoalition ? [selectedCoalition] : [];
+    coalitionCache.set(login, { data: result, timestamp: Date.now() });
 
-    return NextResponse.json(coalitions);
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error(`[FATAL ERROR] in /api/users/${login}/coalitions:`, error.message);
     return NextResponse.json(
