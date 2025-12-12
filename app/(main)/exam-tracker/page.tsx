@@ -95,14 +95,60 @@ export default function ExamTracker() {
         ? studentsToShow.reduce((sum, student) => sum + (student.grade || 0), 0) / studentsToShow.length
         : 0;
 
+    // Campus-specific exam schedule info
+    let scheduleInfo: React.ReactNode = null;
+    if (campus === "Nice") {
+        scheduleInfo = (
+            <Alert variant="default" className="mb-4">
+                <AlertTitle>Nice Exam Schedule</AlertTitle>
+                <AlertDescription>
+                    <ul className="list-disc ml-5">
+                        <li><b>C Piscine Exams</b>: Every <b>Friday</b> <span className="block text-xs text-muted-foreground">(Only during Piscine periods)</span></li>
+                        <li><b>Rank Exams</b>: Every <b>Tuesday</b> from <b>14:00</b> to <b>17:00</b> and <b>Thursday</b> from <b>08:00</b> to <b>15:00</b></li>
+                    </ul>
+                </AlertDescription>
+            </Alert>
+        );
+    } else if (campus === "Angouleme") {
+        scheduleInfo = (
+            <Alert variant="default" className="mb-4">
+                <AlertTitle>Angoulême Exam Schedule</AlertTitle>
+                <AlertDescription>
+                    <ul className="list-disc ml-5">
+                        <li><b>C Piscine Exams</b>: Every <b>Friday</b> <span className="block text-xs text-muted-foreground">(Only during Piscine periods)</span></li>
+                        <li><b>Rank Exams</b>: Every <b>Wednesday</b> from <b>08:00</b> to <b>12:00</b> and <b>Thursday</b> from <b>08:00</b> to <b>15:00</b></li>
+                    </ul>
+                </AlertDescription>
+            </Alert>
+        );
+    } else {
+        scheduleInfo = (
+            <Alert variant="default" className="mb-4">
+                <AlertTitle>Exam Schedule</AlertTitle>
+                <AlertDescription>
+                    <span>Exam scheduling information is only available for Nice and Angoulême campuses.</span>
+                </AlertDescription>
+            </Alert>
+        );
+    }
+
     return (
         <div className="max-w-7xl mx-auto px-4">
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
+                    <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                        Exam Tracker
+                        <span title="In development" className="ml-2 text-yellow-500 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-1">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-xs font-semibold">In development</span>
+                        </span>
+                    </CardTitle>
                     <p className="text-muted-foreground">Data is updated every 10 min</p>
                 </CardHeader>
                 <CardContent>
+                    {scheduleInfo}
                     {isLoading && students.length === 0 && (
                         <Table className="mt-5">
                             <TableHeader>
