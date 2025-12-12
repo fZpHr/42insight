@@ -55,7 +55,7 @@
     "lucide-react": "^0.454.0",
     "mcp-handler": "^1.0.4",
     "motion": "^12.23.0",
-    "next": "15.2.6",
+    "next": "15.2.8",
     "next-auth": "latest",
     "next-themes": "latest",
     "node-fetch": "^2.7.0",
