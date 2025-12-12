@@ -123,9 +123,17 @@ export default function ClusterMap() {
                           <div
                             className={`aspect-square w-9 sm:w-8 md:w-10 lg:w-20 rounded-md overflow-hidden flex items-center justify-center text-[0.6rem] ${
                               student
-                                ? "text-white"
+                                ? "text-white cursor-pointer"
                                 : "bg-gray-200 text-gray-500"
                             } hover:shadow-lg transition-shadow`}
+                            onClick={() => {
+                              if (student) {
+                                window.open(
+                                  `https://profile.intra.42.fr/users/${student.user.login}`,
+                                  "_blank"
+                                );
+                              }
+                            }}
                           >
                             {student ? (
                               <img

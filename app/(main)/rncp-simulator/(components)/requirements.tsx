@@ -143,7 +143,8 @@ export function TitleRequirements({
 
   const professionalExperienceMarks = useFortyTwoStore((state) => state.professionalExperienceMarks)
   const setProfessionalExperienceMark = useFortyTwoStore((state) => state.setProfessionalExperienceMark)
-  const professionalExperienceXp: { [id: string]: number } = {
+  const autoFetchedProfessionalExperienceMarks = useFortyTwoStore((state) => state.autoFetchedProfessionalExperienceMarks)
+  const professionalExperienceXp: { [id: string]: number} = {
     stage_1: 42000,
     stage_2: 63000,
     startup_experience: 42000,
@@ -239,28 +240,33 @@ export function TitleRequirements({
                 const baseXp = professionalExperienceXp[exp.id] ?? 0
                 const totalXp = Math.round(baseXp * (mark / 100))
                 const isAuto = autoToggledExperiences.includes(exp.id)
+                const hasFinalMark = autoFetchedProfessionalExperienceMarks.has(exp.id)
+                
                 return (
                   <div
                     key={exp.id}
                     className={cn(
                       "flex items-center gap-1 px-2 py-1 rounded border text-xs",
-                      isActive
-                        ? "bg-primary/20 border-primary"
+                      isActive && hasFinalMark
+                        ? "bg-green-500/20 border-green-500"
+                        : isActive && !hasFinalMark
+                        ? "bg-blue-500/20 border-blue-500"
                         : "bg-[var(--card)] hover:bg-[var(--muted)] cursor-pointer",
-                      isAuto && "opacity-70 cursor-not-allowed border-dashed",
+                      (isAuto || hasFinalMark) && "opacity-70 cursor-not-allowed border-dashed",
                     )}
                     title={
-                      (isAuto
-                        ? "Détecté automatiquement depuis vos projets. Désactivation manuelle impossible. "
-                        : "") + `${exp.label} : ${totalXp.toLocaleString("fr-FR")} XP`
+                      (hasFinalMark
+                        ? "Applied automatically from your validated projects. Cannot be disabled. "
+                        : isAuto
+                        ? "Detected automatically from your projects. Cannot be manually disabled. "
+                        : "") + `${exp.label}: ${totalXp.toLocaleString("en-US")} XP`
                     }
                     onClick={() => {
-                      if (!isAuto) toggleProfessionalExperience(exp.id)
+                      if (!isAuto && !hasFinalMark) toggleProfessionalExperience(exp.id)
                     }}
                   >
                     <span>{exp.label}</span>
-                    <span className="ml-1 text-muted-foreground">{totalXp.toLocaleString("fr-FR")} XP</span>
-                    {isAuto && <span className="ml-1 text-primary font-semibold">auto</span>}
+                    <span className="ml-1 text-muted-foreground">{totalXp.toLocaleString("en-US")} XP</span>
                     {isActive && (
                       <input
                         type="number"
@@ -271,8 +277,8 @@ export function TitleRequirements({
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleMarkChange(exp.id, Number(e.target.value))}
                         className="ml-2 w-14 px-1 py-0.5 rounded border border-primary/40 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                        title="Note (%) du stage/alternance"
-                        disabled={isAuto}
+                        title={hasFinalMark ? "Grade set by API (not editable)" : "Grade (%) of internship/work-study"}
+                        disabled={isAuto || hasFinalMark}
                       />
                     )}
                   </div>
