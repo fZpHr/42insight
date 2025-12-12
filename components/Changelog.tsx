@@ -57,7 +57,7 @@ export function Changelog() {
           Recent Updates
         </CardTitle>
       </CardHeader>
-      <CardContent className="max-h-[400px] overflow-y-auto space-y-4">
+      <CardContent className="max-h-[400px] overflow-y-auto overflow-x-auto space-y-4">
         {commits.map((commit, index) => (
           <div
             key={index}
@@ -74,7 +74,7 @@ export function Changelog() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <div className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
-                <p className="text-sm font-medium text-foreground truncate flex-1">
+                <p className="text-sm font-medium text-foreground whitespace-normal break-words flex-1">
                   {commit.message}
                 </p>
                 {commit.new && (
@@ -85,7 +85,7 @@ export function Changelog() {
                 )}
               </div>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <p className="text-xs text-muted-foreground truncate">{commit.author}</p>
+                <p className="text-xs text-muted-foreground">{commit.author}</p>
                 <span className="text-xs text-muted-foreground">•</span>
                 <p className="text-xs text-muted-foreground whitespace-nowrap">
                   {new Date(commit.date).toLocaleDateString()}
