@@ -583,51 +583,69 @@ function ManualProjectForm({
       <div className="mt-4">
         <div className="font-semibold text-sm mb-2">Added projects:</div>
         <ul className="list-disc pl-5 text-sm text-muted-foreground">
-          {manualProjects.map((a) => (
-            <li key={a.id} className="flex items-center gap-2">
-              <span>
-                {a.name} (+{Math.round(a.xp * (a.mark / 100) * (a.coa ? 1.042 : 1)).toLocaleString("fr-FR")} XP)
-              </span>
-              <input
-                type="number"
-                min={0}
-                max={125}
-                step={1}
-                value={a.mark}
-                onChange={(e) => handleMarkChange(a.id, Number(e.target.value), a.coa)}
-                className="ml-2 w-14 px-1 py-0.5 rounded border border-primary/40 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                title="Note (%) du projet"
-              />
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "p-1 rounded-full transition-colors",
-                        a.coa ? "bg-primary/20 text-primary" : "hover:bg-muted",
-                      )}
-                      onClick={() => handleToggleCoa(a.id)}
-                      title="Appliquer le bonus de coalition (+4.2% XP)"
+          {manualProjects.map((a) => {
+            const projectUrl = projects[a.id]?.url;
+            return (
+              <li key={a.id} className="flex items-center gap-2">
+                <span className="flex items-center gap-1">
+                  {projectUrl ? (
+                    <a
+                      href={projectUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="no-underline text-inherit hover:underline hover:text-blue-700 transition-colors flex items-center gap-1"
+                      title="Project page (opens in new tab)"
+                      tabIndex={0}
+                      onClick={e => e.stopPropagation()}
+                      onMouseDown={e => e.stopPropagation()}
                     >
-                      <Users className="h-3 w-3" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>coa</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <button
-                type="button"
-                className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold"
-                onClick={() => handleRemove(a.id)}
-                title="Supprimer ce projet"
-              >
-                Supprimer
-              </button>
-            </li>
-          ))}
+                      {a.name}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="inline-block ml-0.5 w-3 h-3 text-muted-foreground group-hover:text-blue-700" fill="none" viewBox="0 0 20 20" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.75 6.25V4.5A2.25 2.25 0 0 0 11.5 2.25h-5A2.25 2.25 0 0 0 4.25 4.5v11A2.25 2.25 0 0 0 6.5 17.75h5a2.25 2.25 0 0 0 2.25-2.25v-1.75M9.5 10.5l6-6m0 0h-3.75m3.75 0v3.75" /></svg>
+                    </a>
+                  ) : a.name}
+                  {` (+${Math.round(a.xp * (a.mark / 100) * (a.coa ? 1.042 : 1)).toLocaleString("fr-FR")} XP)`}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={125}
+                  step={1}
+                  value={a.mark}
+                  onChange={(e) => handleMarkChange(a.id, Number(e.target.value), a.coa)}
+                  className="ml-2 w-14 px-1 py-0.5 rounded border border-primary/40 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  title="Note (%) du projet"
+                />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "p-1 rounded-full transition-colors",
+                          a.coa ? "bg-primary/20 text-primary" : "hover:bg-muted",
+                        )}
+                        onClick={() => handleToggleCoa(a.id)}
+                        title="Appliquer le bonus de coalition (+4.2% XP)"
+                      >
+                        <Users className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>coa</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <button
+                  type="button"
+                  className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold"
+                  onClick={() => handleRemove(a.id)}
+                  title="Supprimer ce projet"
+                >
+                  Supprimer
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>
