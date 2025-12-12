@@ -6,20 +6,31 @@ import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import { TanstackProvider } from "@/lib/tanstack-provider";
 import { CommandMenu } from "@/components/CommandMenu";
+import { CampusInfoDialog } from "@/components/CampusInfoDialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useSession } from "next-auth/react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
+
+const supportedCampuses = ["Angouleme", "Nice"];
 
 function SidebarContent({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession();
+  const user = session?.user;
+  
   const [showShortcutTip, setShowShortcutTip] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("hide_shortcut_tip") !== "true";
   });
 
+  const [showCampusInfo, setShowCampusInfo] = useState(false);
+
   const handleDismissTip = () => {
     setShowShortcutTip(false);
     localStorage.setItem("hide_shortcut_tip", "true");
   };
+
+  const isRestrictedCampus = user?.campus && !supportedCampuses.includes(user.campus);
 
   return (
     <>
@@ -50,23 +61,46 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm">
           <div className="flex items-center justify-between gap-3 px-2 py-1 pt-3">
             <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <KbdGroup className="cursor-help">
-                    <Kbd>⌘</Kbd>
-                    <Kbd>K</Kbd>
-                  </KbdGroup>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Open quick shortcuts menu</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div className="flex items-center gap-2">
+              {/* Bouton Campus Info pour les campus non supportés */}
+              {isRestrictedCampus && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setShowCampusInfo(true)}
+                        className="inline-flex items-center gap-1 cursor-pointer hover:opacity-70 transition-opacity"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>View campus information</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              
+              {/* Command Menu shortcut */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <KbdGroup className="cursor-help">
+                      <Kbd>⌘</Kbd>
+                      <Kbd>K</Kbd>
+                    </KbdGroup>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Open quick shortcuts menu</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
         </div>
         <div className="flex-1">
           <CommandMenu />
+          <CampusInfoDialog open={showCampusInfo} onOpenChange={setShowCampusInfo} />
           {children}
           <Analytics />
         </div>

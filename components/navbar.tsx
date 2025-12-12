@@ -57,10 +57,38 @@ import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react"
 
+// Routes restreintes par campus
+const campusRestrictedRoutes = [
+  "/rankings",
+  "/exam-tracker",
+  "/trombinoscope",
+  "/cluster-map",
+  "/peers",
+  "/events",
+];
+
+const supportedCampuses = ["Angouleme", "Nice"];
+
+// Fonction pour vérifier si l'utilisateur a accès à une route
+const hasAccessToRoute = (url: string, campus?: string | null, role?: string | null) => {
+  // Les pisciner n'ont pas accès à certaines routes
+  const poolRestrictedRoutes = ["/query", "/rankings", "/trombinoscope"];
+  if (role === "pisciner" && poolRestrictedRoutes.some(route => url.startsWith(route))) {
+    return false;
+  }
+
+  // Vérification du campus pour les routes restreintes
+  if (campusRestrictedRoutes.some(route => url.startsWith(route))) {
+    return campus ? supportedCampuses.includes(campus) : false;
+  }
+
+  return true;
+};
+
 const navigationData = {
   navMain: [
     {
-      title: "Overview",
+      title: null, // Pas de label pour Dashboard
       items: [
         {
           title: "Dashboard",
@@ -68,6 +96,11 @@ const navigationData = {
           icon: LayoutGrid,
           description: "Main dashboard overview",
         },
+      ],
+    },
+    {
+      title: "Academic & Cursus",
+      items: [
         {
           title: "Rankings",
           url: "/rankings",
@@ -75,58 +108,30 @@ const navigationData = {
           description: "Student performance rankings",
         },
         {
-          title: "Trombinoscope",
-          url: "/trombinoscope",
-          icon: Users,
-          description: "Student photo gallery",
-        },
-        {
-          title: "Find Peers",
-          url: "/peers",
-          icon: UserRoundSearch,
-          description: "Locate and connect with fellow students",
+          title: "RNCP Simulator",
+          url: "/rncp-simulator",
+          icon: Award,
+          description: "Simulate your RNCP progress",
         },
         {
           title: "Exam Tracker",
           url: "/exam-tracker",
           icon: FileText,
           badge: "Live",
-          description: "Real-time exam grade tracking",
+          description: ({ campus }: { campus?: string }) => {
+            if (campus === "Nice") {
+              return `Real-time exam grade tracking\n\nSchedule:\n- Every Tuesday 13:00-17:59 (UTC+1) [cron: '*/10 12-17 * * 2']`;
+            } else if (campus === "Angouleme") {
+              return `Real-time exam grade tracking\n\nSchedule:\n- Every Thursday 08:00-12:59 (UTC+1) [cron: '*/10 7-11 * * 4']`;
+            } else {
+              return `Real-time exam grade tracking\n\nSchedule:\n- Every Wednesday 12:00-14:59 (UTC+1) [cron: '*/10 7-11 * * 3']`;
+            }
+          },
         },
-        // {
-        //   title: "Relations",
-        //   url: "/relations",
-        //   icon: Workflow,
-        //   badge: "Active",
-        //   description: "Visualize your connections",
-        // }
-        {
-          title: "RNCP Simulator",
-          url: "/rncp-simulator",
-          icon: Award, // Icône diplôme
-          description: "Simulate your RNCP progress",
-        }
       ],
     },
-    // {
-    //   title: "Current Piscine",
-    //   items: [
-    //     {
-    //       title: "Piscine Ranking",
-    //       url: "/piscine/rankings",
-    //       icon: Waves,
-    //       description: "Piscine progress and rankings",
-    //     },
-    //     {
-    //       title: "Piscine Trombi",
-    //       url: "/piscine/trombinoscope",
-    //       icon: Waves,
-    //       description: "Piscine student gallery",
-    //     },
-    //   ],
-    // },
     {
-      title: "Resources",
+      title: "Network & Life",
       items: [
         {
           title: "Cluster Map",
@@ -135,10 +140,16 @@ const navigationData = {
           description: "Visual representation of cluster status",
         },
         {
-          title: "Useful Links",
-          url: "/links",
-          icon: LinkIcon,
-          description: "Quick access to important resources",
+          title: "Find Peers",
+          url: "/peers",
+          icon: UserRoundSearch,
+          description: "Locate and connect with fellow students",
+        },
+        {
+          title: "Trombinoscope",
+          url: "/trombinoscope",
+          icon: Users,
+          description: "Student photo gallery",
         },
         {
           title: "Events",
@@ -146,11 +157,22 @@ const navigationData = {
           icon: Calendar,
           description: "Upcoming events and schedules",
         },
+      ],
+    },
+    {
+      title: "Toolbox",
+      items: [
         {
           title: "Query",
           url: "/query",
           icon: Database,
           description: "Query 42 API",
+        },
+        {
+          title: "Useful Links",
+          url: "/links",
+          icon: LinkIcon,
+          description: "Quick access to important resources",
         },
       ],
     },
@@ -259,71 +281,109 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         {user?.role != "pisciner" &&
-          navigationData.navMain.map((group) => (
-            <SidebarGroup key={group.title}>
-              <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {group.items.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname === item.url}
-                        tooltip={item.description}
-                        className={
-                          ["stage", "alternance", "apprentissage", "emploi"].some(keyword => item.title.toLowerCase().includes(keyword))
-                            ? "relative z-10 border-2 border-primary/80 shadow-lg"
-                            : undefined
-                        }
-                      >
-                        <Link href={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                      {item.badge &&
-                        ((item.badge === "Live" && isToday() && (
-                          <SidebarMenuBadge>
-                            <Badge
-                              variant={getBadgeVariant(item.badge)}
-                              className="text-xs"
-                            >
-                              {item.badge}
-                            </Badge>
-                          </SidebarMenuBadge>
-                        )) ||
-                          (item.badge === "Active" && (
+          navigationData.navMain.map((group) => {
+            // Séparer les items accessibles et non accessibles
+            const accessibleItems = group.items.filter((item) => 
+              hasAccessToRoute(item.url, user?.campus, user?.role)
+            );
+            const restrictedItems = group.items.filter((item) => 
+              !hasAccessToRoute(item.url, user?.campus, user?.role)
+            );
+            
+            // Ne pas afficher de label si group.title est null
+            return (
+              <SidebarGroup key={group.title || 'dashboard'}>
+                {group.title && <SidebarGroupLabel>{group.title}</SidebarGroupLabel>}
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {/* Items accessibles en premier */}
+                    {accessibleItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname === item.url}
+                          tooltip={typeof item.description === 'function' ? item.description({ campus: user?.campus }) : item.description}
+                          className={
+                            ["stage", "alternance", "apprentissage", "emploi"].some(keyword => item.title.toLowerCase().includes(keyword))
+                              ? "relative z-10 border-2 border-primary/80 shadow-lg"
+                              : undefined
+                          }
+                        >
+                          <Link href={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                        {(item as any).badge &&
+                          (((item as any).badge === "Live" && isToday() && (
                             <SidebarMenuBadge>
                               <Badge
-                                variant={getBadgeVariant(item.badge)}
+                                variant={getBadgeVariant((item as any).badge)}
                                 className="text-xs"
                               >
-                                {item.badge}
+                                {(item as any).badge}
                               </Badge>
                             </SidebarMenuBadge>
-                          )))}
-                      {item.items && (
-                        <SidebarMenuSub>
-                          {item.items.map((subItem) => (
-                            <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={pathname === subItem.url}
-                              >
-                                <Link href={subItem.url}>
-                                  <span>{subItem.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      )}
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ))}
+                          )) ||
+                            ((item as any).badge === "Active" && (
+                              <SidebarMenuBadge>
+                                <Badge
+                                  variant={getBadgeVariant((item as any).badge)}
+                                  className="text-xs"
+                                >
+                                  {(item as any).badge}
+                                </Badge>
+                              </SidebarMenuBadge>
+                            )))}
+                        {(item as any).items && (
+                          <SidebarMenuSub>
+                            {(item as any).items.map((subItem: any) => (
+                              <SidebarMenuSubItem key={subItem.title}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={pathname === subItem.url}
+                                >
+                                  <Link href={subItem.url}>
+                                    <span>{subItem.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        )}
+                      </SidebarMenuItem>
+                    ))}
+                    
+                    {/* Items restreints en dessous */}
+                    {restrictedItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild={false}
+                          isActive={false}
+                          tooltip="Only available for Nice and Angoulême"
+                          className="opacity-50 cursor-not-allowed relative group overflow-hidden"
+                        >
+                          <>
+                            <item.icon className="shrink-0" />
+                            <span className="truncate">{item.title}</span>
+                            {/* Overlay textuel au hover - seulement quand sidebar ouverte */}
+                            {open && (
+                              <div className="absolute inset-0 bg-background/95 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md pointer-events-none">
+                                <span className="text-[10px] text-muted-foreground px-2 text-center whitespace-nowrap font-medium">
+                                  Nice/Angoulême only
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        </SidebarMenuButton>
+                        {/* Pas de badge pour les items restreints */}
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            );
+          })}
 
         {user?.role == "pisciner" &&
           piscinenavigationData.navMain.map((group) => (
@@ -343,13 +403,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           <span>{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
-                      {item.badge && (
+                      {(item as any).badge && (
                         <SidebarMenuBadge>
                           <Badge
-                            variant={getBadgeVariant(item.badge)}
+                            variant={getBadgeVariant((item as any).badge)}
                             className="text-xs"
                           >
-                            {item.badge}
+                            {(item as any).badge}
                           </Badge>
                         </SidebarMenuBadge>
                       )}

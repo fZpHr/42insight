@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
 
 const links = [
   {
@@ -29,18 +30,21 @@ const links = [
       "Platform that simplifies student life, helping define educational paths and amplifying student voices for continuous improvement.",
     url: "https://rusty.42angouleme.fr/",
     icon: GraduationCap,
+    campus: ["Angouleme"],
   },
   {
     title: "Cluster-map",
     description: "Tool that shows the locations of individuals on campus",
     url: "https://cluster-map.42angouleme.fr",
     icon: Map,
+    campus: ["Angouleme"],
   },
   {
     title: "Docs42",
     description: "Documentation for the 42 Angouleme student life.",
     url: "https://docs.42angouleme.fr/",
     icon: BookOpen,
+    campus: ["Angouleme"],
   },
   {
     title: "42CTF",
@@ -53,6 +57,7 @@ const links = [
     description: "Tool for tracking and managing your logtime",
     url: "https://logtime.42angouleme.fr/",
     icon: Clock,
+    campus: ["Angouleme"],
   },
   {
     title: "CFA42",
@@ -72,6 +77,7 @@ const links = [
       "Intra is slow, so here is a faster way to access the subjects",
     url: "https://tmoron.fr/intra",
     icon: PiggyBank,
+    campus: ["Angouleme"],
   },
   {
     title: "PeerFinder",
@@ -88,10 +94,18 @@ const links = [
 ];
 
 export default function UsefulLinks() {
+  const { data: session } = useSession();
+  const user = session?.user;
+  
+  const filteredLinks = links.filter((link) => {
+    if (!link.campus) return true;
+    return link.campus.includes(user?.campus || "");
+  });
+
   return (
     <div className="max-w-7xl mx-auto px-4 space-y-6 py-8">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {links.map((link) => (
+        {filteredLinks.map((link) => (
           <Card key={link.title} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">

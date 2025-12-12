@@ -23,6 +23,7 @@ const campusRestrictedRoutes = [
   "/trombinoscope",
   "/cluster-map",
   "/peers",
+  "/events",
   "/piscine/:path*",
 ]
 
