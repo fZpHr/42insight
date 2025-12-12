@@ -137,7 +137,23 @@ function Project({
 
         <div className="flex w-full items-center gap-x-2 pr-2">
           <div className="flex flex-col flex-1 min-w-0 items-center justify-center">
-            <span className="w-full text-center font-medium text-sm leading-tight hyphens-auto [overflow-wrap:anywhere]">{project.name}</span>
+            <span className="w-full text-center font-medium text-sm leading-tight hyphens-auto [overflow-wrap:anywhere] flex items-center justify-center gap-1">
+              {project.url ? (
+                <a
+                  href={project.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="no-underline text-inherit hover:underline hover:text-blue-700 transition-colors flex items-center gap-1"
+                  title="Project page (opens in new tab)"
+                  tabIndex={0}
+                  onClick={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                >
+                  {project.name}
+                  <svg xmlns="http://www.w3.org/2000/svg" className="inline-block ml-0.5 w-3 h-3 text-muted-foreground group-hover:text-blue-700" fill="none" viewBox="0 0 20 20" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.75 6.25V4.5A2.25 2.25 0 0 0 11.5 2.25h-5A2.25 2.25 0 0 0 4.25 4.5v11A2.25 2.25 0 0 0 6.5 17.75h5a2.25 2.25 0 0 0 2.25-2.25v-1.75M9.5 10.5l6-6m0 0h-3.75m3.75 0v3.75" /></svg>
+                </a>
+              ) : project.name}
+            </span>
             <div className="flex items-center justify-center gap-1 mt-1 flex-wrap max-w-full">
               <Badge className="rounded-md text-[10px] px-1.5 py-0.5 whitespace-nowrap" variant="outline">
                 {project.children && project.children.length > 0
@@ -155,7 +171,7 @@ function Project({
                         "rounded-md text-[10px] px-1.5 py-0.5 whitespace-nowrap",
                         project.is_solo 
                           ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200" 
-                          : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
+                          : "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-100"
                       )}
                     >
                       {project.is_solo ? "Solo" : "Group"}

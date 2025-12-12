@@ -119,15 +119,9 @@ const navigationData = {
           icon: FileText,
           badge: "Live",
           description: ({ campus }: { campus?: string }) => {
-            if (campus === "Nice") {
-              return `Real-time exam grade tracking\n\nSchedule:\n- Every Tuesday 13:00-17:59 (UTC+1) [cron: '*/10 12-17 * * 2']`;
-            } else if (campus === "Angouleme") {
-              return `Real-time exam grade tracking\n\nSchedule:\n- Every Thursday 08:00-12:59 (UTC+1) [cron: '*/10 7-11 * * 4']`;
-            } else {
-              return `Real-time exam grade tracking\n\nSchedule:\n- Every Wednesday 12:00-14:59 (UTC+1) [cron: '*/10 7-11 * * 3']`;
+              return `Real-time exam grade tracking`;
             }
           },
-        },
       ],
     },
     {

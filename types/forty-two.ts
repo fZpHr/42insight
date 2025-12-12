@@ -15,6 +15,7 @@ export interface FortyTwoProject {
   bonus?: boolean
   validated?: boolean
   is_solo?: boolean
+  url?: string
 }
 export interface FortyTwoCursus {
   id: number
