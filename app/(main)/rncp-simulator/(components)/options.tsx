@@ -13,10 +13,7 @@ import { memo, useEffect, useMemo } from 'react'
 const TitleOption = memo(function TitleOption({ option, isComplete }: { option: FortyTwoTitleOption; isComplete: boolean }) {
   return (
     <Card
-      className={cn(
-        'min-h-[638px] border-2',
-        isComplete ? 'border-green-500' : 'border-muted'
-      )}
+      className={cn("border-2", isComplete ? "border-green-500" : "border-muted")}
     >
       <CardHeader className="pb-4">
           <CardTitle className="truncate text-xl">

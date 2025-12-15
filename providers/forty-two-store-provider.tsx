@@ -504,8 +504,7 @@ const createFortyTwoStore = (initProps: {
 
         if (proj && mark !== undefined && mark > 0) {
           let xpForProj = (proj.experience || proj.difficulty || 0) * (mark / 100)
-          const isAutoFetched = state.autoFetchedProjectMarks?.has(projectId)
-          if (state.coalitionProjects.has(projectId) && !isAutoFetched) {
+          if (state.coalitionProjects.has(projectId)) {
             xpForProj *= 1.042
           }
           totalXP += xpForProj

@@ -102,15 +102,6 @@ function Project({
 
   const totalProjectXP = getDynamicProjectXP(project)
   const totalXP = getProjectXP(project)
-
-  const isModuleComplete = useFortyTwoStore(
-    (state) => {
-      const project = state.projects[projectId];
-      const complete = state.isProjectModuleComplete(project);
-      return complete;
-    }
-  );
-
   const handleToggle = () => {
     if (isSelected) {
       removeProject(project.id)
@@ -124,12 +115,14 @@ function Project({
       <div
         key={project.id}
         className={cn(
-          "relative flex min-h-[42px] cursor-pointer items-center rounded-md border-2 text-sm transition-colors hover:bg-accent", // Added relative for overlay
-          isAuto && "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-100",
-          isManual && "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200",
-          isBonus ? "border-yellow-500" : isAuto ? "border-green-500 dark:border-green-400" : isManual ? "border-blue-500 dark:border-blue-400" : undefined,
+          'relative flex min-h-[42px] items-center rounded-md border-2 text-sm transition-colors',
+          !isAuto ? 'cursor-pointer hover:bg-accent' : 'border-dashed opacity-70',
+          isSelected &&
+            (isAuto
+              ? 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-100 border-green-500 dark:border-green-400'
+              : 'bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-100 border-blue-500 dark:border-blue-400'),
         )}
-        onClick={handleToggle}
+        onClick={isAuto ? () => {} : handleToggle}
       >
         {/* show tooltip on hover for coalition instead of tinting the whole card */}
         <ProjectSideIcon project={project} depth={depth} />
@@ -155,12 +148,6 @@ function Project({
               ) : project.name}
             </span>
             <div className="flex items-center justify-center gap-1 mt-1 flex-wrap max-w-full">
-              <Badge className="rounded-md text-[10px] px-1.5 py-0.5 whitespace-nowrap" variant="outline">
-                {project.children && project.children.length > 0
-                  ? totalXP.toLocaleString('fr-FR')
-                  : (project.experience ?? 0).toLocaleString('fr-FR')
-                } XP
-              </Badge>
               {/* Group/Solo indicator */}
               <TooltipProvider>
                 <Tooltip>
@@ -191,8 +178,8 @@ function Project({
                       className={cn(
                         "size-5 p-0 rounded-md transition-all cursor-pointer shrink-0",
                         "hover:bg-cyan-100 dark:hover:bg-cyan-900/30 hover:scale-110",
-                        isCoalition 
-                          ? "text-cyan-500 bg-cyan-100/50 dark:bg-cyan-900/20" 
+                        isCoalition
+                          ? "text-cyan-500 bg-cyan-100/50 dark:bg-cyan-900/20"
                           : "text-gray-400 dark:text-zinc-600 hover:text-cyan-500"
                       )}
                       tabIndex={-1}
@@ -208,7 +195,13 @@ function Project({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{isCoalition ? "Coalition enabled (+4.2% XP)" : "Enable coalition bonus"}</p>
+                    <p>
+                      {isAuto
+                        ? "Use at your own risk, I can't know whether you already have COA XP or not"
+                        : isCoalition
+                        ? "Coalition enabled (+4.2% XP)"
+                        : "Enable coalition bonus"}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -242,20 +235,23 @@ function Project({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              {!isSelected && <Badge className="rounded-md text-[10px] px-1.5 py-0.5 whitespace-nowrap" variant="outline">
+                {project.children && project.children.length > 0
+                  ? totalXP.toLocaleString('fr-FR')
+                  : (project.experience ?? 0).toLocaleString('fr-FR')
+                } XP
+              </Badge>}
             </div>
           </div>
           <div
-            className="flex items-center justify-end gap-1.5 shrink-0"
+            className="flex flex-col items-end justify-end gap-1.5 min-w-0"
             onClick={isSelected ? (e) => e.stopPropagation() : undefined}
           >
-            <Badge className="rounded-md text-[10px] px-1.5 py-0.5 bg-purple-100 border-purple-300 text-purple-800 border-2 dark:bg-purple-900 dark:border-purple-400 dark:text-purple-100 whitespace-nowrap" variant="secondary">
-              {(totalProjectXP || 0).toLocaleString('fr-FR')} XP
-            </Badge>
             {isSelected && (
               <Input
                 type="number"
                 className={cn(
-                  "h-7 w-16 text-xs shrink-0",
+                  "h-7 w-16 text-xs",
                   displayMark > 0 ? "bg-green-50 border-green-300 focus:ring-1 focus:ring-green-300" : ""
                 )}
                 value={displayMark}
@@ -264,6 +260,9 @@ function Project({
                 max={125}
               />
             )}
+            {isSelected && <Badge className="rounded-md text-[10px] px-1.5 py-0.5 bg-purple-100 border-purple-300 text-purple-800 border-2 dark:bg-purple-900 dark:border-purple-400 dark:text-purple-100 whitespace-nowrap w-16 justify-center" variant="secondary">
+              {(totalProjectXP || 0).toLocaleString('fr-FR')} XP
+            </Badge>}
           </div>
         </div>
       </div>
