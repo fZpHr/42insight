@@ -293,6 +293,7 @@ export default function Dashboard() {
   const isAdmin = session?.user?.role?.includes("admin");
   const [loading, setLoading] = useState(false);
   const [showStaffDashboard, setShowStaffDashboard] = useState(false);
+  const [isDataReady, setIsDataReady] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -354,6 +355,13 @@ export default function Dashboard() {
     }
   }, [userEvents, setEvents])
 
+  // Set data ready when all required data is loaded
+  useEffect(() => {
+    if (!intraLoading && userIntraInfo && !rankLoading) {
+      setIsDataReady(true);
+    }
+  }, [intraLoading, userIntraInfo, rankLoading]);
+
   const currentCursus = useMemo(() => {
     return (
       userIntraInfo?.cursus_users?.[1] ||
@@ -388,12 +396,68 @@ export default function Dashboard() {
     [currentCursus, userIntraInfo, campusRank],
   );
 
-  if (loading || status === "loading") {
-    return <LoadingDashboard />;
-  }
+  const isPageLoading = loading || status === "loading" || intraLoading || rankLoading || !isDataReady;
 
   if (status === "unauthenticated") {
     return <LoadingDashboard />;
+  }
+
+  if (isPageLoading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex flex-col items-center justify-center gap-8 p-8 rounded-lg bg-card border">
+          <div className="relative">
+            {/* Animated rotating circles */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-32 h-32 border-4 border-primary/20 rounded-full animate-pulse"></div>
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center animate-spin">
+              <div className="w-24 h-24 border-4 border-transparent border-t-primary rounded-full"></div>
+            </div>
+            
+            {/* Center icon with animation */}
+            <div className="relative flex items-center justify-center w-32 h-32">
+              <div className="absolute animate-ping">
+                <Trophy className="w-12 h-12 text-primary/40" />
+              </div>
+              <Trophy className="w-12 h-12 text-primary" />
+            </div>
+          </div>
+
+          {/* Animated text */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 animate-spin text-primary" />
+              <h2 className="text-xl font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Chargement du tableau de bord
+              </h2>
+            </div>
+            
+            {/* Loading steps */}
+            <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 animate-pulse">
+                <Trophy className="w-4 h-4" />
+                <span className={intraLoading ? "text-primary" : "text-muted-foreground/50"}>
+                  {intraLoading ? "Récupération des informations..." : "✓ Informations chargées"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 animate-pulse [animation-delay:150ms]">
+                <Users className="w-4 h-4" />
+                <span className={rankLoading ? "text-primary" : "text-muted-foreground/50"}>
+                  {rankLoading ? "Chargement du classement..." : "✓ Classement chargé"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 animate-pulse [animation-delay:300ms]">
+                <Target className="w-4 h-4" />
+                <span className={!isDataReady ? "text-primary" : "text-muted-foreground/50"}>
+                  {!isDataReady ? "Préparation des données..." : "✓ Données prêtes"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (intraError) {
