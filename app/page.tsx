@@ -521,12 +521,12 @@ export default function Home() {
           transition={{ duration: 0.3 }}
         >
           <div className="bg-yellow-500/10 backdrop-blur-md border border-yellow-500/30 rounded-lg px-4 py-3 shadow-xl">
-            <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3">
               <Activity className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-yellow-200 mb-1">42 API Slow Response</p>
+                <p className="text-sm font-medium text-yellow-200 mb-1">42 API Rate Limit</p>
                 <p className="text-xs text-yellow-100/80 leading-relaxed">
-                  The 42 API is taking longer than usual to respond. This could be due to high traffic or caching. Please try again in a moment.
+                  The 42 API has a rate limit of 2 requests per second. We&apos;re managing requests to stay within this limit. The page may take a few moments to load completely.
                 </p>
               </div>
               <button

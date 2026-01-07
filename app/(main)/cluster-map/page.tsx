@@ -24,6 +24,19 @@ import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+interface HostUser {
+  id: number;
+  name: string;
+  photoUrl: string;
+  hours: string;
+  percentage: string;
+}
+
+interface HostUsageData {
+  [host: string]: HostUser[];
+}
 
 const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
   try {
@@ -39,6 +52,11 @@ const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
     let hasMore = true;
 
     while (hasMore) {
+      // Add delay to respect rate limit (2 requests/second)
+      if (page > 1) {
+        await new Promise(resolve => setTimeout(resolve, 600)); // 600ms delay between requests
+      }
+      
       const response = await fetch(
         `/api/proxy/campus/${campusId}/locations?&filter[active]=true&per_page=100&page=${page}`
       );
@@ -53,6 +71,19 @@ const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
   } catch (e) {
     console.error("Error fetching students:", e);
     return [];
+  }
+};
+
+const fetchHostUsage = async (campus?: string): Promise<HostUsageData> => {
+  try {
+    if (!campus) return {};
+    const response = await fetch(`/api/cluster-hosts/${campus}`);
+    if (!response.ok) throw new Error("Failed to fetch host usage");
+    const data: HostUsageData = await response.json();
+    return data;
+  } catch (e) {
+    console.error("Error fetching host usage:", e);
+    return {};
   }
 };
 
@@ -97,7 +128,21 @@ export default function ClusterMap() {
     queryFn: () => fetchStudents(effectiveCampus),
     enabled: status === "authenticated" && !!effectiveCampus,
     staleTime: 5 * 60 * 1000,
-    refetchOnMount: 'always', // Toujours refetch au montage, même si les données sont fresh
+    refetchOnMount: 'always',
+  });
+
+  const {
+    data: hostUsage = {},
+    isLoading: isLoadingHostUsage,
+  } = useQuery<HostUsageData>({
+    queryKey: ["hostUsage", effectiveCampus],
+    queryFn: async () => {
+      // Add delay before fetching to avoid rate limit
+      await new Promise(resolve => setTimeout(resolve, 600));
+      return fetchHostUsage(effectiveCampus);
+    },
+    enabled: status === "authenticated" && !!effectiveCampus && isSuccess,
+    staleTime: 10 * 60 * 1000,
   });
 
   const renderCluster = (clusterNumber: string) => {
@@ -107,7 +152,7 @@ export default function ClusterMap() {
     if (!map) return null;
 
     return (
-      <TooltipProvider delayDuration={300}>
+      <TooltipProvider delayDuration={100} skipDelayDuration={0}>
         <div className="flex justify-center w-full">
           <div className="inline-block">
             <div className="flex flex-col gap-[2px]">
@@ -136,9 +181,10 @@ export default function ClusterMap() {
 
                     const location = cell.split(":")[1];
                     const student = students.find((s) => s.host === location);
+                    const regularUsers = hostUsage[location] || [];
 
                     return (
-                      <Tooltip key={colIndex}>
+                      <Tooltip key={colIndex} delayDuration={100}>
                         <TooltipTrigger asChild>
                           <div
                             className={`aspect-square w-9 sm:w-8 md:w-10 lg:w-20 rounded-md overflow-hidden flex items-center justify-center text-[0.6rem] ${
@@ -169,14 +215,63 @@ export default function ClusterMap() {
                             )}
                           </div>
                         </TooltipTrigger>
-                        {student && (
-                          <TooltipContent side="right">
-                            <div className="text-center">
-                              <p className="font-bold">{student.user.login}</p>
-                              <p>Location: {student.host}</p>
+                        <TooltipContent 
+                          side="right" 
+                          className="max-w-sm p-0 pointer-events-auto"
+                          sideOffset={5}
+                        >
+                          <div className="max-h-96 overflow-y-auto">
+                            <div className="p-3 space-y-3">
+                              {student && (
+                                <div 
+                                  className="pb-2 border-b cursor-pointer hover:bg-muted/30 rounded p-2 -m-2 mb-1 transition-colors"
+                                  onClick={() => window.open(`https://profile.intra.42.fr/users/${student.user.login}`, "_blank")}
+                                >
+                                  <p className="font-semibold text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                                    Currently here
+                                  </p>
+                                  <p className="font-bold hover:text-primary transition-colors">{student.user.login}</p>
+                                  <p className="text-xs text-muted-foreground">{student.host}</p>
+                                </div>
+                              )}
+                              {regularUsers.length > 0 && (
+                                <div>
+                                  <p className="font-semibold text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                                    Regular users ({regularUsers.length})
+                                  </p>
+                                  <div className="space-y-2">
+                                    {regularUsers.map((user) => (
+                                      <div 
+                                        key={user.id} 
+                                        className="flex items-center gap-2 py-1 hover:bg-muted/50 rounded px-2 -mx-2 cursor-pointer transition-colors"
+                                        onClick={() => window.open(`https://profile.intra.42.fr/users/${user.name}`, "_blank")}
+                                      >
+                                        <Avatar className="h-8 w-8 shrink-0">
+                                          <AvatarImage src={user.photoUrl} alt={user.name} />
+                                          <AvatarFallback className="text-xs">
+                                            {user.name.slice(0, 2).toUpperCase()}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium text-sm truncate hover:text-primary transition-colors">{user.name}</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {parseFloat(user.hours).toFixed(1)}h • {user.percentage}%
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {!student && regularUsers.length === 0 && (
+                                <div className="text-center py-2">
+                                  <p className="font-medium">Available</p>
+                                  <p className="text-xs text-muted-foreground">{location}</p>
+                                </div>
+                              )}
                             </div>
-                          </TooltipContent>
-                        )}
+                          </div>
+                        </TooltipContent>
                       </Tooltip>
                     );
                   })}
@@ -246,7 +341,7 @@ export default function ClusterMap() {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>42 API Issue</AlertTitle>
             <AlertDescription>
-              The 42 API is taking longer than expected to respond. Please wait a moment and refresh the page.
+               The 42 API has a rate limit of 2 requests per second. We&apos;re managing requests to stay within this limit. The page may take a few moments to load completely.
               <Button 
                 variant="outline" 
                 size="sm" 

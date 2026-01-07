@@ -46,6 +46,12 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Student, StudentSortOption } from "@/types";
 import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts";
 import {
@@ -83,7 +89,7 @@ const sortOptions: StudentSortOption[] = [
   },
   {
     value: "correctionPercentage",
-    label: "Correction ratio (validation / KO)",
+    label: "Correction ratio",
     key: "correctionPercentage",
   },
   // Login Time - Overview
@@ -599,11 +605,17 @@ export default function Rankings() {
     setSortBy(value);
     setSortDirection("desc");
     
-    // Update sort history - add new filter to the front, keep max 2
-    setSortHistory(prev => {
-      const newHistory = [value, ...prev.filter(v => v !== value)];
-      return newHistory.slice(0, 2);
-    });
+    // Update sort history - only for login time filters, keep max 2
+    const isLoginTimeFilter = Object.values(loginTimeCategories).some(cat => 
+      cat.options.includes(value)
+    );
+    
+    if (isLoginTimeFilter) {
+      setSortHistory(prev => {
+        const newHistory = [value, ...prev.filter(v => v !== value)];
+        return newHistory.slice(0, 2);
+      });
+    }
   };
 
   const handleLoginTimeCategoryChange = (categoryKey: string) => {
@@ -663,17 +675,8 @@ export default function Rankings() {
   const getStatValue = (student: Student, sortValue: string): { label: string; value: string } | null => {
     const logtime = student.activityData?.logtime;
     
+    // Only return stats for login time filters
     switch (sortValue) {
-      case "level":
-        return { label: "Level", value: `${student.level}` };
-      case "wallet":
-        return { label: "Wallet", value: `${student.wallet} ₳` };
-      case "correctionPoints":
-        return { label: "Correction pts", value: `${student.correctionPoints}` };
-      case "nb_corrections":
-        return { label: "Corrections", value: `${student.correctionTotal}` };
-      case "correctionPercentage":
-        return { label: "Correction %", value: `${student.correctionPercentage}%` };
       case "totalLoginTime":
         return logtime ? { label: "Total", value: `${logtime.totalHours}h` } : null;
       case "avgDailyHours":
@@ -726,11 +729,8 @@ export default function Rankings() {
         return logtime?.sessions ? { label: "Max session", value: `${logtime.sessions.max}h` } : null;
       case "minSession":
         return logtime?.sessions ? { label: "Min session", value: `${logtime.sessions.min}h` } : null;
-      case "internship":
-        return { label: "Internship", value: student.work === 1 ? "Yes" : "No" };
-      case "work_study":
-        return { label: "Work-study", value: student.work === 2 ? "Yes" : "No" };
       default:
+        return null;
         return null;
     }
   };
@@ -773,6 +773,7 @@ export default function Rankings() {
   }
 
   return (
+    <TooltipProvider>
     <div className="max-w-7xl mx-auto px-4 space-y-6 py-3">
       {/* Message d'erreur après timeout */}
       {showTimeoutError && (!isSuccess || !students || students.length === 0) && (
@@ -886,21 +887,29 @@ export default function Rankings() {
                       
                       <DropdownMenuSeparator />
                       
-                      <DropdownMenuItem onClick={() => handleSortChange("correctionPoints")}>
-                        Correction points
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleSortChange("nb_corrections")}>
-                        Number of corrections
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleSortChange("correctionPercentage")}>
-                        Correction ratio
-                      </DropdownMenuItem>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Corrections</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-48">
+                          <DropdownMenuItem onClick={() => handleSortChange("correctionPoints")}>
+                            Correction points
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSortChange("nb_corrections")}>
+                            Number of corrections
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleSortChange("correctionPercentage")}
+                            title="Ratio of corrections validated vs KO'd by this person"
+                          >
+                            Correction ratio
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
                       
                       <DropdownMenuSeparator />
                       
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger>Login Time</DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-48">
+                        <DropdownMenuSubContent className="w-48 max-h-[400px] overflow-y-auto">
                           <DropdownMenuItem onClick={() => handleSortChange("totalLoginTime")}>
                             Total hours
                           </DropdownMenuItem>
@@ -1107,21 +1116,29 @@ export default function Rankings() {
                               
                               <DropdownMenuSeparator />
                               
-                              <DropdownMenuItem onClick={() => handleSortChange("correctionPoints")}>
-                                Correction points
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSortChange("nb_corrections")}>
-                                Number of corrections
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSortChange("correctionPercentage")}>
-                                Correction ratio
-                              </DropdownMenuItem>
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>Corrections</DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="w-56">
+                                  <DropdownMenuItem onClick={() => handleSortChange("correctionPoints")}>
+                                    Correction points
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleSortChange("nb_corrections")}>
+                                    Number of corrections
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleSortChange("correctionPercentage")}
+                                    title="Ratio of corrections validated vs KO'd by this person"
+                                  >
+                                    Correction ratio
+                                  </DropdownMenuItem>
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
                               
                               <DropdownMenuSeparator />
                               
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger>Login Time</DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent className="w-56">
+                                <DropdownMenuSubContent className="w-56 max-h-[400px] overflow-y-auto">
                                   <DropdownMenuItem onClick={() => handleSortChange("totalLoginTime")}>
                                     Total hours
                                   </DropdownMenuItem>
@@ -1466,31 +1483,45 @@ export default function Rankings() {
                         {student.correctionPercentage !== 420 && (
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-1">
-                              <span className="text-muted-foreground">
-                                Correction:{" "}
-                                <span
-                                  className={`font-medium ${sortBy === "correctionPercentage"
-                                    ? "text-primary"
-                                    : "text-foreground"
-                                    }`}
-                                >
-                                  {student.correctionPercentage}%
-                                </span>
-                              </span>
+                              <UITooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-muted-foreground cursor-help">
+                                    Correction:{" "}
+                                    <span
+                                      className={`font-medium ${sortBy === "correctionPercentage"
+                                        ? "text-primary"
+                                        : "text-foreground"
+                                        }`}
+                                    >
+                                      {student.correctionPercentage}%
+                                    </span>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Ratio of corrections validated vs KO&apos;d</p>
+                                </TooltipContent>
+                              </UITooltip>
                             </div>
                             <div className="flex items-center gap-1">
-                              <span className="text-muted-foreground">
-                                <span className="font-medium text-foreground">
-                                  {student.correctionPositive} ✓
-                                </span>
-                                <span className="mx-1">/</span>
-                                <span className="font-medium text-foreground">
-                                  {student.correctionNegative} ✗
-                                </span>
-                                <span className="ml-1 text-muted-foreground">
-                                  ({student.correctionTotal})
-                                </span>
-                              </span>
+                              <UITooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-muted-foreground cursor-help">
+                                    <span className="font-medium text-foreground">
+                                      {student.correctionPositive} ✓
+                                    </span>
+                                    <span className="mx-1">/</span>
+                                    <span className="font-medium text-foreground">
+                                      {student.correctionNegative} ✗
+                                    </span>
+                                    <span className="ml-1 text-muted-foreground">
+                                      ({student.correctionTotal})
+                                    </span>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Validations / KO</p>
+                                </TooltipContent>
+                              </UITooltip>
                             </div>
                           </div>
                         )}
@@ -1982,5 +2013,6 @@ export default function Rankings() {
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   );
 }
