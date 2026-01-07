@@ -242,7 +242,7 @@ export default function RNCPSimulator() {
             <div className="flex items-center gap-2">
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
               <h2 className="text-xl font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Chargement du simulateur RNCP
+                Loading RNCP Simulator
               </h2>
             </div>
             
@@ -251,19 +251,19 @@ export default function RNCPSimulator() {
               <div className="flex items-center gap-2 animate-pulse">
                 <Trophy className="w-4 h-4" />
                 <span className={isIntraLoading ? "text-primary" : "text-muted-foreground/50"}>
-                  {isIntraLoading ? "Récupération des projets..." : "✓ Projets chargés"}
+                  {isIntraLoading ? "Fetching projects..." : "✓ Projects loaded"}
                 </span>
               </div>
               <div className="flex items-center gap-2 animate-pulse [animation-delay:150ms]">
                 <Award className="w-4 h-4" />
                 <span className={areEventsLoading ? "text-primary" : "text-muted-foreground/50"}>
-                  {areEventsLoading ? "Chargement des événements..." : "✓ Événements chargés"}
+                  {areEventsLoading ? "Loading events..." : "✓ Events loaded"}
                 </span>
               </div>
               <div className="flex items-center gap-2 animate-pulse [animation-delay:300ms]">
                 <GraduationCap className="w-4 h-4" />
                 <span className={!isDataProcessed ? "text-primary" : "text-muted-foreground/50"}>
-                  {!isDataProcessed ? "Calcul des titres RNCP..." : "✓ Calculs terminés"}
+                  {!isDataProcessed ? "Calculating RNCP titles..." : "✓ Calculations complete"}
                 </span>
               </div>
             </div>
