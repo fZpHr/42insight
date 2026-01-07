@@ -14,6 +14,8 @@ import { ExamStudent } from "@/types"
 import { useSession } from "next-auth/react"
 import { useExamFriends } from "@/hooks/use-exam-friends"
 import { TransparentBadge } from "@/components/TransparentBadge";
+import { useCampus } from "@/contexts/CampusContext";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 function getExamName(examId: string) {
     switch (examId) {
@@ -40,12 +42,35 @@ function getExamName(examId: string) {
 
 export default function ExamTracker() {
     const { data: session, status } = useSession();
-    const campus = session?.user?.campus;
+    const { selectedCampus } = useCampus();
+    const effectiveCampus = selectedCampus || session?.user?.campus;
     const { friends, toggleFriend, isFriend } = useExamFriends();
+    const [showTimeoutError, setShowTimeoutError] = React.useState(false);
 
-    const { data: students = [], isLoading, error } = useQuery({
+    // Vérifier si c'est un jour d'examen (mercredi, jeudi, vendredi)
+    const isExamDay = () => {
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0 = Dimanche, 3 = Mercredi, 4 = Jeudi, 5 = Vendredi
+        return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
+    };
+
+    // Timeout pour afficher un message d'erreur après 15 secondes
+    React.useEffect(() => {
+        if (!isExamDay()) return; // Pas de timeout si ce n'est pas un jour d'examen
+        
+        const timer = setTimeout(() => {
+            setShowTimeoutError(true);
+        }, 15000);
+        return () => clearTimeout(timer);
+    }, [effectiveCampus]);
+
+    const { data: students = [], isLoading, error, isSuccess, isFetching } = useQuery({
         queryKey: ['current_exam'],
         queryFn: async () => {
+            // Si ce n'est pas un jour d'examen, retourner un tableau vide
+            if (!isExamDay()) {
+                return [];
+            }
 
             const response = await fetch("/api/current_exam");
             if (!response.ok) {
@@ -60,7 +85,9 @@ export default function ExamTracker() {
                     .sort((a: ExamStudent, b: ExamStudent) => b.grade - a.grade)
                 : data;
         },
-        refetchInterval: 600000,
+        enabled: isExamDay(), // Désactiver la query si ce n'est pas un jour d'examen
+        refetchInterval: isExamDay() ? 600000 : false, // Refetch seulement les jours d'examen
+        refetchOnMount: 'always',
     })
 
 
@@ -77,7 +104,7 @@ export default function ExamTracker() {
 
     const studentsNice = students.filter((s: any) => s.campus === "Nice");
     const studentsAngouleme = students.filter((s: any) => s.campus === "Angouleme");
-    const studentsFiltered = campus === "Angouleme" ? studentsAngouleme : campus === "Nice" ? studentsNice : students;
+    const studentsFiltered = effectiveCampus === "Angouleme" ? studentsAngouleme : effectiveCampus === "Nice" ? studentsNice : students;
 
     const studentsToShow = React.useMemo(() => {
         return [...studentsFiltered].sort((a: ExamStudent, b: ExamStudent) => {
@@ -97,7 +124,7 @@ export default function ExamTracker() {
 
     // Campus-specific exam schedule info
     let scheduleInfo: React.ReactNode = null;
-    if (campus === "Nice") {
+    if (effectiveCampus === "Nice") {
         scheduleInfo = (
             <Alert variant="default" className="mb-4">
                 <AlertTitle>Nice Exam Schedule</AlertTitle>
@@ -109,7 +136,7 @@ export default function ExamTracker() {
                 </AlertDescription>
             </Alert>
         );
-    } else if (campus === "Angouleme") {
+    } else if (effectiveCampus === "Angouleme") {
         scheduleInfo = (
             <Alert variant="default" className="mb-4">
                 <AlertTitle>Angoulême Exam Schedule</AlertTitle>
@@ -132,6 +159,43 @@ export default function ExamTracker() {
         );
     }
 
+    // Protection: Afficher le loading tant que les données ne sont pas chargées
+    if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess && isExamDay())) {
+        return <LoadingScreen message="Loading exam tracker..." />;
+    }
+
+    // Message si ce n'est pas un jour d'examen
+    if (!isExamDay()) {
+        return (
+            <div className="max-w-7xl mx-auto px-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                            Exam Tracker
+                            <span title="In development" className="ml-2 text-yellow-500 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-1">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-xs font-semibold">In development</span>
+                            </span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {scheduleInfo}
+                        <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>No Exam Today</AlertTitle>
+                            <AlertDescription>
+                                Exams are typically scheduled on <strong>Wednesday</strong>, <strong>Thursday</strong>, and <strong>Friday</strong>.
+                                Check back on these days to track ongoing exams.
+                            </AlertDescription>
+                        </Alert>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-7xl mx-auto px-4">
             <Card>
@@ -148,6 +212,26 @@ export default function ExamTracker() {
                     <p className="text-muted-foreground">Data is updated every 10 min</p>
                 </CardHeader>
                 <CardContent>
+                    {/* Message d'erreur après timeout */}
+                    {showTimeoutError && (!isSuccess || students.length === 0) && (
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>42 API Issue</AlertTitle>
+                            <AlertDescription className="flex items-center justify-between">
+                                <span>
+                                    The 42 API is taking longer than expected to respond. Please wait
+                                    a moment and refresh the page.
+                                </span>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="ml-4 shrink-0 px-3 py-1 text-sm border rounded hover:bg-accent"
+                                >
+                                    Refresh
+                                </button>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    
                     {scheduleInfo}
                     {isLoading && students.length === 0 && (
                         <Table className="mt-5">

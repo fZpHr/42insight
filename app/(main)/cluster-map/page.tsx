@@ -17,9 +17,13 @@ import { useQuery } from "@tanstack/react-query";
 import { ClusterUser } from "@/types";
 import { angoulemeMaps } from "./(maps)/angouleme";
 import { niceMaps } from "./(maps)/nice";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCampus } from "@/contexts/CampusContext";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
   try {
@@ -66,23 +70,39 @@ function getMapByCampus(campus?: string) {
 export default function ClusterMap() {
   const { data: session, status } = useSession();
   const user = session?.user;
+  const { selectedCampus } = useCampus();
   const [selectedCluster, setSelectedCluster] = useState("1");
+  const [showTimeoutError, setShowTimeoutError] = useState(false);
+
+  // Use selectedCampus from context (for staff) or user's campus (for regular users)
+  const effectiveCampus = selectedCampus || user?.campus;
+
+  // Timeout pour afficher un message d'erreur après 15 secondes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowTimeoutError(true);
+    }, 15000); // 15 secondes
+
+    return () => clearTimeout(timer);
+  }, [effectiveCampus]);
 
   const {
     data: students = [],
     isLoading,
     refetch,
     isFetching,
+    isSuccess,
   } = useQuery<ClusterUser[]>({
-    queryKey: ["students", user?.campus],
-    queryFn: () => fetchStudents(user?.campus),
-    enabled: status === "authenticated",
+    queryKey: ["students", effectiveCampus],
+    queryFn: () => fetchStudents(effectiveCampus),
+    enabled: status === "authenticated" && !!effectiveCampus,
     staleTime: 5 * 60 * 1000,
+    refetchOnMount: 'always', // Toujours refetch au montage, même si les données sont fresh
   });
 
   const renderCluster = (clusterNumber: string) => {
-    const campusMaps = getMapByCampus(user?.campus);
-    const key = user?.campus === "Nice" ? `c${clusterNumber}` : clusterNumber;
+    const campusMaps = getMapByCampus(effectiveCampus);
+    const key = effectiveCampus === "Nice" ? `c${clusterNumber}` : clusterNumber;
     const map = campusMaps[key];
     if (!map) return null;
 
@@ -170,8 +190,8 @@ export default function ClusterMap() {
   };
 
   const getAvailablePC = (clusterNumber: string) => {
-    const campusMaps = getMapByCampus(user?.campus);
-    const key = user?.campus === "Nice" ? `c${clusterNumber}` : clusterNumber;
+    const campusMaps = getMapByCampus(effectiveCampus);
+    const key = effectiveCampus === "Nice" ? `c${clusterNumber}` : clusterNumber;
     const map = campusMaps[key];
     if (!map) return 0;
 
@@ -200,7 +220,7 @@ export default function ClusterMap() {
   };
 
   const getNumberofClusters = () => {
-    const campusMaps = getMapByCampus(user?.campus);
+    const campusMaps = getMapByCampus(effectiveCampus);
     return Object.keys(campusMaps).length;
   };
 
@@ -210,9 +230,35 @@ export default function ClusterMap() {
     (_, i) => String(i + 1)
   );
 
+  // Protection: Afficher le loading tant que les données ne sont pas chargées
+  // Attendre que isSuccess soit true pour être sûr que les données sont vraiment chargées
+  // SAUF si le timeout est dépassé
+  if (!showTimeoutError && (status === "loading" || !effectiveCampus || (isLoading || isFetching) && !isSuccess)) {
+    return <LoadingScreen message="Loading cluster map..." />;
+  }
+
   return (
     <div className="w-full px-4 py-3">
       <div className="max-w-7xl mx-auto">
+        {/* Alerte 42 API timeout */}
+        {showTimeoutError && (!isSuccess || students.length === 0) && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>42 API Issue</AlertTitle>
+            <AlertDescription>
+              The 42 API is taking longer than expected to respond. Please wait a moment and refresh the page.
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => window.location.reload()} 
+                className="ml-2"
+              >
+                Refresh
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
             <p className="text-sm sm:text-base">

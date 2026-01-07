@@ -56,6 +56,8 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react"
+import { CampusSwitcher } from "@/components/CampusSwitcher";
+import { useCampus } from "@/contexts/CampusContext";
 
 // Routes restreintes par campus
 const campusRestrictedRoutes = [
@@ -78,6 +80,7 @@ const hasAccessToRoute = (url: string, campus?: string | null, role?: string | n
   }
 
   // Vérification du campus pour les routes restreintes
+  // On vérifie toujours le campus, même pour staff/admin
   if (campusRestrictedRoutes.some(route => url.startsWith(route))) {
     return campus ? supportedCampuses.includes(campus) : false;
   }
@@ -222,6 +225,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session, status } = useSession();
   const user = session?.user;
   const { open } = useSidebar();
+  const { selectedCampus } = useCampus();
+  
+  // Pour le staff/admin, utiliser le campus sélectionné, sinon utiliser le campus de l'utilisateur
+  const effectiveCampus = selectedCampus || user?.campus;
 
   const getBadgeVariant = (badge: string) => {
     switch (badge.toLowerCase()) {
@@ -275,13 +282,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         {user?.role != "pisciner" &&
-          navigationData.navMain.map((group) => {
+          navigationData.navMain.map((group, groupIndex) => {
             // Séparer les items accessibles et non accessibles
             const accessibleItems = group.items.filter((item) => 
-              hasAccessToRoute(item.url, user?.campus, user?.role)
+              hasAccessToRoute(item.url, effectiveCampus, user?.role)
             );
             const restrictedItems = group.items.filter((item) => 
-              !hasAccessToRoute(item.url, user?.campus, user?.role)
+              !hasAccessToRoute(item.url, effectiveCampus, user?.role)
             );
             
             // Ne pas afficher de label si group.title est null
@@ -375,6 +382,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     ))}
                   </SidebarMenu>
                 </SidebarGroupContent>
+                
+                {/* Campus Switcher - visible uniquement pour staff/admin, affiché après Dashboard */}
+                {groupIndex === 0 && open && (
+                  <div className="px-2 pb-2">
+                    <CampusSwitcher />
+                  </div>
+                )}
               </SidebarGroup>
             );
           })}

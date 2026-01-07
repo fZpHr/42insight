@@ -1,10 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Student } from "@/types";
-import { Users, TrendingUp, CheckCircle, XCircle, Globe } from "lucide-react";
+import { Users, TrendingUp, CheckCircle, XCircle, Globe, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface PiscineStatsProps {
@@ -12,7 +15,19 @@ interface PiscineStatsProps {
 }
 
 export function PiscineStats({ campus }: PiscineStatsProps) {
-  const { data: students, isLoading } = useQuery<Student[]>({
+  const [showTimeoutError, setShowTimeoutError] = useState(false);
+
+  // Timeout pour afficher un message d'erreur après 15 secondes
+  useEffect(() => {
+    if (!campus) return;
+    
+    const timer = setTimeout(() => {
+      setShowTimeoutError(true);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [campus]);
+
+  const { data: students, isLoading, isSuccess, isFetching } = useQuery<Student[]>({
     queryKey: ["piscine-stats", campus],
     queryFn: async () => {
       const response = await fetch(`/api/users/campus/${campus}`);
@@ -21,10 +36,12 @@ export function PiscineStats({ campus }: PiscineStatsProps) {
       }
       return response.json();
     },
+    enabled: !!campus,
     staleTime: 1000 * 60 * 10, // 10 minutes
+    refetchOnMount: 'always',
   });
 
-  if (isLoading) {
+  if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return (
       <Card className="w-[425px]">
         <CardHeader>
@@ -49,7 +66,38 @@ export function PiscineStats({ campus }: PiscineStatsProps) {
   }
 
   if (!students || students.length === 0) {
-    return null;
+    return (
+      <Card className="w-[425px]">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Campus Statistics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {showTimeoutError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>42 API Issue</AlertTitle>
+              <AlertDescription className="flex items-center justify-between">
+                <span>
+                  The 42 API is taking longer than expected to respond.
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                  className="ml-4 shrink-0"
+                >
+                  Refresh
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          {!showTimeoutError && <p className="text-muted-foreground">No data available</p>}
+        </CardContent>
+      </Card>
+    );
   }
 
   // Get unique years and sort them

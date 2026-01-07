@@ -35,6 +35,7 @@ import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 import { Changelog } from "@/components/Changelog";
 import { CoalitionInfo } from "@/components/CoalitionInfo";
 import { PiscineStats } from "@/components/PiscineStats";
+import { useCampus } from "@/contexts/CampusContext";
 
 interface StatCardProps {
   title: string;
@@ -294,6 +295,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [showStaffDashboard, setShowStaffDashboard] = useState(false);
   const [isDataReady, setIsDataReady] = useState(false);
+  const { selectedCampus } = useCampus();
+  const effectiveCampus = selectedCampus || user?.campus || "";
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -314,9 +317,9 @@ export default function Dashboard() {
   });
 
   const { data: staffInfo } = useQuery({
-    queryKey: ["staffInfo"],
-    queryFn: () => fetch("/api/staff").then((res) => res.json()),
-    enabled: !!user && !loading && (isStaff || isAdmin),
+    queryKey: ["staffInfo", effectiveCampus],
+    queryFn: () => fetch(`/api/staff?campus=${effectiveCampus}`).then((res) => res.json()),
+    enabled: !!user && !loading && (isStaff || isAdmin) && !!effectiveCampus,
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
   });
@@ -646,7 +649,7 @@ export default function Dashboard() {
           {/* Changelog, Piscine Stats and Skills */}
           <div className="flex flex-wrap gap-6">
             <Changelog />
-            <PiscineStats campus={user?.campus || ""} />
+            <PiscineStats campus={effectiveCampus} />
             {/* Skills Section with Quick Actions */}
             {topSkills.length > 0 && (
               <Card className="w-full lg:flex-1 lg:min-w-[400px]">

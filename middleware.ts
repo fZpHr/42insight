@@ -53,7 +53,10 @@ export default withAuth(
     //   }
     // }
 
-    if (token?.campus) {
+    // Staff and admin can bypass campus restrictions
+    const isStaffOrAdmin = token?.role === "staff" || token?.role === "admin"
+    
+    if (token?.campus && !isStaffOrAdmin) {
       const isCampusRestrictedRoute = campusRestrictedRoutes.some(route => {
         const base = route.replace(":path*", "").replace(/\/$/, "")
         return pathname === base || pathname.startsWith(base + "/")
