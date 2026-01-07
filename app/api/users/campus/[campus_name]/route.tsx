@@ -99,7 +99,68 @@ export async function GET(
                 )
             }
         }
-        return NextResponse.json(students)
+        
+        // Parse activityData and relation from JSON strings
+        const studentsWithParsedData = students.map(student => {
+            try {
+                const parsedActivityData = typeof student.activityData === 'string' 
+                    ? JSON.parse(student.activityData) 
+                    : student.activityData;
+                
+                const parsedRelation = typeof student.relation === 'string'
+                    ? JSON.parse(student.relation)
+                    : student.relation;
+                
+                // Restructure activityData to have logtime as a nested object
+                // If the data is at root level (has totalSeconds, totalMinutes, etc.)
+                // move it into a logtime sub-object
+                let restructuredActivityData = parsedActivityData;
+                if (parsedActivityData && parsedActivityData.totalSeconds && !parsedActivityData.logtime) {
+                    // Extract logtime-specific fields
+                    const {
+                        totalSeconds, totalMinutes, totalHours, totalDays,
+                        averageDailyMinutes, averageDailyHours,
+                        firstDay, lastDay, daysSinceFirst, activeDays,
+                        totalSessions, presenceRate, daysWithoutConnection,
+                        currentStreak, maxStreak, bestDay, worstDay,
+                        topDays, topHosts, weeklyMinutes, last7Days, last30Days,
+                        sessions, timePreferences, peakHour, quietHour, profile,
+                        weekdayVsWeekend, productivity, lastUpdated,
+                        // Keep the rest in the main object
+                        ...restActivityData
+                    } = parsedActivityData;
+                    
+                    restructuredActivityData = {
+                        ...restActivityData,
+                        logtime: {
+                            totalSeconds, totalMinutes, totalHours, totalDays,
+                            averageDailyMinutes, averageDailyHours,
+                            firstDay, lastDay, daysSinceFirst, activeDays,
+                            totalSessions, presenceRate, daysWithoutConnection,
+                            currentStreak, maxStreak, bestDay, worstDay,
+                            topDays, topHosts, weeklyMinutes, last7Days, last30Days,
+                            sessions, timePreferences, peakHour, quietHour, profile,
+                            weekdayVsWeekend, productivity, lastUpdated
+                        }
+                    };
+                }
+                
+                return {
+                    ...student,
+                    activityData: restructuredActivityData,
+                    relation: parsedRelation
+                };
+            } catch (error) {
+                console.error(`[API] Failed to parse JSON for student ${student.name}:`, error);
+                return {
+                    ...student,
+                    activityData: {},
+                    relation: {}
+                };
+            }
+        });
+        
+        return NextResponse.json(studentsWithParsedData)
     } catch (error) {
         console.error('Database query failed:', error);
         return NextResponse.json({ error: 'Failed to fetch campus students' }, { status: 500 })

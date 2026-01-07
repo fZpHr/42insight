@@ -3,6 +3,51 @@ interface ActivityData {
   weeklyTime: number;
   dailyHours: { date: string; value: number }[];
   lastUpdated: string;
+  logtime?: {
+    totalSeconds: number;
+    totalMinutes: number;
+    totalHours: number;
+    totalDays: number;
+    averageDailyMinutes: string;
+    averageDailyHours: string;
+    firstDay: string;
+    lastDay: string;
+    daysSinceFirst: number;
+    activeDays: number;
+    totalSessions: number;
+    presenceRate: string;
+    daysWithoutConnection: number;
+    currentStreak: number;
+    maxStreak: number;
+    bestDay: { date: string; hours: string };
+    worstDay: { date: string; hours: string };
+    topDays: { date: string; hours: string }[];
+    topHosts: { host: string; hours: string; percentage: string }[];
+    weeklyMinutes: number;
+    last7Days: { totalHours: string; avgPerDay: string; activeDays: number };
+    last30Days: { totalHours: string; avgPerDay: string; activeDays: number };
+    sessions: { average: string; max: string; min: string; perDay: string };
+    timePreferences: {
+      morning: { hours: string; percentage: string };
+      afternoon: { hours: string; percentage: string };
+      evening: { hours: string; percentage: string };
+      night: { hours: string; percentage: string };
+    };
+    peakHour: number;
+    quietHour: number;
+    profile: string;
+    weekdayVsWeekend: {
+      weekday: { hours: string; percentage: string };
+      weekend: { hours: string; percentage: string };
+      ratio: string;
+    };
+    productivity: { days4h: number; days8h: number; days12h: number; rate: string };
+    monthlyData: { month: string; hours: string; days: number }[];
+    weeklyData: { week: string; hours: string; days: number }[];
+    weekdayAverage: { day: string; avgHours: string; totalHours: string; count: number }[];
+    hourlyDistribution: { hour: number; hours: string }[];
+    lastUpdated: string;
+  };
 }
 
 export type SortOption = {

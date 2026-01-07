@@ -432,28 +432,28 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 animate-spin text-primary" />
               <h2 className="text-xl font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Chargement du tableau de bord
+                Loading Dashboard
               </h2>
             </div>
             
             {/* Loading steps */}
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2 animate-pulse">
-                <Trophy className="w-4 h-4" />
+                <Target className="w-4 h-4" />
                 <span className={intraLoading ? "text-primary" : "text-muted-foreground/50"}>
-                  {intraLoading ? "Récupération des informations..." : "✓ Informations chargées"}
+                  {intraLoading ? "Fetching user data..." : "✓ User data loaded"}
                 </span>
               </div>
               <div className="flex items-center gap-2 animate-pulse [animation-delay:150ms]">
-                <Users className="w-4 h-4" />
+                <Trophy className="w-4 h-4" />
                 <span className={rankLoading ? "text-primary" : "text-muted-foreground/50"}>
-                  {rankLoading ? "Chargement du classement..." : "✓ Classement chargé"}
+                  {rankLoading ? "Loading rankings..." : "✓ Rankings loaded"}
                 </span>
               </div>
               <div className="flex items-center gap-2 animate-pulse [animation-delay:300ms]">
-                <Target className="w-4 h-4" />
+                <Award className="w-4 h-4" />
                 <span className={!isDataReady ? "text-primary" : "text-muted-foreground/50"}>
-                  {!isDataReady ? "Préparation des données..." : "✓ Données prêtes"}
+                  {!isDataReady ? "Preparing dashboard..." : "✓ Dashboard ready"}
                 </span>
               </div>
             </div>
