@@ -751,8 +751,8 @@ export default function Dashboard() {
                         Find Study Partners
                       </QuickAction>
                       <QuickAction
-                        href="/peers"
-                        icon={Calendar}
+                        href="https://profile.intra.42.fr/slots"
+                        icon={ExternalLink}
                       >
                         Book Evaluation Slot
                       </QuickAction>
