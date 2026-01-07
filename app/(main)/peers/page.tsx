@@ -17,11 +17,14 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from "@/components/ui/empty"
-import { Search, TriangleAlert, MapPin } from "lucide-react";
+import { Search, TriangleAlert, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Project } from "@/types";
 import { useSession } from 'next-auth/react';
 import { TransparentBadge } from '@/components/TransparentBadge';
+import { useCampus } from "@/contexts/CampusContext";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 async function fetchPeersData() {
     try {
@@ -206,17 +209,28 @@ const PROJECT_ORDER: { [key: string]: number } = {
 export default function PeersPage() {
     const { data: session, status } = useSession();
     const user = session?.user;
-    const { data, error, isLoading } = useQuery<Project[]>({
+    const { selectedCampus } = useCampus();
+    const effectiveCampus = selectedCampus || user?.campus;
+    const [showTimeoutError, setShowTimeoutError] = React.useState(false);
+
+    // Timeout pour afficher un message d'erreur après 15 secondes
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowTimeoutError(true);
+        }, 15000);
+        return () => clearTimeout(timer);
+    }, [effectiveCampus]);
+    
+    const { data, error, isLoading, isSuccess, isFetching } = useQuery<Project[]>({
         queryKey: ['peersData'],
         queryFn: fetchPeersData,
         staleTime: 30 * 60 * 1000,
+        refetchOnMount: 'always',
     });
 
-    if (isLoading) {
-        return <div className="flex items-center justify-center h-full w-full">
-            {/* change to a skeleton later */}
-            <Spinner className="size-8" />
-        </div>;
+    // Protection: Afficher le loading tant que les données ne sont pas chargées
+    if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
+        return <LoadingScreen message="Loading peers..." />;
     }
 
 
@@ -236,7 +250,7 @@ export default function PeersPage() {
     const filteredProjects = data?.map((project) => {
         let filteredSubscribers = project.subscribers;
         filteredSubscribers = project.subscribers?.filter(sub =>
-            user?.campus ? sub.campus?.toLowerCase() === user.campus.toLowerCase() : true
+            effectiveCampus ? sub.campus?.toLowerCase() === effectiveCampus.toLowerCase() : true
         );
         return { ...project, subscribers: filteredSubscribers };
     })?.filter(project => project.subscribers && project.subscribers.length > 0) ?? [];
@@ -277,13 +291,31 @@ export default function PeersPage() {
 
     return (
         <div className="container mx-auto px-2 py-6">
+            {/* Message d'erreur après timeout */}
+            {showTimeoutError && (!isSuccess || !data || data.length === 0) && (
+                <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>42 API Issue</AlertTitle>
+                    <AlertDescription className="flex items-center justify-between">
+                        <span>
+                            The 42 API is taking longer than expected to respond. Please wait
+                            a moment and refresh the page.
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.location.reload()}
+                            className="ml-4 shrink-0"
+                        >
+                            Refresh
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+            
             <div className="flex items-center justify-between mb-6">
                 <p className="text-xl font-bold">
-                    <MapPin className="inline-block mr-2 mb-1" />
-                    {user?.campus}
-                    <span className="text-sm text-muted-foreground">
-                        {" "}({sortedProjects.reduce((acc, project) => acc + project.subscribers.length, 0)} studs)
-                    </span>
+                    {sortedProjects.reduce((acc, project) => acc + project.subscribers.length, 0)} students
                 </p>
                 <p className="text-sm text-muted-foreground">
                     Last Updated:{" "}

@@ -37,5 +37,6 @@ declare module "next-auth/jwt" {
     correction_point?: number;
     wallet?: number;
     level?: number;
+    role?: string;
   }
 }

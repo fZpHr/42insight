@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -10,13 +11,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Event } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { SubscribersButton } from "@/components/SubscribersButton";
 import { FeedbackButton } from "@/components/FeedbackButton";
-import { MapPin, User, Calendar } from "lucide-react";
+import { MapPin, User, Calendar, AlertCircle } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useCampus } from "@/contexts/CampusContext";
 
 const getCampusEvents = async (campus_name: string) => {
   try {
@@ -69,20 +72,33 @@ const getEventsSubscribers = async (
 
 export default function EventsPage() {
   const { data: session } = useSession();
-  const campus = session?.user?.campus
+  const { selectedCampus } = useCampus();
+  const effectiveCampus = selectedCampus || session?.user?.campus;
+  const [showTimeoutError, setShowTimeoutError] = React.useState(false);
+
+  // Timeout pour afficher un message d'erreur après 15 secondes
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowTimeoutError(true);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [effectiveCampus]);
 
   const {
     data: events = [],
     isLoading,
     error,
+    isSuccess,
+    isFetching,
   } = useQuery({
-    queryKey: ["events", campus],
-    queryFn: () => getCampusEvents(campus!),
+    queryKey: ["events", effectiveCampus],
+    queryFn: () => getCampusEvents(effectiveCampus!),
     staleTime: 10 * 60 * 1000,
-    enabled: !!campus,
+    enabled: !!effectiveCampus,
+    refetchOnMount: 'always',
   });
 
-  if (isLoading) {
+  if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return (
       <div className="container mx-auto px-2 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -121,6 +137,28 @@ export default function EventsPage() {
 
   return (
     <div className="container mx-auto px-2 py-6">
+      {/* Message d'erreur après timeout */}
+      {showTimeoutError && (!isSuccess || events.length === 0) && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>42 API Issue</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              The 42 API is taking longer than expected to respond. Please wait
+              a moment and refresh the page.
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+              className="ml-4 shrink-0"
+            >
+              Refresh
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="pb-4">
         <TransparentBadge
           text="⚠️ Subscribing is not available yet"
@@ -178,7 +216,7 @@ export default function EventsPage() {
                 <CardFooter className="flex justify-between mt-auto">
                   <SubscribersButton
                     isExpired={isExpired}
-                    campus={campus}
+                    campus={effectiveCampus}
                     eventId={event.id}
                     getEventsSubscribers={getEventsSubscribers}
                     eventName={event.name}
@@ -186,23 +224,12 @@ export default function EventsPage() {
                   />
                   <FeedbackButton
                     isExpired={isExpired}
-                    campus={campus}
+                    campus={effectiveCampus}
                     eventId={event.id}
                     getEventsFeedback={getEventsFeedback}
                     eventName={event.name}
                     buttonClassName="flex items-center text-sm"
                   />
-                  {!isExpired && (
-                    <Button
-                      variant="outline "
-                      className="bg-white text-black"
-                      size="sm"
-                      onClick={() => handleSubscribe(event.id)}
-                      disabled={true}
-                    >
-                      {event.is_subscribed ? "Unsubscribe" : "Subscribe"}
-                    </Button>
-                  )}
                 </CardFooter>
               </Card>
             );

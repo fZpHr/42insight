@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useCampus } from "@/contexts/CampusContext";
 
 const supportedCampuses = ["Angouleme", "Nice"];
 
@@ -22,26 +23,31 @@ interface CampusInfoDialogProps {
 export function CampusInfoDialog({ open: controlledOpen, onOpenChange }: CampusInfoDialogProps) {
   const { data: session } = useSession();
   const user = session?.user;
+  const { selectedCampus } = useCampus();
   const [internalOpen, setInternalOpen] = useState(false);
 
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
 
+  const effectiveCampus = selectedCampus || user?.campus;
+
   useEffect(() => {
-    if (user?.campus && !supportedCampuses.includes(user.campus)) {
-      const hasSeenPopup = localStorage.getItem('campus-info-seen');
+    if (effectiveCampus && !supportedCampuses.includes(effectiveCampus)) {
+      const hasSeenPopup = localStorage.getItem(`campus-info-seen-${effectiveCampus}`);
       if (!hasSeenPopup) {
         setOpen(true);
       }
     }
-  }, [user?.campus, setOpen]);
+  }, [effectiveCampus, setOpen]);
 
   const handleClose = () => {
-    localStorage.setItem('campus-info-seen', 'true');
+    if (effectiveCampus) {
+      localStorage.setItem(`campus-info-seen-${effectiveCampus}`, 'true');
+    }
     setOpen(false);
   };
 
-  if (!user?.campus || supportedCampuses.includes(user.campus)) {
+  if (!effectiveCampus || supportedCampuses.includes(effectiveCampus)) {
     return null;
   }
 
@@ -59,7 +65,7 @@ export function CampusInfoDialog({ open: controlledOpen, onOpenChange }: CampusI
             </p>
             <p className="text-muted-foreground">
               Due to privacy considerations, certain features are restricted to these campuses. 
-              Some tabs in the navigation will not be accessible from your campus ({user?.campus}).
+              Some tabs in the navigation will not be accessible from your campus ({effectiveCampus}).
             </p>
             <p className="text-muted-foreground">
               If you have any questions or would like to discuss expanding support to your campus, 

@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../auth/[...nextauth]/route'
 
-export async function GET() {
+export async function GET(request: Request) {
     const session = await getServerSession(authOptions)
     if (!session || !session.user) {
         return NextResponse.json(
@@ -18,9 +18,12 @@ export async function GET() {
             return NextResponse.json({ error: 'Staff or Admin access required' }, { status: 403 })
         }
 
-        const campus = user.campus
+        // Get campus from URL parameter, fallback to user's campus
+        const { searchParams } = new URL(request.url)
+        const campus = searchParams.get('campus') || user.campus
+        
         if (!campus) {
-            return NextResponse.json({ error: 'User campus not found' }, { status: 404 })
+            return NextResponse.json({ error: 'Campus not found' }, { status: 404 })
         }
         const [
             totalStudents,
@@ -30,7 +33,7 @@ export async function GET() {
             topPerformers
         ] = await Promise.all([
             prisma.student.count({ where: { campus: campus } }),
-            prisma.poolUser.count(),
+            prisma.poolUser.count(), // PoolUser n'a pas de champ campus dans le schéma
             prisma.student.aggregate({
                 _avg: { level: true },
                 where: { campus: campus }

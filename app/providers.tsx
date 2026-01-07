@@ -2,6 +2,7 @@
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "next-auth/react";
+import { CampusProvider } from "@/contexts/CampusContext";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -11,7 +12,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <SessionProvider>{children}</SessionProvider>
+      <SessionProvider>
+        <CampusProvider>{children}</CampusProvider>
+      </SessionProvider>
     </ThemeProvider>
   );
 }

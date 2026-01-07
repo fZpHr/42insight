@@ -14,6 +14,7 @@ import {
   Target,
   Eye,
   Briefcase,
+  AlertCircle,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -49,6 +51,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { useSession } from "next-auth/react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 const sortOptions: StudentSortOption[] = [
   { value: "level", label: "Level", key: "level" },
@@ -101,9 +104,18 @@ export default function Rankings() {
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const { data: session, status } = useSession();
   const user = session?.user;
+  const [showTimeoutError, setShowTimeoutError] = useState(false);
 
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
+
+  // Timeout pour afficher un message d'erreur après 15 secondes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowTimeoutError(true);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [selectedCampus, user?.campus]);
 
 
   const campusOptions = [
@@ -116,6 +128,8 @@ export default function Rankings() {
     data: students,
     isLoading,
     error,
+    isSuccess,
+    isFetching,
   } = useQuery({
     queryKey: ["campus-students", selectedCampus || user?.campus],
     queryFn: async () => {
@@ -161,6 +175,7 @@ export default function Rankings() {
     },
     enabled: !!(selectedCampus || user?.campus),
     staleTime: 10 * 60 * 1000,
+    refetchOnMount: 'always',
   });
 
   const sortStudents = (
@@ -410,8 +425,35 @@ export default function Rankings() {
     [],
   );
 
+  // Protection: Afficher le loading tant que les données ne sont pas chargées
+  if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
+    return <LoadingScreen message="Loading rankings..." />;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 space-y-6 py-3">
+      {/* Message d'erreur après timeout */}
+      {showTimeoutError && (!isSuccess || !students || students.length === 0) && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>42 API Issue</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              The 42 API is taking longer than expected to respond. Please wait
+              a moment and refresh the page.
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+              className="ml-4 shrink-0"
+            >
+              Refresh
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <Card className="lg:sticky lg:top-4 lg:z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
