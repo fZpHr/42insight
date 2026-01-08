@@ -1,13 +1,13 @@
 # 🌐 42Insight
 
-Welcome to `42Insight`, the ultimate all-in-one solution for students of 42 Angoulême! 
+Welcome to `42Insight`, the ultimate all-in-one solution for students of 42 Angoulême/Nice! 
 
 This website aims to centralize all the essential tools and resources students need, making your journey at 42 easier and more efficient. From rankings to trombinoscope and much more to come, we’ve got you covered.
 
 > [!WARNING]  
 > Most of the features are only available for Angoulême and Nice campus
 
-=> Access the website here : [42Insight](https://www.42insight.tech/)
+=> Access the website here : [42Insight](https://42insight.vercel.app/)
 
 ## Features
 
