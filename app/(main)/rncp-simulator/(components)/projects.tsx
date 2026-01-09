@@ -34,11 +34,13 @@ function ProjectSideIcon({ project, depth }: { project: FortyTwoProject; depth: 
   return <span className="w-8" />
 }
 
-function ProjectIcon({ isSelected }: { isSelected: boolean }) {
+function ProjectIcon({ isSelected, isPartiallyCompleted }: { isSelected: boolean; isPartiallyCompleted?: boolean }) {
   return (
     <div className="flex size-8 items-center justify-center">
       {isSelected ? (
         <CircleCheck className="size-4 text-primary" />
+      ) : isPartiallyCompleted ? (
+        <CircleDashed className="size-4 text-amber-600" />
       ) : (
         <CircleDashed className="size-4" />
       )}
@@ -102,6 +104,36 @@ function Project({
 
   const totalProjectXP = getDynamicProjectXP(project)
   const totalXP = getProjectXP(project)
+  
+  // Check if this project has children and if any are in progress
+  const hasChildren = project.children && project.children.length > 0
+  const childrenProgress = useMemo(() => {
+    if (!hasChildren) return { completed: 0, total: 0, inProgress: false }
+    
+    const total = project.children!.length
+    const completed = project.children!.filter(child => projectMarks.has(child.id)).length
+    const inProgress = completed > 0 && completed < total
+    
+    return { completed, total, inProgress }
+  }, [hasChildren, project.children, projectMarks])
+
+  const isPartiallyCompleted = !isSelected && hasChildren && childrenProgress.inProgress
+  const partialXP = useMemo(() => {
+    if (!isPartiallyCompleted) return 0
+    return project.children!.reduce((sum, childRef) => {
+      const childMark = projectMarks.get(childRef.id)
+      if (childMark !== undefined) {
+        const childProject = projects[childRef.id]
+        if (childProject) {
+          const childXP = (childProject.experience ?? 0) * (childMark / 100)
+          const hasCoalition = coalitionProjects.has(childRef.id)
+          return sum + (hasCoalition ? childXP * 1.042 : childXP)
+        }
+      }
+      return sum
+    }, 0)
+  }, [isPartiallyCompleted, project.children, projectMarks, coalitionProjects, projects])
+
   const handleToggle = () => {
     if (isSelected) {
       removeProject(project.id)
@@ -121,12 +153,13 @@ function Project({
             (isAuto
               ? 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-100 border-green-500 dark:border-green-400'
               : 'bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-100 border-blue-500 dark:border-blue-400'),
+          isPartiallyCompleted && 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-100 border-amber-500 dark:border-amber-600',
         )}
         onClick={isAuto ? () => {} : handleToggle}
       >
         {/* show tooltip on hover for coalition instead of tinting the whole card */}
         <ProjectSideIcon project={project} depth={depth} />
-        <ProjectIcon isSelected={isSelected} />
+        <ProjectIcon isSelected={isSelected} isPartiallyCompleted={isPartiallyCompleted} />
 
         <div className="flex w-full items-center gap-x-2 pr-2">
           <div className="flex flex-col flex-1 min-w-0 items-center justify-center">
@@ -235,12 +268,26 @@ function Project({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              {!isSelected && <Badge className="rounded-md text-[10px] px-1.5 py-0.5 whitespace-nowrap" variant="outline">
+              {!isSelected && !isPartiallyCompleted && <Badge className="rounded-md text-[10px] px-1.5 py-0.5 whitespace-nowrap" variant="outline">
                 {project.children && project.children.length > 0
                   ? totalXP.toLocaleString('fr-FR')
                   : (project.experience ?? 0).toLocaleString('fr-FR')
                 } XP
               </Badge>}
+              {isPartiallyCompleted && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge className="rounded-md text-[10px] px-1.5 py-0.5 bg-amber-100 border-amber-400 text-amber-800 border-2 dark:bg-amber-900/30 dark:border-amber-500 dark:text-amber-100 whitespace-nowrap" variant="secondary">
+                        {Math.round(partialXP).toLocaleString('fr-FR')} / {totalXP.toLocaleString('fr-FR')} XP
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>In progress: {childrenProgress.completed}/{childrenProgress.total} sub-projects completed</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
           </div>
           <div
