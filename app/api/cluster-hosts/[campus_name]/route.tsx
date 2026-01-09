@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
+import { campusSchema } from "@/lib/validation";
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ campus_name: string }> }
 ) {
   try {
+    // Authentication check
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { campus_name: campusName } = await params;
+
+    // Validate campus name
+    const validation = campusSchema.safeParse(campusName);
+    if (!validation.success) {
+      return NextResponse.json({ error: "Invalid campus name" }, { status: 400 });
+    }
 
     // Fetch all students from this campus
     const students = await prisma.student.findMany({
