@@ -52,9 +52,9 @@ const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
     let hasMore = true;
 
     while (hasMore) {
-      // Add delay to respect rate limit (30 requests/minute)
+      // Add delay to respect rate limit (2 requests/second)
       if (page > 1) {
-        await new Promise(resolve => setTimeout(resolve, 2100)); // 2100ms delay between requests
+        await new Promise(resolve => setTimeout(resolve, 600)); // 600ms delay between requests
       }
       
       const response = await fetch(

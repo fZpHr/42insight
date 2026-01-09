@@ -14,7 +14,7 @@ class ApiRateLimiter {
   private queue: QueuedRequest[] = [];
   private processing = false;
   private lastRequestTime = 0;
-  private minDelay = 500; // Default to 2 req/s. Will be updated dynamically.
+  private minDelay = 100; // Minimum delay between requests in ms
   private maxRetries = 3;
   private retryDelay = 1000; // Initial retry delay in ms
   
@@ -59,11 +59,7 @@ class ApiRateLimiter {
       throw new Error('Failed to obtain any API tokens');
     }
     
-    // Dynamically adjust rate limit based on number of keys
-    const totalRatePerSecond = 2 * this.tokens.length;
-    this.minDelay = 1000 / totalRatePerSecond;
-    
-    console.log(`[API Rate Limiter] Initialized with ${this.tokens.length} tokens. Rate limit: ${totalRatePerSecond} req/s (delay: ${this.minDelay.toFixed(2)}ms)`);
+    console.log(`[API Rate Limiter] Initialized with ${this.tokens.length} tokens`);
   }
 
   private async getToken(clientId: string, clientSecret: string): Promise<string | null> {
