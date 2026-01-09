@@ -1,28 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from "next-auth/jwt";
-import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/route';
+
 
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ path: string[] }> }
 ) {
-    const token = await getToken({ req: request });
-    if (!token || !token.id || !token.accessToken) {
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
         return NextResponse.json(
             { error: 'Unauthorized' },
             { status: 401 }
         )
     }
-
-    // Apply incoming rate limiting per user
-    const limitResult = await rateLimit(token.id as string);
-    if (!limitResult.success) {
-        return new NextResponse("Too Many Requests", {
-            status: 429,
-            headers: getRateLimitHeaders(limitResult),
-        });
-    }
-
     try {
         const { path } = await params
         const apiPath = path.join('/')
@@ -31,10 +22,9 @@ export async function GET(
 
         const proxyResponse = await fetch(apiUrl, {
             headers: {
-                Authorization: `Bearer ${token.accessToken}`,
+                Authorization: `Bearer ${session?.accessToken}`,
             },
         })
-
         if (!proxyResponse.ok) {
             return NextResponse.json(
                 { error: `42 API error: ${proxyResponse.status}` },

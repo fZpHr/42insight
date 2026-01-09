@@ -24,6 +24,7 @@ declare module "next-auth" {
       level?: number;
       role?: string | null;
     };
+    accessToken?: string | null;
   }
 }
 
@@ -37,9 +38,5 @@ declare module "next-auth/jwt" {
     wallet?: number;
     level?: number;
     role?: string;
-    accessToken?: string;
-    accessTokenExpires?: number;
-    refreshToken?: string;
-    error?: string;
   }
 }

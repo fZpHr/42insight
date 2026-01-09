@@ -20,7 +20,9 @@ export default function Query() {
 
   const user = session?.user;
   const fetchRateLimit = async (): Promise<number> => {
-    const response = await fetch(`/api/rate_limit`);
+    const response = await fetch(`/api/rate_limit`, {
+      headers: { Authorization: `Bearer ${session?.accessToken}` },
+    });
 
     if (!response.ok) {
       throw new Error("Error getting the rate limit");
@@ -60,7 +62,9 @@ export default function Query() {
         return;
       }
       setIsLoading(true);
-      const response = await fetch(`/api/proxy/${encodeURIComponent(query)}`);
+      const response = await fetch(`/api/proxy/${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch query results");
       }
