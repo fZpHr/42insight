@@ -94,7 +94,7 @@ function Project({
 
   const isSelected = projectMarks.has(project.id)
   const mark = projectMarks.get(project.id)
-  // When a project is selected but no explicit mark is stored yet, treat it as 100 for display
+
   const displayMark = mark ?? 100
   const isBonus = mark === 125
   const isCoalition = coalitionProjects.has(project.id)
@@ -105,7 +105,7 @@ function Project({
   const totalProjectXP = getDynamicProjectXP(project)
   const totalXP = getProjectXP(project)
   
-  // Check if this project has children and if any are in progress
+
   const hasChildren = project.children && project.children.length > 0
   const childrenProgress = useMemo(() => {
     if (!hasChildren) return { completed: 0, total: 0, inProgress: false }

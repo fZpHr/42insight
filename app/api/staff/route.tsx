@@ -18,7 +18,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Staff or Admin access required' }, { status: 403 })
         }
 
-        // Get campus from URL parameter, fallback to user's campus
+
         const { searchParams } = new URL(request.url)
         const campus = searchParams.get('campus') || user.campus
         
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
             topPerformers
         ] = await Promise.all([
             prisma.student.count({ where: { campus: campus } }),
-            prisma.poolUser.count(), // PoolUser n'a pas de champ campus dans le schéma
+            prisma.poolUser.count(), 
             prisma.student.aggregate({
                 _avg: { level: true },
                 where: { campus: campus }
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
                 where: {
                     campus: campus,
                     blackholeTimer: {
-                        lte: 30 // Students with 30 days or less
+                        lte: 30 
                     }
                 }
             }),

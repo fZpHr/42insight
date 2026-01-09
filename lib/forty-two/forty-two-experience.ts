@@ -15,7 +15,7 @@ export function getPreciseLevel(experience: number, levels: Record<number, Forty
       return curr.level + progress;
     }
   }
-  // Si XP >= dernier palier, retourne le dernier niveau
+
   return sortedLevels[sortedLevels.length - 1].level;
 }
 import type { FortyTwoLevel } from "@/types/forty-two"

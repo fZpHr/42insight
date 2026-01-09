@@ -1,5 +1,6 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
+import { rateLimit, getClientIp, getRateLimitHeaders } from "@/lib/rate-limit"
 
 const poolRestrictedRoutes = [
   "/query",
@@ -29,9 +30,41 @@ const campusRestrictedRoutes = [
 
 
 export default withAuth(
-  function middleware(req) {
+  async function middleware(req) {
     const token = req.nextauth.token
     const pathname = req.nextUrl.pathname
+
+
+    if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
+      if (!token) {
+        return NextResponse.json(
+          { error: 'Unauthorized', message: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+    }
+
+
+    if (pathname.startsWith('/api/')) {
+      const ip = getClientIp(req);
+      const identifier = token?.login || ip;
+      
+      const limit = token ? 100 : 50;
+      const result = await rateLimit(identifier, limit, 60);
+      
+      if (!result.success) {
+        return NextResponse.json(
+          { 
+            error: 'Too many requests',
+            message: `Rate limit exceeded. Try again in ${Math.ceil((result.reset * 1000 - Date.now()) / 1000)} seconds.`
+          },
+          { 
+            status: 429,
+            headers: getRateLimitHeaders(result)
+          }
+        );
+      }
+    }
 
     if (token?.role === "pisciner") {
       const isRestrictedRoute = poolRestrictedRoutes.some(route => 
@@ -43,17 +76,17 @@ export default withAuth(
       }
     }
 
-    // if (token?.role === "student") {
-    //   const adminStaffOnlyRoutesAccess = adminStaffOnlyRoutes.some(route =>
-    //     pathname.startsWith(route)
-    //   )
-      
-    //   if (adminStaffOnlyRoutesAccess) {
-    //     return NextResponse.redirect(new URL("/error/forbidden", req.url))
-    //   }
-    // }
 
-    // Staff and admin can bypass campus restrictions
+
+
+
+      
+
+
+
+
+
+
     const isStaffOrAdmin = token?.role === "staff" || token?.role === "admin"
     
     if (token?.campus && !isStaffOrAdmin) {
@@ -71,7 +104,7 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token
+      authorized: ({ token }) => token && !token.error
     },
   }
 )
@@ -97,5 +130,7 @@ export const config = {
     "/api/staff/:path*",
     "/api/events/:path*",
     "/api/changelog/:path*",
+    "/api/cluster-hosts/:path*",
+    "/api/peers/:path*",
   ] 
 }

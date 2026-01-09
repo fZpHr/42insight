@@ -3,9 +3,9 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
-// In-memory cache for user intra data
+
 const intraCache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL = 10 * 60 * 1000; 
 
 export async function GET(
   request: Request,
@@ -21,7 +21,7 @@ export async function GET(
       )
   }
 
-  // Check cache first
+
   const cached = intraCache.get(login);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
     return NextResponse.json(cached.data);
@@ -31,7 +31,7 @@ export async function GET(
     const response = await apiRateLimiter.fetch(`/users/${login}`);
 
     if (!response.ok) {
-      // If rate limited and we have cached data, return stale cache
+
       if (response.status === 429 && cached) {
         console.warn(`[WARN] Rate limited fetching user ${login}. Serving stale cache.`);
         return NextResponse.json(cached.data);
@@ -44,7 +44,7 @@ export async function GET(
 
     const user = await response.json();
 
-    // Fetch all projects with pagination
+
     let allProjects: any[] = [];
     let page = 1;
     const perPage = 100;
@@ -67,7 +67,7 @@ export async function GET(
 
     user.projects_users = allProjects;
 
-    // Store in cache before returning
+
     intraCache.set(login, { data: user, timestamp: Date.now() });
 
     return NextResponse.json(user);

@@ -3,9 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
-// In-memory cache for events
+
 const eventsCache = new Map<string, { events: any[], timestamp: number }>();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL = 10 * 60 * 1000; 
 
 export async function GET(
   request: Request,
@@ -18,14 +18,14 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check cache first
+
   const cached = eventsCache.get(login);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
     return NextResponse.json({ events: cached.events });
   }
 
   try {
-    // Récupérer l'utilisateur pour obtenir son id
+
     const userRes = await apiRateLimiter.fetch(`/users/${login}`);
     if (!userRes.ok) {
       if (userRes.status === 429 && cached) {
@@ -43,13 +43,13 @@ export async function GET(
     do {
       const eventsRes = await apiRateLimiter.fetch(`/users/${user.id}/events?per_page=${perPage}&page=${page}`);
       if (!eventsRes.ok) {
-        // If we get rate limited, return the stale cache if it exists, otherwise fail
+
         if (eventsRes.status === 429 && cached) {
           console.warn(`[WARN] Rate limited fetching events for ${login}. Serving stale cache.`);
           return NextResponse.json({ events: cached.events });
         }
         console.error(`[DEBUG] Failed to fetch events page ${page} for user ${login}:`, eventsRes.statusText);
-        // Don't cache partial results, just break and return what we have (which is none)
+
         return NextResponse.json({ error: `Failed to fetch events: ${eventsRes.statusText}` }, { status: eventsRes.status });
       }
       eventsPage = await eventsRes.json();
@@ -57,7 +57,7 @@ export async function GET(
       page++;
     } while (eventsPage && eventsPage.length === perPage);
 
-    // Store in cache before returning
+
     eventsCache.set(login, { events: allEvents, timestamp: Date.now() });
 
     return NextResponse.json({ events: allEvents });

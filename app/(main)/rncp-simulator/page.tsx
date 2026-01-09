@@ -37,7 +37,7 @@ export default function RNCPSimulator() {
   const { data: session } = useSession({ required: true })
   const { width, height } = useWindowSize()
 
-  // UI State
+
   const [showConfetti, setShowConfetti] = useState(false)
   const [optionStatuses, setOptionStatuses] = useState<Record<string, boolean>>({})
   const manualProjectsKey = getManualProjectsKey(session)
@@ -76,7 +76,7 @@ export default function RNCPSimulator() {
   )
 
   const [activeTitle, setActiveTitle] = useState<FortyTwoTitle | null>(() => {
-    // Try to restore the last active title from localStorage
+
     if (typeof window !== "undefined") {
       try {
         const savedTitleName = localStorage.getItem("rncp_active_title_name")
@@ -85,19 +85,19 @@ export default function RNCPSimulator() {
           if (savedTitle) return savedTitle
         }
       } catch {
-        // Silently fail if localStorage is not available
+
       }
     }
     return titles[0] ?? null
   })
 
-  // Save active title to localStorage when it changes
+
   useEffect(() => {
     if (activeTitle && typeof window !== "undefined") {
       try {
         localStorage.setItem("rncp_active_title_name", activeTitle.title)
       } catch {
-        // Silently fail if localStorage is not available
+
       }
     }
   }, [activeTitle])
@@ -184,7 +184,7 @@ export default function RNCPSimulator() {
           localStorage.setItem(manualProjectsKey, JSON.stringify(newManualProjects))
           setManualProjects(newManualProjects)
         } catch {
-          // Silently fail if localStorage is not available
+
         }
       }
     },
@@ -335,7 +335,7 @@ export default function RNCPSimulator() {
                   localStorage.setItem(manualProjectsKey, JSON.stringify([]))
                   setManualProjects([])
                 } catch {
-                  // Silently fail
+
                 }
               }
               if (userIntraInfo && activeTitle) {

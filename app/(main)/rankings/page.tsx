@@ -92,47 +92,47 @@ const sortOptions: StudentSortOption[] = [
     label: "Correction ratio",
     key: "correctionPercentage",
   },
-  // Login Time - Overview
+
   { value: "totalLoginTime", label: "Total hours", key: "activityData" },
   { value: "avgDailyHours", label: "Avg hours/day", key: "activityData" },
   { value: "activeDays", label: "Active days", key: "activityData" },
   { value: "presenceRate", label: "Presence rate", key: "activityData" },
-  // Login Time - Streaks
+
   { value: "currentStreak", label: "Current streak", key: "activityData" },
   { value: "maxStreak", label: "Max streak", key: "activityData" },
   { value: "daysWithoutConnection", label: "Days without login", key: "activityData" },
-  // Login Time - Sessions
+
   { value: "totalSessions", label: "Total sessions", key: "activityData" },
   { value: "avgSessionDuration", label: "Avg session duration", key: "activityData" },
-  // Login Time - Recent Activity
+
   { value: "last7DaysTotal", label: "Last 7 days", key: "activityData" },
   { value: "last30DaysTotal", label: "Last 30 days", key: "activityData" },
-  // Login Time - Record Days
+
   { value: "bestDayHours", label: "Best day hours", key: "activityData" },
   { value: "worstDayHours", label: "Worst day hours", key: "activityData" },
-  // Login Time - Time Preferences
+
   { value: "morningHours", label: "Morning hours", key: "activityData" },
   { value: "afternoonHours", label: "Afternoon hours", key: "activityData" },
   { value: "eveningHours", label: "Evening hours", key: "activityData" },
   { value: "nightHours", label: "Night hours", key: "activityData" },
-  // Login Time - Weekday vs Weekend
+
   { value: "weekdayHours", label: "Weekday hours", key: "activityData" },
   { value: "weekendHours", label: "Weekend hours", key: "activityData" },
   { value: "weekdayRatio", label: "Weekday ratio", key: "activityData" },
-  // Login Time - Productivity
+
   { value: "days4h", label: "Days ≥4h", key: "activityData" },
   { value: "days8h", label: "Days ≥8h", key: "activityData" },
   { value: "days12h", label: "Days ≥12h", key: "activityData" },
   { value: "productivityRate", label: "Productivity rate", key: "activityData" },
-  // Login Time - Session Stats
+
   { value: "maxSession", label: "Max session", key: "activityData" },
   { value: "minSession", label: "Min session", key: "activityData" },
-  // Work Status
+
   { value: "internship", label: "En stage", key: "work" },
   { value: "work_study", label: "En alternance", key: "work" },
 ];
 
-// Categories for login time cascading filters
+
 const loginTimeCategories = {
   overview: {
     label: "Overview",
@@ -170,7 +170,7 @@ const loginTimeCategories = {
 
 const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
   try {
-    //console.log("Fetching students for campus:", campus);
+
     const response = await fetch(`/api/users/campus/${campus}`);
     if (!response.ok) {
       throw new Error("Failed to fetch students");
@@ -206,7 +206,7 @@ export default function Rankings() {
   const [selectedLogtime, setSelectedLogtime] = useState<any>(null);
   const [showLogtimeDialog, setShowLogtimeDialog] = useState(false);
 
-  // Get login time category based on current sortBy if it's a login time filter
+
   useEffect(() => {
     const category = Object.entries(loginTimeCategories).find(([_, cat]) => 
       cat.options.includes(sortBy)
@@ -216,7 +216,7 @@ export default function Rankings() {
     }
   }, [sortBy]);
 
-  // Timeout pour afficher un message d'erreur après 15 secondes
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowTimeoutError(true);
@@ -301,7 +301,7 @@ export default function Rankings() {
       let aValue: any = a[sortKey];
       let bValue: any = b[sortKey];
       
-      // Special handling for login time (nested in activityData.logtime)
+
       if (sortKey === "activityData" && sortByValue) {
         const logA = a.activityData?.logtime;
         const logB = b.activityData?.logtime;
@@ -429,7 +429,7 @@ export default function Rankings() {
   const baselineSortedStudents = useMemo(() => {
     if (!students) return [];
 
-    // List of all activityData-based sort options
+
     const activityDataSorts = [
       "totalLoginTime", "avgDailyHours", "avgLoginTime", "activeDays", "presenceRate",
       "currentStreak", "maxStreak", "daysWithoutConnection",
@@ -605,7 +605,7 @@ export default function Rankings() {
     setSortBy(value);
     setSortDirection("desc");
     
-    // Update sort history - only for login time filters, keep max 2
+
     const isLoginTimeFilter = Object.values(loginTimeCategories).some(cat => 
       cat.options.includes(value)
     );
@@ -620,7 +620,7 @@ export default function Rankings() {
 
   const handleLoginTimeCategoryChange = (categoryKey: string) => {
     setLoginTimeCategory(categoryKey);
-    // Set the first option of the new category as the default sort
+
     const category = loginTimeCategories[categoryKey as keyof typeof loginTimeCategories];
     if (category && category.options.length > 0) {
       setSortBy(category.options[0]);
@@ -628,14 +628,14 @@ export default function Rankings() {
     }
   };
 
-  // Get available login time options for current category
+
   const currentLoginTimeOptions = useMemo(() => {
     const category = loginTimeCategories[loginTimeCategory as keyof typeof loginTimeCategories];
     if (!category) return [];
     return sortOptions.filter(opt => category.options.includes(opt.value));
   }, [loginTimeCategory]);
 
-  // Check if current sort is a login time filter
+
   const isLoginTimeFilter = useMemo(() => {
     return Object.values(loginTimeCategories).some(cat => 
       cat.options.includes(sortBy)
@@ -675,7 +675,7 @@ export default function Rankings() {
   const getStatValue = (student: Student, sortValue: string): { label: string; value: string } | null => {
     const logtime = student.activityData?.logtime;
     
-    // Only return stats for login time filters
+
     switch (sortValue) {
       case "totalLoginTime":
         return logtime ? { label: "Total", value: `${logtime.totalHours}h` } : null;
@@ -767,7 +767,7 @@ export default function Rankings() {
     [],
   );
 
-  // Protection: Afficher le loading tant que les données ne sont pas chargées
+
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return <LoadingScreen message="Loading rankings..." />;
   }

@@ -12,7 +12,7 @@ import { useRef, useContext, createContext, type ReactNode, useState, useEffect 
 import { useStoreWithEqualityFn, createWithEqualityFn } from "zustand/traditional"
 
 const STORAGE_KEY = "rncp_simulator_progression"
-const EVENTS_TTL = 10 * 60 * 1000 // 10 minutes
+const EVENTS_TTL = 10 * 60 * 1000 
 
 function saveProgressionToStorage(state: any) {
   try {
@@ -31,7 +31,7 @@ function saveProgressionToStorage(state: any) {
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch (error) {
-    // Silently fail if localStorage is not available
+
   }
 }
 
@@ -242,7 +242,7 @@ const createFortyTwoStore = (initProps: {
         const newMarks = new Map(state.autoFetchedProjectMarks ?? [])
         const newProExp = new Set(state.autoFetchedProfessionalExperiences ?? [])
         
-        // Reset professional experience marks to auto-fetched values
+
         const resetProExpMarks = new Map(state.autoFetchedProfessionalExperienceMarks ?? [])
         
         const resetState = {
