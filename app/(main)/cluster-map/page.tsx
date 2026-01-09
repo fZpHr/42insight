@@ -245,8 +245,12 @@ export default function ClusterMap() {
                                         className="flex items-center gap-2 py-1 hover:bg-muted/50 rounded px-2 -mx-2 cursor-pointer transition-colors"
                                         onClick={() => window.open(`https://profile.intra.42.fr/users/${user.name}`, "_blank")}
                                       >
-                                        <Avatar className="h-8 w-8 shrink-0">
-                                          <AvatarImage src={user.photoUrl} alt={user.name} />
+                                        <Avatar className="h-12 w-12">
+                                          <AvatarImage 
+                                            src={user.photoUrl} 
+                                            alt={user.name} 
+                                            className="h-full w-full object-cover" 
+                                          />
                                           <AvatarFallback className="text-xs">
                                             {user.name.slice(0, 2).toUpperCase()}
                                           </AvatarFallback>
