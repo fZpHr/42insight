@@ -10,8 +10,8 @@ const getApi = async () => {
     if (!api) {
         api = await new Fast42([
             {
-              client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
-              client_secret: process.env.CLIENT_SECRET_NEXT1!,
+              client_id: process.env.CLIENT_ID1!,
+              client_secret: process.env.CLIENT_SECRET1!,
             }
         ]).init();
     }
