@@ -1,6 +1,5 @@
 import { Redis } from "@upstash/redis";
 
-// Initialize Redis client
 const redis = new Redis({
   url: process.env.REDIS_URL!,
   token: process.env.REDIS_PASSWORD!,
@@ -29,14 +28,11 @@ export async function rateLimit(
     const now = Date.now();
     const windowStart = now - window * 1000;
 
-    // Remove old entries outside the window
     await redis.zremrangebyscore(key, 0, windowStart);
 
-    // Count requests in current window
     const requestCount = await redis.zcard(key);
 
     if (requestCount >= limit) {
-      // Get the oldest request timestamp to calculate reset time
       const oldestRequest = await redis.zrange(key, 0, 0, { withScores: true });
       const resetTime = oldestRequest[1] 
         ? Math.ceil((Number(oldestRequest[1]) + window * 1000) / 1000)
@@ -50,10 +46,8 @@ export async function rateLimit(
       };
     }
 
-    // Add current request
     await redis.zadd(key, { score: now, member: `${now}` });
 
-    // Set expiration on the key
     await redis.expire(key, window);
 
     return {
@@ -64,7 +58,6 @@ export async function rateLimit(
     };
   } catch (error) {
     console.error("Rate limit error:", error);
-    // Fail open - allow the request if rate limiting fails
     return {
       success: true,
       limit,
@@ -78,7 +71,6 @@ export async function rateLimit(
  * Get the client IP address from the request
  */
 export function getClientIp(request: Request): string {
-  // Check various headers for the real IP
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
   const cfConnectingIp = request.headers.get("cf-connecting-ip");
