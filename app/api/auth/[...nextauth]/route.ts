@@ -5,8 +5,8 @@ import FortyTwoProvider from "next-auth/providers/42-school";
 export const authOptions: NextAuthOptions = {
   providers: [
     FortyTwoProvider({
-      clientId: process.env.NEXT_PUBLIC_CLIENT_ID!,
-      clientSecret: process.env.CLIENT_SECRET_NEXT1!,
+      clientId: process.env.CLIENT_ID1!,
+      clientSecret: process.env.CLIENT_SECRET1!,
       httpOptions: {
         timeout: 10000,
       },
@@ -70,8 +70,8 @@ export const authOptions: NextAuthOptions = {
         const response = await fetch("https://api.intra.42.fr/oauth/token", {
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({
-                client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
-                client_secret: process.env.CLIENT_SECRET_NEXT1!,
+                client_id: process.env.CLIENT_ID1!,
+                client_secret: process.env.CLIENT_SECRET1!,
                 grant_type: "refresh_token",
                 refresh_token: token.refreshToken as string,
             }),

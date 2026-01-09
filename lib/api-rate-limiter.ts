@@ -21,24 +21,16 @@ class ApiRateLimiter {
 
   private tokens: string[] = [];
   private currentTokenIndex = 0;
+  private initPromise: Promise<void> | null = null;
 
   async initTokens() {
     if (this.tokens.length > 0) return;
+    if (this.initPromise) return this.initPromise;
 
-    const tokenPromises = [];
+    this.initPromise = (async () => {
+      const tokenPromises = [];
     
-    const clientId1 = process.env.NEXT_PUBLIC_CLIENT_ID;
-    const clientSecret1 = process.env.CLIENT_SECRET_NEXT1;
-    if (clientId1 && clientSecret1) {
-      tokenPromises.push(
-        this.getToken(clientId1, clientSecret1).catch(err => {
-          console.warn(`Failed to get token 1:`, err.message);
-          return null;
-        })
-      );
-    }
-
-    for (let i = 2; i <= 6; i++) {
+      for (let i = 1; i <= 6; i++) {
       const clientId = process.env[`CLIENT_ID${i}`];
       const clientSecret = process.env[`CLIENT_SECRET${i}`];
       
@@ -49,8 +41,10 @@ class ApiRateLimiter {
             return null;
           })
         );
+        console.log(`Loaded CLIENT_ID${i} and CLIENT_SECRET${i}`);
       }
     }
+
 
     const tokens = await Promise.all(tokenPromises);
     this.tokens = tokens.filter((t): t is string => t !== null);
@@ -64,29 +58,27 @@ class ApiRateLimiter {
     this.minDelay = 1000 / totalRatePerSecond;
     
     console.log(`[API Rate Limiter] Initialized with ${this.tokens.length} tokens. Rate limit: ${totalRatePerSecond} req/s (delay: ${this.minDelay.toFixed(2)}ms)`);
+    })();
+    return this.initPromise;
   }
 
   private async getToken(clientId: string, clientSecret: string): Promise<string | null> {
-    try {
-      const response = await fetch("https://api.intra.42.fr/oauth/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "client_credentials",
-          client_id: clientId,
-          client_secret: clientSecret,
-        }),
-      });
+    const response = await fetch("https://api.intra.42.fr/oauth/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
+    });
 
-      if (!response.ok) {
-        throw new Error(`Token request failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.access_token;
-    } catch (error) {
-      return null;
+    if (!response.ok) {
+      throw new Error(`Token request failed: ${response.statusText}`);
     }
+
+    const data = await response.json();
+    return data.access_token;
   }
 
   private getNextToken(): string {
