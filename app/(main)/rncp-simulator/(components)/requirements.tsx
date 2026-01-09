@@ -20,11 +20,11 @@ interface TitleRequirementProps {
 function TitleRequirement({ name, value, max, unit }: TitleRequirementProps) {
   function formatValue(value: number | string | undefined) {
     if (value == null) return "0"
-    // Format only for level
+
     if (name.toLowerCase().includes("level")) {
-      // Format only the current level (value) with exactly 2 decimals, max as integer
+
       if (arguments[1] === value) {
-        // value
+
         if (typeof value === "number") {
           return value.toLocaleString("fr-FR", {
             minimumFractionDigits: 2,
@@ -35,13 +35,13 @@ function TitleRequirement({ name, value, max, unit }: TitleRequirementProps) {
         if (typeof value === "string") {
           const num = Number.parseFloat(value.replace(/\s/g, "").replace(",", "."))
           if (isNaN(num)) return value
-          // Force 2 décimales, même si le nombre est 21.7 => 21.70
+
           return num.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true })
         }
         return "0.00"
       }
       if (arguments[2] === max) {
-        // max
+
         if (typeof max === "number") {
           return max.toLocaleString("fr-FR", { maximumFractionDigits: 0 })
         }
@@ -72,7 +72,7 @@ function TitleRequirement({ name, value, max, unit }: TitleRequirementProps) {
         </p>
       </div>
       <Progress
-        max={100} // Max is now always 100 for percentage
+        max={100} 
         value={percent > 100 ? 100 : percent}
         aria-label={`${value || 0} out of ${max || 100} for the ${name.toLowerCase()}`}
       />
@@ -100,7 +100,7 @@ export function TitleRequirements({
   onManualProjectsChange,
 }: TitleRequirementsProps) {
   const [showManualTab, setShowManualTab] = useState(false)
-  // Force re-render on projectMarks change
+
   const {
     professionalExperiences,
     toggleProfessionalExperience,
@@ -125,7 +125,7 @@ export function TitleRequirements({
     toggleCoalitionBonus: state.toggleCoalitionBonus,
   }))
 
-  // Separate hook to ensure we can call toggleCoalitionBonus without typing issues
+
   const toggleCoalition = useFortyTwoStore((state) => state.toggleCoalitionBonus)
 
   const validatedGroupProjectsCount = (() => {
@@ -135,7 +135,7 @@ export function TitleRequirements({
 
   const currentXP = useFortyTwoStore((state) => state.getSelectedXP())
   const currentLevel = getLevel(currentXP)
-  // Utilise getPreciseLevel pour un affichage décimal précis
+
   const currentLevelPrecise = getPreciseLevel(
     currentXP,
     useFortyTwoStore((state) => state.levels),
@@ -185,8 +185,8 @@ export function TitleRequirements({
     professionalExperiencesCount >= title.number_of_experiences
 
   const addManualProjectXp = (xp: number) => {
-    // Ici, tu peux créer une action dans le store pour ajouter de l'XP manuelle si tu veux la persister
-    // Pour l'instant, on ne fait rien car tous les projets sélectionnés (manuellement ou non) sont déjà pris en compte dans getSelectedXP
+
+
   }
 
   return (
@@ -334,7 +334,7 @@ export function TitleRequirements({
               onAddProject={addManualProjectXp}
               autoExtraProjects={autoExtraProjects}
               onDeleteOldProject={onDeleteOldProject}
-              manualProjects={manualProjects ?? []} // always use prop
+              manualProjects={manualProjects ?? []} 
               onManualProjectsChange={onManualProjectsChange}
               setProjectMark={setProjectMark}
               removeProject={removeProject}
@@ -469,7 +469,7 @@ function ManualProjectForm({
     setSelected("")
     setError("")
   }
-  // (Plus de synchronisation auto avec onManualProjectsChange, tout est contrôlé par le parent)
+
 
   const handleRemove = (id: number) => {
     if (onManualProjectsChange) {

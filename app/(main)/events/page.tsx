@@ -76,7 +76,7 @@ export default function EventsPage() {
   const effectiveCampus = selectedCampus || session?.user?.campus;
   const [showTimeoutError, setShowTimeoutError] = React.useState(false);
 
-  // Timeout pour afficher un message d'erreur après 15 secondes
+
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setShowTimeoutError(true);

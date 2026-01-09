@@ -1,14 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
+import { campusSchema } from "@/lib/validation";
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ campus_name: string }> }
 ) {
   try {
+
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { campus_name: campusName } = await params;
 
-    // Fetch all students from this campus
+
+    const validation = campusSchema.safeParse(campusName);
+    if (!validation.success) {
+      return NextResponse.json({ error: "Invalid campus name" }, { status: 400 });
+    }
+
+
     const students = await prisma.student.findMany({
       where: {
         campus: campusName,
@@ -21,7 +36,7 @@ export async function GET(
       },
     });
 
-    // Map to extract top hosts for each student
+
     const hostUsage: {
       [host: string]: Array<{
         id: number;
@@ -38,7 +53,7 @@ export async function GET(
           const parsedActivityData = JSON.parse(student.activityData);
           let topHosts = parsedActivityData.topHosts;
 
-          // Handle nested logtime structure
+
           if (!topHosts && parsedActivityData.logtime) {
             topHosts = parsedActivityData.logtime.topHosts;
           }
@@ -70,12 +85,12 @@ export async function GET(
       }
     });
 
-    // Sort users by hours for each host
+
     Object.keys(hostUsage).forEach((host) => {
       hostUsage[host].sort((a, b) => {
         const hoursA = parseFloat(a.hours);
         const hoursB = parseFloat(b.hours);
-        return hoursB - hoursA; // Descending order
+        return hoursB - hoursA; 
       });
     });
 

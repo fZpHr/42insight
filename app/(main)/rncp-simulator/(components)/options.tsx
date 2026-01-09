@@ -115,7 +115,7 @@ export function TitleOptions({ title, className, onCompletionChange }: TitleOpti
   }, [completionStatuses, onCompletionChange])
 
   if (options.length <= 4) {
-    // grille responsive selon le nombre d'options
+
     let gridCols = 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'
     if (options.length === 3) gridCols = 'grid-cols-1 md:grid-cols-3 xl:grid-cols-3'
     if (options.length === 2) gridCols = 'grid-cols-1 md:grid-cols-2 xl:grid-cols-2'
@@ -143,7 +143,7 @@ export function TitleOptions({ title, className, onCompletionChange }: TitleOpti
       </div>
     )
   }
-  // fallback: carousel pour > 4 options
+
   return (
     <div className="bg-muted/10 rounded-xl py-4 w-full">
       <Carousel

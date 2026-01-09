@@ -17,7 +17,7 @@ interface PiscineStatsProps {
 export function PiscineStats({ campus }: PiscineStatsProps) {
   const [showTimeoutError, setShowTimeoutError] = useState(false);
 
-  // Timeout pour afficher un message d'erreur après 15 secondes
+
   useEffect(() => {
     if (!campus) return;
     
@@ -37,7 +37,7 @@ export function PiscineStats({ campus }: PiscineStatsProps) {
       return response.json();
     },
     enabled: !!campus,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 10, 
     refetchOnMount: 'always',
   });
 
@@ -100,12 +100,12 @@ export function PiscineStats({ campus }: PiscineStatsProps) {
     );
   }
 
-  // Get unique years and sort them
+
   const years = Array.from(new Set(students.map((s) => s.year)))
-    .filter((year) => year > 2000 && year <= new Date().getFullYear()) // Filter valid years
+    .filter((year) => year > 2000 && year <= new Date().getFullYear()) 
     .sort((a, b) => b - a);
 
-  // Calculate stats for each year
+
   const yearStats = years
     .map((year) => {
       const yearStudents = students.filter((s) => s.year === year);
@@ -121,9 +121,9 @@ export function PiscineStats({ campus }: PiscineStatsProps) {
         percentage,
       };
     })
-    .filter((stat) => stat.total >= 10); // Exclude years with less than 10 students
+    .filter((stat) => stat.total >= 10); 
 
-  // Show all available years
+
   const recentYearStats = yearStats;
 
   return (

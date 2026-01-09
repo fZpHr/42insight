@@ -26,7 +26,7 @@ export async function GET(
     if (!campusId) {
       return NextResponse.json({ error: "Campus not found" }, { status: 404 });
     }
-    ///events/35288/events_users?page[size]=100&page[number]=1
+
     const response = await apiRateLimiter.fetch(
       `/events/${event_id}/feedbacks?page[size]=100&page[number]=1`,
     );

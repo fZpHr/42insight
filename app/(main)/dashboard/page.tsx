@@ -207,12 +207,12 @@ export function SkillBar({
 }: SkillBarProps) {
   if (!skills.length) return null;
 
-  // Find the main skill (highest level)
+
   const mainSkill = skills.reduce((prev, curr) =>
     curr.level > prev.level ? curr : prev,
   );
 
-  // Emoji mapping function
+
   const getSkillEmoji = (skillName: string) => {
     const name = skillName.toLowerCase();
     if (name.includes("network") || name.includes("system")) return "🌐";
@@ -312,7 +312,7 @@ export default function Dashboard() {
     queryKey: ["userIntraInfo", user?.name],
     queryFn: () => fetchUserIntraInfo(user?.login || ""),
     enabled: !!user && !loading,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000, 
     retry: 2,
   });
 
@@ -320,7 +320,7 @@ export default function Dashboard() {
     queryKey: ["staffInfo", effectiveCampus],
     queryFn: () => fetch(`/api/staff?campus=${effectiveCampus}`).then((res) => res.json()),
     enabled: !!user && !loading && (isStaff || isAdmin) && !!effectiveCampus,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000, 
     retry: 2,
   });
 
@@ -331,7 +331,7 @@ export default function Dashboard() {
     queryKey: ["campusRank", user?.campus],
     queryFn: () => getCampusRank(user?.campus || "", user?.login || ""),
     enabled: !!user && !loading && !isStaff,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000, 
     retry: 2,
   });
 
@@ -351,14 +351,14 @@ export default function Dashboard() {
     retry: 2,
   })
 
-  // Synchronise events dans Zustand si présents
+
   useEffect(() => {
     if (Array.isArray(userEvents)) {
       setEvents(userEvents.length)
     }
   }, [userEvents, setEvents])
 
-  // Set data ready when all required data is loaded
+
   useEffect(() => {
     if (!intraLoading && userIntraInfo && !rankLoading) {
       setIsDataReady(true);

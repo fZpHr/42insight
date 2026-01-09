@@ -52,9 +52,8 @@ const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
     let hasMore = true;
 
     while (hasMore) {
-      // Add delay to respect rate limit (2 requests/second)
       if (page > 1) {
-        await new Promise(resolve => setTimeout(resolve, 600)); // 600ms delay between requests
+        await new Promise(resolve => setTimeout(resolve, 2100));
       }
       
       const response = await fetch(
@@ -105,14 +104,14 @@ export default function ClusterMap() {
   const [selectedCluster, setSelectedCluster] = useState("1");
   const [showTimeoutError, setShowTimeoutError] = useState(false);
 
-  // Use selectedCampus from context (for staff) or user's campus (for regular users)
+
   const effectiveCampus = selectedCampus || user?.campus;
 
-  // Timeout pour afficher un message d'erreur après 15 secondes
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowTimeoutError(true);
-    }, 15000); // 15 secondes
+    }, 15000); 
 
     return () => clearTimeout(timer);
   }, [effectiveCampus]);
@@ -137,7 +136,7 @@ export default function ClusterMap() {
   } = useQuery<HostUsageData>({
     queryKey: ["hostUsage", effectiveCampus],
     queryFn: async () => {
-      // Add delay before fetching to avoid rate limit
+
       await new Promise(resolve => setTimeout(resolve, 600));
       return fetchHostUsage(effectiveCampus);
     },
@@ -325,9 +324,9 @@ export default function ClusterMap() {
     (_, i) => String(i + 1)
   );
 
-  // Protection: Afficher le loading tant que les données ne sont pas chargées
-  // Attendre que isSuccess soit true pour être sûr que les données sont vraiment chargées
-  // SAUF si le timeout est dépassé
+
+
+
   if (!showTimeoutError && (status === "loading" || !effectiveCampus || (isLoading || isFetching) && !isSuccess)) {
     return <LoadingScreen message="Loading cluster map..." />;
   }

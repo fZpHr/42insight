@@ -59,7 +59,7 @@ import { signOut } from "next-auth/react"
 import { CampusSwitcher } from "@/components/CampusSwitcher";
 import { useCampus } from "@/contexts/CampusContext";
 
-// Routes restreintes par campus
+
 const campusRestrictedRoutes = [
   "/rankings",
   "/exam-tracker",
@@ -71,16 +71,16 @@ const campusRestrictedRoutes = [
 
 const supportedCampuses = ["Angouleme", "Nice"];
 
-// Fonction pour vérifier si l'utilisateur a accès à une route
+
 const hasAccessToRoute = (url: string, campus?: string | null, role?: string | null) => {
-  // Les pisciner n'ont pas accès à certaines routes
+
   const poolRestrictedRoutes = ["/query", "/rankings", "/trombinoscope"];
   if (role === "pisciner" && poolRestrictedRoutes.some(route => url.startsWith(route))) {
     return false;
   }
 
-  // Vérification du campus pour les routes restreintes
-  // On vérifie toujours le campus, même pour staff/admin
+
+
   if (campusRestrictedRoutes.some(route => url.startsWith(route))) {
     return campus ? supportedCampuses.includes(campus) : false;
   }
@@ -91,7 +91,7 @@ const hasAccessToRoute = (url: string, campus?: string | null, role?: string | n
 const navigationData = {
   navMain: [
     {
-      title: null, // Pas de label pour Dashboard
+      title: null, 
       items: [
         {
           title: "Dashboard",
@@ -227,7 +227,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { open } = useSidebar();
   const { selectedCampus } = useCampus();
   
-  // Pour le staff/admin, utiliser le campus sélectionné, sinon utiliser le campus de l'utilisateur
+
   const effectiveCampus = selectedCampus || user?.campus;
 
   const getBadgeVariant = (badge: string) => {
@@ -283,7 +283,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         {user?.role != "pisciner" &&
           navigationData.navMain.map((group, groupIndex) => {
-            // Séparer les items accessibles et non accessibles
+
             const accessibleItems = group.items.filter((item) => 
               hasAccessToRoute(item.url, effectiveCampus, user?.role)
             );
@@ -291,7 +291,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               !hasAccessToRoute(item.url, effectiveCampus, user?.role)
             );
             
-            // Ne pas afficher de label si group.title est null
+
             return (
               <SidebarGroup key={group.title || 'dashboard'}>
                 {group.title && <SidebarGroupLabel>{group.title}</SidebarGroupLabel>}

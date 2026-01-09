@@ -40,7 +40,7 @@ async function fetchPeersData() {
 }
 
 
-// thks find-peers https://github.com/codam-coding-college/find-peers/blob/main/env/projectIDs.json
+
 const PROJECT_ORDER: { [key: string]: number } = {
     "libft": 1314,
     "Born2beroot": 1994,
@@ -213,7 +213,7 @@ export default function PeersPage() {
     const effectiveCampus = selectedCampus || user?.campus;
     const [showTimeoutError, setShowTimeoutError] = React.useState(false);
 
-    // Timeout pour afficher un message d'erreur après 15 secondes
+
     React.useEffect(() => {
         const timer = setTimeout(() => {
             setShowTimeoutError(true);
@@ -228,7 +228,7 @@ export default function PeersPage() {
         refetchOnMount: 'always',
     });
 
-    // Protection: Afficher le loading tant que les données ne sont pas chargées
+
     if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
         return <LoadingScreen message="Loading peers..." />;
     }

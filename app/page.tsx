@@ -353,12 +353,12 @@ export default function Home() {
   })), []);
 
   useEffect(() => {
-    // Check for OAuth error in URL
+
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('error') === 'OAuthCallback') {
         setShowApiWarning(true);
-        // Auto-hide after 15 seconds
+
         const timer = setTimeout(() => setShowApiWarning(false), 15000);
         return () => clearTimeout(timer);
       }

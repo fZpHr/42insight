@@ -34,7 +34,7 @@ const LOAD_MORE = 10;
 
 const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
   try {
-    //console.log("Fetching students for campus:", campus);
+
     const response = await fetch(`/api/users/campus/${campus}`);
     if (!response.ok) {
       throw new Error("Failed to fetch students");
@@ -50,7 +50,7 @@ export default function Trombinoscope() {
     const { data: session, status } = useSession();
     const user = session?.user;
   const { selectedCampus: contextCampus } = useCampus();
-  // Use context campus (for staff) or user's campus
+
   const effectiveCampus = contextCampus || user?.campus || "";
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [showingName, setShowingName] = useState(true);
@@ -58,7 +58,7 @@ export default function Trombinoscope() {
   const observerRef = useRef<HTMLDivElement>(null);
   const [showTimeoutError, setShowTimeoutError] = useState(false);
 
-  // Timeout pour afficher un message d'erreur après 15 secondes
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowTimeoutError(true);
@@ -148,12 +148,12 @@ export default function Trombinoscope() {
     return Array.from(yearsSet).sort().reverse();
   }
 
-  // Protection: Afficher le loading tant que les données ne sont pas chargées
+
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return <LoadingScreen message="Loading trombinoscope..." />;
   }
 
-  // Si aucun étudiant n'est trouvé après le chargement
+
   if (isSuccess && students.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-3">

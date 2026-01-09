@@ -42,8 +42,9 @@ export const authOptions: NextAuthOptions = {
     signOut: "/",
   },
   callbacks: {
-    async jwt({ token, user, account, profile }) {
-      if (user) {
+    async jwt({ token, user, account }) {
+
+      if (account && user) {
         token.id = user.id;
         token.login = (user as any).login;
         token.campus = (user as any).campus;
@@ -52,9 +53,49 @@ export const authOptions: NextAuthOptions = {
         token.wallet = (user as any).wallet;
         token.level = (user as any).level;
         token.role = (user as any).role;
-        token.accessToken = account?.access_token
+        token.accessToken = account.access_token;
+        token.accessTokenExpires = (account.expires_at as number) * 1000;
+        token.refreshToken = account.refresh_token;
+        return token;
       }
-      return token;
+
+
+      if (Date.now() < (token.accessTokenExpires as number)) {
+        return token;
+      }
+
+
+      console.log("Access token expired, trying to refresh...");
+      try {
+        const response = await fetch("https://api.intra.42.fr/oauth/token", {
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+                client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
+                client_secret: process.env.CLIENT_SECRET_NEXT1!,
+                grant_type: "refresh_token",
+                refresh_token: token.refreshToken as string,
+            }),
+            method: "POST",
+        });
+
+        const refreshedTokens = await response.json();
+
+        if (!response.ok) {
+            throw refreshedTokens;
+        }
+
+
+        token.accessToken = refreshedTokens.access_token;
+        token.accessTokenExpires = Date.now() + refreshedTokens.expires_in * 1000;
+        token.refreshToken = refreshedTokens.refresh_token ?? token.refreshToken; 
+
+        return token;
+      } catch (error) {
+        console.error("Error refreshing access token", error);
+
+        token.error = "RefreshAccessTokenError";
+        return token;
+      }
     },
 
     async session({ session, token }) {
@@ -66,7 +107,6 @@ export const authOptions: NextAuthOptions = {
       session.user.wallet = token.wallet as number;
       session.user.level = token.level as number;
       session.user.role = token.role as string;
-      session.accessToken = token.accessToken as string;
       return session;
     },
 

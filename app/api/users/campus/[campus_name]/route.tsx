@@ -100,7 +100,7 @@ export async function GET(
             }
         }
         
-        // Parse activityData and relation from JSON strings
+
         const studentsWithParsedData = students.map(student => {
             try {
                 const parsedActivityData = typeof student.activityData === 'string' 
@@ -111,12 +111,12 @@ export async function GET(
                     ? JSON.parse(student.relation)
                     : student.relation;
                 
-                // Restructure activityData to have logtime as a nested object
-                // If the data is at root level (has totalSeconds, totalMinutes, etc.)
-                // move it into a logtime sub-object
+
+
+
                 let restructuredActivityData = parsedActivityData;
                 if (parsedActivityData && parsedActivityData.totalSeconds && !parsedActivityData.logtime) {
-                    // Extract logtime-specific fields
+
                     const {
                         totalSeconds, totalMinutes, totalHours, totalDays,
                         averageDailyMinutes, averageDailyHours,
@@ -126,7 +126,7 @@ export async function GET(
                         topDays, topHosts, weeklyMinutes, last7Days, last30Days,
                         sessions, timePreferences, peakHour, quietHour, profile,
                         weekdayVsWeekend, productivity, lastUpdated,
-                        // Keep the rest in the main object
+
                         ...restActivityData
                     } = parsedActivityData;
                     

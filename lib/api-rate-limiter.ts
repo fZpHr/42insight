@@ -14,11 +14,11 @@ class ApiRateLimiter {
   private queue: QueuedRequest[] = [];
   private processing = false;
   private lastRequestTime = 0;
-  private minDelay = 100; // Minimum delay between requests in ms
+  private minDelay = 500; 
   private maxRetries = 3;
-  private retryDelay = 1000; // Initial retry delay in ms
+  private retryDelay = 1000; 
   
-  // Token rotation
+
   private tokens: string[] = [];
   private currentTokenIndex = 0;
 
@@ -59,7 +59,11 @@ class ApiRateLimiter {
       throw new Error('Failed to obtain any API tokens');
     }
     
-    console.log(`[API Rate Limiter] Initialized with ${this.tokens.length} tokens`);
+
+    const totalRatePerSecond = 2 * this.tokens.length;
+    this.minDelay = 1000 / totalRatePerSecond;
+    
+    console.log(`[API Rate Limiter] Initialized with ${this.tokens.length} tokens. Rate limit: ${totalRatePerSecond} req/s (delay: ${this.minDelay.toFixed(2)}ms)`);
   }
 
   private async getToken(clientId: string, clientSecret: string): Promise<string | null> {
@@ -131,7 +135,7 @@ class ApiRateLimiter {
       const now = Date.now();
       const timeSinceLastRequest = now - this.lastRequestTime;
 
-      // Wait if we need to respect the minimum delay
+
       if (timeSinceLastRequest < this.minDelay) {
         await this.sleep(this.minDelay - timeSinceLastRequest);
       }
@@ -142,21 +146,21 @@ class ApiRateLimiter {
       try {
         const response = await request.execute();
 
-        // Handle rate limiting
+
         if (response.status === 429) {
           console.warn('[API Rate Limiter] Rate limited, retrying...');
           
           if (request.retries < this.maxRetries) {
-            // Exponential backoff
+
             const delay = this.retryDelay * Math.pow(2, request.retries);
             await this.sleep(delay);
             
             request.retries++;
-            this.queue.unshift(request); // Put it back at the front
+            this.queue.unshift(request); 
             continue;
           } else {
             console.error('[API Rate Limiter] Max retries reached for request');
-            request.resolve(response); // Return the 429 response
+            request.resolve(response); 
             continue;
           }
         }
@@ -175,12 +179,12 @@ class ApiRateLimiter {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Get the queue size for monitoring
+
   getQueueSize(): number {
     return this.queue.length;
   }
 
-  // Clear the queue (useful for cleanup)
+
   clearQueue() {
     this.queue.forEach(req => {
       req.reject(new Error('Queue cleared'));
@@ -189,5 +193,5 @@ class ApiRateLimiter {
   }
 }
 
-// Singleton instance
+
 export const apiRateLimiter = new ApiRateLimiter();

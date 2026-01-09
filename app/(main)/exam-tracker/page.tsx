@@ -47,16 +47,16 @@ export default function ExamTracker() {
     const { friends, toggleFriend, isFriend } = useExamFriends();
     const [showTimeoutError, setShowTimeoutError] = React.useState(false);
 
-    // Vérifier si c'est un jour d'examen (mercredi, jeudi, vendredi)
+
     const isExamDay = () => {
         const today = new Date();
-        const dayOfWeek = today.getDay(); // 0 = Dimanche, 3 = Mercredi, 4 = Jeudi, 5 = Vendredi
+        const dayOfWeek = today.getDay(); 
         return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
     };
 
-    // Timeout pour afficher un message d'erreur après 15 secondes
+
     React.useEffect(() => {
-        if (!isExamDay()) return; // Pas de timeout si ce n'est pas un jour d'examen
+        if (!isExamDay()) return; 
         
         const timer = setTimeout(() => {
             setShowTimeoutError(true);
@@ -67,7 +67,7 @@ export default function ExamTracker() {
     const { data: students = [], isLoading, error, isSuccess, isFetching } = useQuery({
         queryKey: ['current_exam'],
         queryFn: async () => {
-            // Si ce n'est pas un jour d'examen, retourner un tableau vide
+
             if (!isExamDay()) {
                 return [];
             }
@@ -85,8 +85,8 @@ export default function ExamTracker() {
                     .sort((a: ExamStudent, b: ExamStudent) => b.grade - a.grade)
                 : data;
         },
-        enabled: isExamDay(), // Désactiver la query si ce n'est pas un jour d'examen
-        refetchInterval: isExamDay() ? 600000 : false, // Refetch seulement les jours d'examen
+        enabled: isExamDay(), 
+        refetchInterval: isExamDay() ? 600000 : false, 
         refetchOnMount: 'always',
     })
 
@@ -122,7 +122,7 @@ export default function ExamTracker() {
         ? studentsToShow.reduce((sum, student) => sum + (student.grade || 0), 0) / studentsToShow.length
         : 0;
 
-    // Campus-specific exam schedule info
+
     let scheduleInfo: React.ReactNode = null;
     if (effectiveCampus === "Nice") {
         scheduleInfo = (
@@ -159,12 +159,12 @@ export default function ExamTracker() {
         );
     }
 
-    // Protection: Afficher le loading tant que les données ne sont pas chargées
+
     if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess && isExamDay())) {
         return <LoadingScreen message="Loading exam tracker..." />;
     }
 
-    // Message si ce n'est pas un jour d'examen
+
     if (!isExamDay()) {
         return (
             <div className="max-w-7xl mx-auto px-4">

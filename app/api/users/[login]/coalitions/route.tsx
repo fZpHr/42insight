@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
 const coalitionCache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const CACHE_TTL = 30 * 60 * 1000; 
 
 export async function GET(
   request: Request,
