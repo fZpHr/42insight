@@ -447,7 +447,7 @@ const createFortyTwoStore = (initProps: {
       const professionalExperienceXp: Record<string, number> = {
         stage_1: 42000,
         stage_2: 63000,
-        startup_experience: 42000,
+        startup_experience: 63000,
         alternance_1_an: 90000,
         alternance_2_ans: 180000,
       }
