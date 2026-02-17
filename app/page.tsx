@@ -15,31 +15,72 @@ import {
 } from "framer-motion";
 
 const allFloatingStats = [
-  { label: "Unique Users", value: "623", subtitle: "Last 30 days", color: "text-blue-400" },
-  { label: "API Requests", value: "5.8M+", subtitle: "Total", color: "text-yellow-400" },
-  { label: "Tokens Generated", value: "29.1K", subtitle: "Total", color: "text-purple-400" },
-  { label: "Visitors", value: "906", trend: "+9%", subtitle: "Last 30 days", color: "text-blue-400" },
-  { label: "Page Views", value: "4,357", trend: "+3%", subtitle: "Last 30 days", color: "text-purple-400" },
-  { label: "Bounce Rate", value: "20%", trend: "-3%", subtitle: "Last 30 days", color: "text-green-400" },
-  { label: "/dashboard", value: "72.5%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/rankings", value: "54.6%", subtitle: "of visitors", color: "text-pink-400" },
-  { label: "/trombinoscope", value: "30.7%", subtitle: "of visitors", color: "text-orange-400" },
-  { label: "/rncp-simulator", value: "22.8%", subtitle: "of visitors", color: "text-yellow-400" },
-  { label: "/exam-tracker", value: "22.6%", subtitle: "of visitors", color: "text-lime-400" },
-  { label: "/peers", value: "17.5%", subtitle: "of visitors", color: "text-indigo-400" },
-  { label: "/cluster-map", value: "16.7%", subtitle: "of visitors", color: "text-rose-400" },
-  { label: "France", value: "98%", subtitle: "Last 30 days", color: "text-blue-500" },
-  { label: "Desktop", value: "69%", subtitle: "Last 30 days", color: "text-violet-400" },
-  { label: "Mobile", value: "31%", subtitle: "Last 30 days", color: "text-fuchsia-400" },
-  { label: "GNU/Linux", value: "41%", subtitle: "Last 30 days", color: "text-emerald-400" },
-  { label: "Android", value: "18%", subtitle: "Last 30 days", color: "text-green-400" },
-  { label: "Windows", value: "17%", subtitle: "Last 30 days", color: "text-sky-400" },
-  { label: "Commits", value: "264", subtitle: "Total", color: "text-cyan-400" },
-  { label: "Additions", value: "97.6K", subtitle: "Total", color: "text-teal-400" },
-  { label: "Suppressions", value: "71.2K", subtitle: "Total", color: "text-red-400" },
-  { label: "Actions runs minutes", value: "3280 min", subtitle: "Last 30 days", color: "text-yellow-400" },
-  { label: "Total job runs", value: "546", subtitle: "Last 30 days", color: "text-purple-400" },
-  { label: "Avg job run time", value: "5.18 min", subtitle: "Last 30 days", color: "text-pink-400" },
+  // --- API & USERS (Blue) ---
+  { label: "Unique Users", value: "760", subtitle: "Total", color: "text-blue-400" },
+  { label: "API Requests", value: "7.4M+", subtitle: "Total", color: "text-blue-400" }, // 1,228,672 * 6
+  { label: "Tokens Generated", value: "17.1K", subtitle: "Total", color: "text-blue-400" },
+
+  // --- TRAFFIC GENERAL (Purple) ---
+  { label: "Visitors", value: "659", trend: "+204%", subtitle: "Last 30 days", color: "text-purple-400" },
+  { label: "Page Views", value: "2,908", trend: "+147%", subtitle: "Last 30 days", color: "text-purple-400" },
+  { label: "Bounce Rate", value: "21%", trend: "+9%", subtitle: "Last 30 days", color: "text-purple-400" },
+
+  // --- PAGES NAVIGATION (Cyan) ---
+  { label: "/dashboard", value: "73.1%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/rankings", value: "57.5%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/rncp-simulator", value: "39.8%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/cluster-map", value: "22.8%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/exam-tracker", value: "22.5%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/trombinoscope", value: "14.3%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/peers", value: "12.1%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/events", value: "5.3%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/links", value: "3.5%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/query", value: "3.2%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/piscine/rankings", value: "<0.5%", subtitle: "of visitors", color: "text-cyan-400" },
+  { label: "/contribute", value: "<0.5%", subtitle: "of visitors", color: "text-cyan-400" },
+
+  // --- GEOGRAPHY (Indigo) ---
+  { label: "France", value: "97%", subtitle: "636 visitors", color: "text-indigo-400" },
+  { label: "Netherlands", value: "1%", subtitle: "7 visitors", color: "text-indigo-400" },
+  { label: "New Caledonia", value: "1%", subtitle: "4 visitors", color: "text-indigo-400" },
+  { label: "Philippines", value: "1%", subtitle: "4 visitors", color: "text-indigo-400" },
+  { label: "USA", value: "<0.5%", subtitle: "3 visitors", color: "text-indigo-400" },
+  { label: "Spain", value: "<0.5%", subtitle: "2 visitors", color: "text-indigo-400" },
+  { label: "Morocco", value: "<0.5%", subtitle: "2 visitors", color: "text-indigo-400" },
+  { label: "Sweden", value: "<0.5%", subtitle: "1 visitor", color: "text-indigo-400" },
+
+  // --- DEVICES & OS (Emerald) ---
+  { label: "Desktop", value: "70%", subtitle: "Device", color: "text-emerald-400" },
+  { label: "Mobile", value: "30%", subtitle: "Device", color: "text-emerald-400" },
+  { label: "GNU/Linux", value: "40%", subtitle: "261 visitors", color: "text-emerald-400" },
+  { label: "Android", value: "16%", subtitle: "104 visitors", color: "text-emerald-400" },
+  { label: "Mac", value: "15%", subtitle: "101 visitors", color: "text-emerald-400" },
+  { label: "iOS", value: "14%", subtitle: "93 visitors", color: "text-emerald-400" },
+  { label: "Windows", value: "11%", subtitle: "71 visitors", color: "text-emerald-400" },
+  { label: "Ubuntu", value: "4%", subtitle: "29 visitors", color: "text-emerald-400" },
+
+  // --- BROWSERS (Orange) ---
+  { label: "Chrome", value: "42%", subtitle: "276 visitors", color: "text-orange-400" },
+  { label: "Firefox", value: "18%", subtitle: "118 visitors", color: "text-orange-400" },
+  { label: "Chrome Mobile", value: "15%", subtitle: "96 visitors", color: "text-orange-400" },
+  { label: "Mobile Safari", value: "12%", subtitle: "80 visitors", color: "text-orange-400" },
+  { label: "Safari", value: "5%", subtitle: "36 visitors", color: "text-orange-400" },
+  { label: "Opera", value: "3%", subtitle: "18 visitors", color: "text-orange-400" },
+  { label: "Edge", value: "1%", subtitle: "9 visitors", color: "text-orange-400" },
+  { label: "Chrome iOS", value: "1%", subtitle: "8 visitors", color: "text-orange-400" },
+  { label: "Firefox Mobile", value: "1%", subtitle: "6 visitors", color: "text-orange-400" },
+  { label: "Avast", value: "1%", subtitle: "5 visitors", color: "text-orange-400" },
+  { label: "Firefox iOS", value: "1%", subtitle: "5 visitors", color: "text-orange-400" },
+  { label: "Ecosia", value: "<0.5%", subtitle: "1 visitor", color: "text-orange-400" },
+  { label: "Samsung Browser", value: "<0.5%", subtitle: "1 visitor", color: "text-orange-400" },
+
+  // --- GITHUB (Pink) ---
+  { label: "Commits", value: "292", subtitle: "Total", color: "text-pink-400" },
+  { label: "Additions", value: "122.1K", subtitle: "Total", color: "text-pink-400" },
+  { label: "Suppressions", value: "76.7K", subtitle: "Total", color: "text-pink-400" },
+  { label: "Actions runs", value: "22,553 min", subtitle: "Last 30 days", color: "text-pink-400" },
+  { label: "Total job runs", value: "2,952", subtitle: "Last 30 days", color: "text-pink-400" },
+  { label: "Avg job run time", value: "8m 10s", subtitle: "Last 30 days", color: "text-pink-400" },
 ];
 
 const useWrapPosition = (
