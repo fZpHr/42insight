@@ -11,6 +11,9 @@ export type Language = "en" | "fr";
 
 export const LANGUAGE_STORAGE_KEY = "42insight:language";
 
+/** Where anyone can check the claim that nothing is stored. */
+export const REPO_URL = "https://github.com/fZpHr/42insight";
+
 export const copy = {
   en: {
     switchLabel: "English",
@@ -23,8 +26,10 @@ export const copy = {
       "With your key you browse on your own budget: 1200 requests an hour that nobody else draws from.",
     transparency:
       "Nothing happens behind your back. The counter in the top left shows how many requests are in flight, and opening it lists every call made on your key: which endpoint, what it answered, how long it took.",
-    storage:
-      "Your credentials are exchanged for a token and sealed into an encrypted, httpOnly cookie that lasts a month. They are never written to a database or a log. There is no database here.",
+    storageBefore:
+      "Your credentials are exchanged for a token and sealed into an encrypted cookie. I store nothing: the project is open source, ",
+    storageLink: "see for yourself",
+    storageAfter: ".",
     step1Before: "Open ",
     step1Link: "Settings → API → Register a new app",
     step1After: " on the intra.",
@@ -58,7 +63,7 @@ export const copy = {
     activityTitle: "Recent 42 API calls",
     activityEmpty: "Nothing fetched yet on this server.",
     activityCaption:
-      "Once your key is connected, the counter in the header opens onto this: everything the site has asked the 42 API for, on your key.",
+      "Once your key is connected, click your quota and you can see everything the site has asked the 42 API for, on your key.",
     forget: "Forget my key",
     replace: "Replace it",
     connected: "Key connected. The rest of the site is open.",
@@ -78,8 +83,10 @@ export const copy = {
       "Avec votre clé, vous naviguez sur votre propre budget : 1200 requêtes par heure que personne d'autre n'entame.",
     transparency:
       "Rien ne se passe dans votre dos. Le compteur en haut à gauche indique combien de requêtes sont en cours ; en l'ouvrant, vous voyez chaque appel parti sur votre clé : quel endpoint, ce qu'il a répondu, et le temps qu'il a pris.",
-    storage:
-      "Vos identifiants sont échangés contre un jeton, puis scellés dans un cookie chiffré et httpOnly valable un mois. Ils ne sont jamais écrits dans une base ni dans un journal. Il n'y a pas de base de données ici.",
+    storageBefore:
+      "Vos identifiants sont échangés contre un jeton, puis scellés dans un cookie chiffré. Je ne stocke rien : le projet est open source, ",
+    storageLink: "vous pouvez le vérifier",
+    storageAfter: ".",
     step1Before: "Ouvrez ",
     step1Link: "Settings → API → Register a new app",
     step1After: " sur l'intra.",
@@ -113,7 +120,7 @@ export const copy = {
     activityTitle: "Recent 42 API calls",
     activityEmpty: "Nothing fetched yet on this server.",
     activityCaption:
-      "Une fois votre clé connectée, le compteur de l'en-tête s'ouvre là-dessus : tout ce que le site a demandé à l'API 42, avec votre clé.",
+      "Une fois votre clé connectée, vous pouvez cliquer sur votre quota et voir tout ce que le site a demandé à l'API 42 avec votre clé.",
     forget: "Oublier ma clé",
     replace: "La remplacer",
     connected: "Clé connectée. Le reste du site est ouvert.",

@@ -20,6 +20,7 @@ import { IntraKeyGuide } from "@/components/IntraKeyGuide";
 import { ActivityGuide } from "@/components/ActivityGuide";
 import {
   LANGUAGE_STORAGE_KEY,
+  REPO_URL,
   copy,
   detectLanguage,
   type Language,
@@ -167,7 +168,19 @@ export default function ApiKeyPage() {
             <p>{t.why}</p>
             <p>{t.quota}</p>
             <p>{t.transparency}</p>
-            <p>{t.storage}</p>
+            <p>
+              {t.storageBefore}
+              <a
+                href={REPO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                {t.storageLink}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+              {t.storageAfter}
+            </p>
           </div>
 
           <ActivityGuide language={language} />
