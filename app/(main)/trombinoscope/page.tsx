@@ -139,7 +139,10 @@ export default function Trombinoscope() {
   }
 
 
-  if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
+  // The loading screen stays for as long as the fetch does. It used to be
+  // dismissed by a 15s timer, so a campus that took longer rendered an empty
+  // page over a request that was still running.
+  if ((isLoading || isFetching) && !isSuccess) {
     return (
       <LoadingScreen message="Loading trombinoscope..." />
     );

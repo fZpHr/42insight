@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
-import { CAMPUS_IDS, CURSUS_ID } from "@/lib/forty-two/live-campus";
+import { CAMPUS_IDS } from "@/lib/forty-two/live-campus";
 import { cachedOnce } from "@/lib/memory-cache";
 
 /**
@@ -15,17 +15,17 @@ import { cachedOnce } from "@/lib/memory-cache";
  * is recoverable: group by corrector, count the marks at or above the 42 pass
  * threshold against those below, and ignore evaluations not yet graded.
  *
- * It is a page of its own because it is the most expensive thing here: a year
- * of Nice is 10283 evaluations, a hundred pages, near a minute of a visitor's
- * quota. The rankings page loads it in the background and fills the column in
- * when it lands, rather than making everyone wait on a column most sorts do
- * not use.
+ * It is a page of its own, and asked for rather than automatic, because it is
+ * by far the most expensive thing here: Nice has 44867 evaluations on record,
+ * some 450 pages, several minutes of a visitor's quota. Anything cheaper is a
+ * shorter window, and a shorter window answers a different question than the
+ * one the column asks.
  */
 
-/** A shorter window leaves too few corrections each to say anything. */
-const WINDOW_DAYS = 365;
 const PASS_MARK = 50;
 const CACHE_TTL = 3600;
+/** Nice has 44867 evaluations on record. Room for them, and for growth. */
+const MAX_PAGES = 500;
 
 export async function GET(
   _request: Request,
@@ -50,14 +50,16 @@ export async function GET(
       `corrections:${campus_name}`,
       CACHE_TTL,
       async () => {
-        const since = new Date(
-          Date.now() - WINDOW_DAYS * 86_400_000,
-        ).toISOString();
-
+        // No date window and no cursus filter, both of which were wrong.
+        //
+        // A correction ratio is a record of how someone has corrected, not of
+        // their last twelve months: one student here has 450 corrections and 7
+        // of them fall inside a year, so a windowed figure said 7 and meant
+        // nothing. And filter[cursus_id] dropped 40% of the evaluations at this
+        // campus, piscine corrections among them, which are corrections too.
         const rows = await api.fetchAllPages(
-          `/scale_teams?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}` +
-            `&range[created_at]=${since},${new Date().toISOString()}`,
-          { maxPages: 120 },
+          `/scale_teams?filter[campus_id]=${campusId}`,
+          { maxPages: MAX_PAGES },
         );
 
         const tally: Record<

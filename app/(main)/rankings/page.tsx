@@ -845,7 +845,7 @@ export default function Rankings() {
     );
   }
 
-  if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
+  if ((isLoading || isFetching) && !isSuccess) {
     return (
       <LoadingScreen message="Loading rankings..." />
     );
@@ -1118,24 +1118,33 @@ export default function Rankings() {
                     {sortDirection === "asc" ? "Asc" : "Desc"}
                   </span>
                 </Button>
-                {!hasLogtimeData && effectiveCampus !== "Global" && (
-                  <LogtimeIndexBuilder
-                    campus={effectiveCampus}
-                    onBuilt={reloadLogtimeIndex}
-                  />
-                )}
-                {!hasCorrectionStats && effectiveCampus !== "Global" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setWantCorrections(true)}
-                    disabled={correctionsLoading}
-                    className="gap-2"
-                    title="A year of evaluations for this campus: about a hundred requests on your key, and a few minutes."
-                  >
-                    {correctionsLoading ? "Reading evaluations…" : "Load correction ratios"}
-                  </Button>
-                )}
+                {/* Both optional builds share one scrolling strip, so the
+                    toolbar keeps its height whatever is on offer. */}
+                {effectiveCampus !== "Global" &&
+                  (!hasLogtimeData || !hasCorrectionStats) && (
+                    <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-md border bg-muted/30 p-1">
+                      {!hasLogtimeData && (
+                        <LogtimeIndexBuilder
+                          campus={effectiveCampus}
+                          onBuilt={reloadLogtimeIndex}
+                        />
+                      )}
+                      {!hasCorrectionStats && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setWantCorrections(true)}
+                          disabled={correctionsLoading}
+                          className="shrink-0 gap-2"
+                          title="Every evaluation this campus has on record: several hundred requests on your key, and a few minutes."
+                        >
+                          {correctionsLoading
+                            ? "Reading evaluations…"
+                            : "Load correction ratios"}
+                        </Button>
+                      )}
+                    </div>
+                  )}
               </div>
 
               {/* Mobile view - show controls in accordion */}

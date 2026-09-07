@@ -15,7 +15,6 @@ import {
   MoreHorizontal,
   Database,
   Calendar,
-  Activity,
   UserRoundSearch,
   Map,
   LayoutGrid,
@@ -213,12 +212,6 @@ const bottomLinks = [
     url: "/api-key",
     icon: KeyRound,
     description: "Connect the key everything else runs on",
-  },
-  {
-    title: "Monitor",
-    url: "https://monitor.bapasqui.duckdns.org/status/42insight",
-    icon: Activity,
-    description: "Monitor all related services",
   },
   {
     title: "Contribute",
