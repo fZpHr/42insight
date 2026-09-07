@@ -1,91 +1,54 @@
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
-import {
-  getUserApi,
-  keyRequiredResponse,
-  MissingUserKeyError,
-} from "@/lib/forty-two/user-api";
+import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { cached } from "@/lib/forty-two/cache";
 
+/**
+ * One student's profile and projects: two or three 42 requests, on the site
+ * keys.
+ *
+ * The cache is shared rather than per-instance -- a serverless deployment runs
+ * many instances of this route, and a Map in each one means the same profile is
+ * refetched once per instance.
+ */
 
-const intraCache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 10 * 60 * 1000; 
+const CACHE_TTL = 600;
 
 export async function GET(
-  request: Request,
+  _request: Request,
   context: { params: Promise<{ login: string }> },
 ) {
-  const params = await context.params;
-  const login = params.login;
-  const session = await getServerSession(authOptions)
+  const { login } = await context.params;
+  const session = await getServerSession(authOptions);
   if (!session || !session.user) {
-      return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-      )
-  }
-
-
-  const cached = intraCache.get(login);
-  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-    return NextResponse.json(cached.data);
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const api = await getUserApi();
-    if (!api) return keyRequiredResponse();
-    const response = await api.fetch(`/users/${login}`);
+    const user = await cached(`intra:v1:${login}`, CACHE_TTL, async () => {
+      const response = await apiRateLimiter.fetch(`/users/${login}`);
 
-    if (!response.ok) {
-
-      if (response.status === 429 && cached) {
-        console.warn(`[WARN] Rate limited fetching user ${login}. Serving stale cache.`);
-        return NextResponse.json(cached.data);
+      if (!response.ok) {
+        throw new Error(`42 API responded ${response.status}`);
       }
-      return NextResponse.json(
-        { error: `Failed to fetch from 42 API: ${response.statusText}` },
-        { status: response.status },
+
+      const profile = await response.json();
+
+      profile.projects_users = await apiRateLimiter.fetchAllPages(
+        `/users/${profile.id}/projects_users`,
+        { maxPages: 5 },
       );
-    }
 
-    const user = await response.json();
-
-
-    let allProjects: any[] = [];
-    let page = 1;
-    const perPage = 100;
-    let projectsPage;
-
-    do {
-      const projectsResponse = await api.fetch(`/users/${user.id}/projects_users?per_page=${perPage}&page=${page}`);
-      if (!projectsResponse.ok) {
-        if (projectsResponse.status === 429 && cached) {
-          console.warn(`[WARN] Rate limited fetching projects for ${login}. Serving stale cache.`);
-          return NextResponse.json(cached.data);
-        }
-        console.error(`Failed to fetch projects page ${page} for user ${login}: ${projectsResponse.statusText}`);
-        break;
-      }
-      projectsPage = await projectsResponse.json();
-      allProjects = allProjects.concat(projectsPage);
-      page++;
-    } while (projectsPage && projectsPage.length === perPage);
-
-    user.projects_users = allProjects;
-
-
-    intraCache.set(login, { data: user, timestamp: Date.now() });
+      return profile;
+    });
 
     return NextResponse.json(user);
   } catch (error: any) {
-    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
-    console.error(`[FATAL ERROR] in /api/users/${login}/intra:`, error.message);
+    console.error(`[intra] failed for ${login}:`, error.message);
     return NextResponse.json(
-      {
-        error: "Failed to fetch user due to an internal server error.",
-        details: error.message,
-      },
-      { status: 500 },
+      { error: "Failed to fetch user from the 42 API" },
+      { status: 502 },
     );
   }
 }

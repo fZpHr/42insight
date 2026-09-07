@@ -18,9 +18,11 @@ import {
 /**
  * Builds the campus logtime index with the visitor's own API key.
  *
- * This is what replaces the refresh_activity cron. One request per student
- * against /locations_stats, paid for by the key of whoever triggers the build,
- * and the result lands in a shared index so every visitor reads it afterwards.
+ * This is tier 2, and the reason tier 2 exists: one request per student against
+ * /locations_stats, so a campus costs as many requests as it has students --
+ * more than the site keys have in an hour, for a single rebuild. It is paid for
+ * by the key of whoever triggers the build, and the result lands in a shared
+ * index that every visitor then reads for free.
  *
  * The work is chunked because a whole campus takes minutes at the 42 rate limit
  * of two requests per second, far past any serverless timeout. The browser calls
@@ -61,7 +63,7 @@ export async function POST(
     const api = await getUserApi();
     if (!api) return keyRequiredResponse();
 
-    const students = await getCampusStudents(campus_name, api);
+    const students = await getCampusStudents(campus_name);
     const chunk = students.slice(offset, offset + limit);
 
     const computed: Record<string, unknown> = {};

@@ -21,6 +21,32 @@ All of the Old Features from our existing website have been moved to one website
 - Find-Peers
 - Tree Graph Relation (in reworking for now)
 
+## Where the data comes from
+
+Everything is read live from the 42 API. There is no database of students to
+keep in sync and no cron jobs refreshing it, which is what makes the site
+runnable by anyone who clones it: a `.env` and it works.
+
+Requests are split by what they cost:
+
+**On the site's own keys.** A whole campus arrives in one paginated call -- a
+dozen or so requests -- so rankings, the trombinoscope, the piscine, find-peers,
+events, the cluster map and every dashboard run on application keys configured
+in `.env`, behind a shared cache. The cost is a page walk every few minutes,
+whatever the number of visitors. Configure `CLIENT_ID2`/`CLIENT_SECRET2` and
+beyond to widen that budget; `CLIENT_ID1` is left to next-auth so browsing can
+never lock anyone out of signing in.
+
+**On the visitor's own key.** Logtime needs one request per student, which no
+shared budget survives. A student who registers their own 42 application (intra
+→ Settings → API) can build the campus logtime index from the rankings page; the
+result is cached and read by everyone, with or without a key of their own. The
+API console prefers a personal key too, since an arbitrary query is the one cost
+nobody can predict.
+
+`/api/quota` reports what the site keys have left this hour, as 42 last
+reported it, for staff and admins.
+
 ## Tech-Stack
 
 - Frontend: React.js with Next.js, components from ShadCN, design mostly from V0.dev
@@ -28,8 +54,7 @@ All of the Old Features from our existing website have been moved to one website
 - State Management: Zustand (only for RNCP Simulator)
 - Tanstack: TanStack Query (React Query)
 - Authentication: next-auth (FortyTwo Oauth2Provider)
-- Database: Mariadb
-- ORM: Prisma
+- Data: the 42 API, read live
 - Caching: Redis (Upstash)
 - Deployment: Vercel
 

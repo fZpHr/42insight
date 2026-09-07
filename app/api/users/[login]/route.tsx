@@ -5,11 +5,6 @@ import {
   CAMPUS_IDS,
   getEnrichedCampusStudents,
 } from "@/lib/forty-two/live-campus";
-import {
-  getUserApi,
-  keyRequiredResponse,
-  MissingUserKeyError,
-} from "@/lib/forty-two/user-api";
 
 export async function GET(
   _request: Request,
@@ -22,17 +17,15 @@ export async function GET(
 
   try {
     const { login } = await params;
-    const api = await getUserApi();
 
     for (const campus of Object.keys(CAMPUS_IDS)) {
-      const students = await getEnrichedCampusStudents(campus, api);
+      const students = await getEnrichedCampusStudents(campus);
       const student = students.find((candidate) => candidate.name === login);
       if (student) return NextResponse.json(student);
     }
 
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   } catch (error: any) {
-    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
 
     console.error("Error fetching user", error.message);
     return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });

@@ -4,11 +4,14 @@ import { NextResponse } from "next/server";
 /**
  * Calls the 42 API with the visitor's own application key.
  *
- * The site's own credentials are reserved for OAuth. They have to be: 42 rate
- * limits per application, next-auth reads /v2/me to build the session, and this
- * deployment runs a single registered app -- so every data request made on the
- * site key competes with logging in, and a burst of traffic can lock students
- * out. Data therefore travels on keys students register themselves.
+ * This is tier 2. Tier 1 -- everything the site keys can serve, see
+ * lib/api-rate-limiter.ts -- covers a request whose cost is a page walk per
+ * campus. What lands here is the work that costs one request per student, which
+ * no shared quota survives: the campus logtime index, above all. Whoever holds
+ * the key pays for the build, and the result is cached for everyone.
+ *
+ * A key is never required to read the site. The API console also prefers it
+ * when present, since an arbitrary query is the one cost nobody can predict.
  *
  * The token lives in an httpOnly cookie set by /api/byok/token, so it rides
  * along with every same-origin request without any call site having to pass it,
@@ -33,7 +36,7 @@ export const keyRequiredResponse = () =>
     {
       error: "key_required",
       message:
-        "Add your own 42 API key to load this page. The site key is reserved for signing in.",
+        "This build runs on your own 42 API key. Connect one to start it.",
     },
     { status: 428 },
   );

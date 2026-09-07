@@ -17,10 +17,10 @@ import {
 /**
  * Collects a student's own 42 application credentials.
  *
- * 42 rate limits per application, and this deployment runs a single registered
- * app that next-auth also uses to sign people in -- so data requests made on it
- * compete with logging in. Students therefore bring their own key for data, and
- * the site key does nothing but OAuth.
+ * The site's keys carry every page whose cost does not grow with the size of
+ * the campus. A key here is for the work that does: building the campus logtime
+ * index, which is one API call per student, and querying the API console
+ * without the shared-key rate limit.
  *
  * The credentials are posted once, exchanged for a token server-side, and never
  * stored. The token comes back as an httpOnly cookie that page scripts cannot
@@ -61,7 +61,7 @@ export function ApiKeyDialog({ open, onOpenChange }: Props) {
       setClientId("");
       setClientSecret("");
       onOpenChange(false);
-      toast.success("Key saved. Loading your data.");
+      toast.success("Key connected.");
       await queryClient.invalidateQueries();
     } catch {
       toast.error("Could not reach the server");
@@ -76,11 +76,12 @@ export function ApiKeyDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Connect your 42 API key</DialogTitle>
           <DialogDescription>
-            42Insight reads everything live from the 42 API using your own key,
-            so that browsing never eats into the shared quota that signing in
-            depends on. Create an application on the intra — Settings → API →
-            Register a new app — and paste its credentials below. They are
-            exchanged for a token and never stored.
+            Optional. The site runs on its own keys; yours pays for the work
+            that costs one API call per student — building the campus logtime
+            index — and lifts the rate limit on the API console. Create an
+            application on the intra — Settings → API → Register a new app — and
+            paste its credentials below. They are exchanged for a token and
+            never stored.
           </DialogDescription>
         </DialogHeader>
 

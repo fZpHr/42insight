@@ -74,8 +74,7 @@ import {
 import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
-import { ApiKeyGate } from "@/components/ApiKeyGate";
-import { fetchJson, isKeyRequired } from "@/lib/api-client";
+import { fetchJson } from "@/lib/api-client";
 
 const sortOptions: StudentSortOption[] = [
   { value: "level", label: "Level", key: "level" },
@@ -786,10 +785,6 @@ export default function Rankings() {
     [],
   );
 
-
-  if (isKeyRequired(error)) {
-    return <ApiKeyGate what="The rankings" />;
-  }
 
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return (

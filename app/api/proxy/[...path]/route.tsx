@@ -1,27 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
-import { getUserApi, keyRequiredResponse } from "@/lib/forty-two/user-api";
+import { getToken } from "next-auth/jwt";
+import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
+import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { getUserApi } from "@/lib/forty-two/user-api";
 
 /**
- * Passes a read through to the 42 API on the visitor's own key.
+ * The API console: an arbitrary read against the 42 API, chosen by the visitor.
  *
- * It used to forward the caller's OAuth session token, but that token is issued
- * by this site's application and 42 meters per application -- so proxying on it
- * drew from the same budget that signing in needs. Data now travels on keys
- * students register themselves.
+ * This is the one route whose cost nobody can predict, so it prefers the
+ * visitor's own key when they have connected one. Without a key it still works,
+ * on the site keys, but under the per-user rate limit below -- the console is
+ * the only place where one person can aim traffic at any endpoint they like,
+ * and that must not be able to drain what every other page depends on.
+ *
+ * It used to forward the caller's OAuth session token. That token is issued by
+ * this site's application and 42 meters per application, so it drew from the
+ * same budget as signing in, with none of the accounting.
  */
+
+/** Requests per minute per visitor on the site keys. */
+const SHARED_KEY_LIMIT = 20;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
+  const token = await getToken({ req: request });
+  if (!token || !token.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const api = await getUserApi();
-  if (!api) return keyRequiredResponse();
+  const userApi = await getUserApi();
+
+  if (!userApi) {
+    const limitResult = await rateLimit(token.id as string, SHARED_KEY_LIMIT);
+    if (!limitResult.success) {
+      return new NextResponse("Too Many Requests", {
+        status: 429,
+        headers: getRateLimitHeaders(limitResult),
+      });
+    }
+  }
 
   try {
     const { path } = await params;
@@ -29,7 +48,9 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams.toString();
     const target = `/${apiPath}${searchParams ? `?${searchParams}` : ""}`;
 
-    const proxyResponse = await api.fetch(target);
+    const proxyResponse = await (userApi
+      ? userApi.fetch(target)
+      : apiRateLimiter.fetch(target));
 
     if (!proxyResponse.ok) {
       return NextResponse.json(

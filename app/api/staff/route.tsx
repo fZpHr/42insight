@@ -7,11 +7,6 @@ import {
   getCampusStudents,
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
-import {
-  getUserApi,
-  keyRequiredResponse,
-  MissingUserKeyError,
-} from "@/lib/forty-two/user-api";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -35,16 +30,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const api = await getUserApi();
     const pool = currentPool();
 
-    const students = await getCampusStudents(campus, api);
-    const poolUsers = await getPoolUsers(
-      campus,
-      pool.month,
-      pool.year,
-      api,
-    ).catch(() => []);
+    const [students, poolUsers] = await Promise.all([
+      getCampusStudents(campus),
+      getPoolUsers(campus, pool.month, pool.year).catch(() => []),
+    ]);
 
     const totalStudents = students.length;
     const activePoolUsers = poolUsers.length;
@@ -80,7 +71,6 @@ export async function GET(request: Request) {
       inactiveStudents: totalStudents - activePoolUsers,
     });
   } catch (error: any) {
-    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
 
     console.error("Error fetching campus stats:", error.message);
     return NextResponse.json(

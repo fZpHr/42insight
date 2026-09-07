@@ -20,8 +20,7 @@ import { FeedbackButton } from "@/components/FeedbackButton";
 import { MapPin, User, Calendar, AlertCircle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useCampus } from "@/contexts/CampusContext";
-import { ApiKeyGate } from "@/components/ApiKeyGate";
-import { fetchJson, isKeyRequired, KeyRequiredError } from "@/lib/api-client";
+import { fetchJson } from "@/lib/api-client";
 
 const getCampusEvents = async (campus_name: string) =>
   fetchJson<any[]>(`/api/events/${campus_name}`);
@@ -32,13 +31,11 @@ const getEventsFeedback = async (campus_name: string, event_id: string) => {
       `/api/events/${campus_name}/${event_id}/feedbacks`,
     );
     if (!response.ok) {
-      if (response.status === 428) throw new KeyRequiredError();
       throw new Error("Failed to fetch campus events");
     }
     const data = await response.json();
     return data;
   } catch (error) {
-    if (isKeyRequired(error)) throw error;
     console.error("Error fetching campus events:", error);
     return [];
   }
@@ -53,13 +50,11 @@ const getEventsSubscribers = async (
       `/api/events/${campus_name}/${event_id}/subscribers`,
     );
     if (!response.ok) {
-      if (response.status === 428) throw new KeyRequiredError();
       throw new Error("Failed to fetch campus events");
     }
     const data = await response.json();
     return data;
   } catch (error) {
-    if (isKeyRequired(error)) throw error;
     console.error("Error fetching campus events:", error);
     return [];
   }
@@ -92,10 +87,6 @@ export default function EventsPage() {
     enabled: !!effectiveCampus,
     refetchOnMount: 'always',
   });
-
-  if (isKeyRequired(error)) {
-    return <ApiKeyGate what="Campus events" />;
-  }
 
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return (

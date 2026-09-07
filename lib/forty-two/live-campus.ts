@@ -1,17 +1,21 @@
 import type { Student } from "@/types";
 import { redis } from "@/lib/redis";
-import { MissingUserKeyError, UserApi } from "@/lib/forty-two/user-api";
+import { apiRateLimiter } from "@/lib/api-rate-limiter";
 import { clearProgress, setProgress } from "@/lib/forty-two/progress";
 
 /**
- * Live campus data, straight from the 42 API, on the visitor's own key.
+ * Live campus data, straight from the 42 API, on the site's own keys.
  *
- * This replaces the refresh-42 cron jobs: nothing here reads a database, and
- * nothing here touches the site's credentials, which are reserved for OAuth.
+ * This replaces the refresh-42 cron jobs: nothing here reads a database.
  *
- * What one campus-wide call produces is cached and shared, so a visitor without
- * a key still reads what someone else's key already fetched. Only a cold cache
- * needs a key, and only the visitor who has one pays for the build.
+ * A whole campus arrives in one paginated call -- a dozen or so requests, not
+ * one per student -- which is what keeps it in tier 1. The result is cached and
+ * shared, so the cost is a page walk every few minutes however many people are
+ * looking, and no visitor needs a key of their own to read it.
+ *
+ * The one thing that does not fit that shape is logtime: it needs a request per
+ * student, so it is built in tier 2 by visitors who bring their own key, and
+ * merged in here from the shared index.
  */
 
 export const CAMPUS_IDS: { [key: string]: number } = {
@@ -92,7 +96,6 @@ const toStudent = (cursusUser: any, campusName: string): Student => {
  */
 export const getCampusStudents = async (
   campusName: string,
-  api: UserApi | null,
 ): Promise<Student[]> => {
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
@@ -106,9 +109,7 @@ export const getCampusStudents = async (
     console.error("[live-campus] cache read failed:", error);
   }
 
-  if (!api) throw new MissingUserKeyError();
-
-  const cursusUsers = await api.fetchAllPages(
+  const cursusUsers = await apiRateLimiter.fetchAllPages(
     `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
     {
       onProgress: (done, total) =>
@@ -166,10 +167,9 @@ export const getLogtimeMeta = async (
 
 export const getEnrichedCampusStudents = async (
   campusName: string,
-  api: UserApi | null,
 ): Promise<Student[]> => {
   const [students, logtimeIndex] = await Promise.all([
-    getCampusStudents(campusName, api),
+    getCampusStudents(campusName),
     getLogtimeIndex(campusName),
   ]);
 
@@ -190,7 +190,6 @@ export const getPoolUsers = async (
   campusName: string,
   month: string,
   year: string,
-  api: UserApi | null,
 ): Promise<any[]> => {
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
@@ -204,11 +203,19 @@ export const getPoolUsers = async (
     console.error("[live-campus] pool cache read failed:", error);
   }
 
-  if (!api) throw new MissingUserKeyError();
-
-  const cursusUsers = await api.fetchAllPages(
+  const cursusUsers = await apiRateLimiter.fetchAllPages(
     `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${POOL_CURSUS_ID}`,
+    {
+      onProgress: (done, total) =>
+        setProgress(`pool:${campusName}`, {
+          phase: `Fetching the ${campusName} piscine from the 42 API`,
+          done,
+          total,
+        }),
+    },
   );
+
+  await clearProgress(`pool:${campusName}`);
 
   const poolUsers = cursusUsers
     .filter((cursusUser) => {

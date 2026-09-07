@@ -26,8 +26,7 @@ import { useSession } from "next-auth/react";
 import { Student } from "@/types";
 import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { ApiKeyGate } from "@/components/ApiKeyGate";
-import { fetchJson, isKeyRequired } from "@/lib/api-client";
+import { fetchJson } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
@@ -139,10 +138,6 @@ export default function Trombinoscope() {
     return Array.from(yearsSet).sort().reverse();
   }
 
-
-  if (isKeyRequired(error)) {
-    return <ApiKeyGate what="The trombinoscope" />;
-  }
 
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return (

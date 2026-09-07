@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Copy, Loader2 } from "lucide-react";
 import { addToLocalStorage, getFromLocalStorage } from "@/utils/localStorage";
 import { useSession } from "next-auth/react";
-import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { ApiKeyDialog } from "@/components/ApiKeyDialog";
 import { hasApiKey } from "@/lib/api-client";
 
 export default function Query() {
@@ -20,10 +20,11 @@ export default function Query() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   // Read after mount: document.cookie does not exist during the server render.
   const [keyPresent, setKeyPresent] = useState<boolean | null>(null);
+  const [keyDialogOpen, setKeyDialogOpen] = useState(false);
 
   useEffect(() => {
     setKeyPresent(hasApiKey());
-  }, []);
+  }, [keyDialogOpen]);
 
 
   const user = session?.user;
@@ -69,8 +70,10 @@ export default function Query() {
       }
       setIsLoading(true);
       const response = await fetch(`/api/proxy/${encodeURIComponent(query)}`);
-      if (response.status === 428) {
-        throw new Error("Connect your own 42 API key to run queries");
+      if (response.status === 429) {
+        throw new Error(
+          "Too many queries on the shared key. Connect your own to lift the limit.",
+        );
       }
       if (!response.ok) {
         throw new Error("Failed to fetch query results");
@@ -94,10 +97,6 @@ export default function Query() {
       return [];
     }
   };
-
-  if (keyPresent === false) {
-    return <ApiKeyGate what="The API console" />;
-  }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard
@@ -141,6 +140,19 @@ export default function Query() {
                 />
               </div>
             </div>
+            {keyPresent === false && (
+              <p className="text-sm text-muted-foreground">
+                Queries run on the shared site key and are rate limited.{" "}
+                <button
+                  type="button"
+                  onClick={() => setKeyDialogOpen(true)}
+                  className="text-blue-500 hover:underline"
+                >
+                  Connect your own 42 key
+                </button>{" "}
+                to query on your own quota.
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
               See the{" "}
               <a
@@ -229,6 +241,8 @@ export default function Query() {
             </Card>
         )}
       </div>
+
+      <ApiKeyDialog open={keyDialogOpen} onOpenChange={setKeyDialogOpen} />
     </div>
   );
 }
