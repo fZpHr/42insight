@@ -5,35 +5,41 @@ import { apiRateLimiter } from "@/lib/api-rate-limiter";
 import { DOCUMENTED_HOURLY_LIMIT, usageFor } from "@/lib/forty-two/quota";
 import { readCredentials } from "@/lib/forty-two/user-api";
 
-/** One line for the site keys taken together, for visitors who are not staff. */
+/** The site keys as one line, for visitors who are not staff. */
 const sharedSummary = async () => {
   const quotas = await apiRateLimiter.getQuotas();
+  const includesSignInKey = quotas.some((quota) => quota.isSignInKey);
+  const reported = quotas.filter((quota) => quota.source === "42");
 
   return [
     {
-      keyId: `${quotas.length} shared key${quotas.length === 1 ? "" : "s"}`,
+      keyId: includesSignInKey
+        ? "site key, also used to sign in"
+        : `${quotas.length} site key${quotas.length === 1 ? "" : "s"}`,
+      // A key nobody has used yet reports its full budget rather than zero.
+      source: reported.length === quotas.length ? "42" : "counted",
       used: quotas.reduce((sum, quota) => sum + quota.used, 0),
       remaining: quotas.reduce((sum, quota) => sum + quota.remaining, 0),
-      limit: quotas.length * DOCUMENTED_HOURLY_LIMIT,
-      resetAt: null,
-      headers: {},
+      limit: quotas.reduce((sum, quota) => sum + quota.limit, 0),
+      observedAt:
+        reported
+          .map((quota) => quota.observedAt)
+          .filter(Boolean)
+          .sort()
+          .pop() ?? null,
+      includesSignInKey,
     },
   ];
 };
 
 /**
- * How much of the hourly budget is left, on the visitor's key and on the
- * site's.
+ * How much of the hourly budget is left, on the visitor's key and the site's.
  *
- * 42 allows 1200 requests an hour per application. Both figures are this
- * server instance's own count, so on a platform running several instances they
- * are a floor rather than a total. The browser keeps the accurate number for a
- * visitor's personal key by adding up the per-response call counts, which the
- * instances cannot see between them.
- *
- * `headers` carries any rate-limit header the 42 API actually answered with.
- * The public apidoc documents none, so nothing is assumed -- but if something
- * shows up there it beats counting, and this is where it will appear.
+ * The figures come from the 42 API's own headers, which it sends on every /v2
+ * response and which meter per application -- confirmed against a live key,
+ * including that a fresh token continues the same budget rather than resetting
+ * it. `source: "42"` marks a real reading; `"counted"` means that key has not
+ * been used yet on this server instance and the number is our own tally.
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -44,16 +50,14 @@ export async function GET() {
   const credentials = await readCredentials();
   const isStaff =
     session.user.role === "admin" || session.user.role === "staff";
+  const siteKeys = await apiRateLimiter.getQuotas();
 
   return NextResponse.json({
     limit: DOCUMENTED_HOURLY_LIMIT,
     personal: credentials
       ? { present: true, ...usageFor(credentials.clientId), keyId: "your key" }
       : { present: false },
-    // Everyone sees how loaded the shared keys are: it is the reason to
-    // connect a key of your own. Only staff see them broken down per key.
-    shared: isStaff
-      ? await apiRateLimiter.getQuotas()
-      : await sharedSummary(),
+    shared: isStaff ? siteKeys : await sharedSummary(),
+    signInKeyShared: siteKeys.some((quota) => quota.isSignInKey),
   });
 }

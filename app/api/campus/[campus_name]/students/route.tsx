@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
-import { withCallCount } from "@/lib/forty-two/user-api";
 import {
   CAMPUS_IDS,
   getEnrichedCampusStudents,
@@ -17,7 +16,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { api, personal } = await getApi();
+  const { api } = await getApi();
 
   const { campus_name } = await params;
   if (!CAMPUS_IDS[campus_name]) {
@@ -25,10 +24,7 @@ export async function GET(
   }
 
   try {
-    return withCallCount(
-      NextResponse.json(await getEnrichedCampusStudents(campus_name, api)),
-      personal,
-    );
+    return NextResponse.json(await getEnrichedCampusStudents(campus_name, api));
   } catch (error: any) {
 
     console.error(`[campus] failed to build ${campus_name}:`, error.message);

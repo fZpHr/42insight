@@ -53,11 +53,14 @@ more than an hour of any single budget and more than a page load can wait for,
 and the server keeps nothing between requests. Build it from the rankings page
 and it is stored in your browser.
 
-**Seeing what is left.** The sidebar's key dialog shows how much of the hourly
-budget your key and the shared keys have spent, and `/api/quota` returns the
-same figures. The browser keeps the accurate count for a personal key by adding
-up what each response reports spending; the server's own count is per instance,
-so for the shared keys it is a floor rather than a total.
+**Seeing what is left.** The header shows, on every page, how many requests are
+in flight and how much of the hourly budget remains; `/api/quota` returns the
+same figures. They are the 42 API's own: it reports
+`x-hourly-ratelimit-remaining` on every /v2 response, and it meters per
+application -- a fresh token from the same credentials continues the same
+budget rather than resetting it. So these are readings, not estimates. A key
+that has not been used yet on a given server instance falls back to our own
+count, and says so.
 
 ### What this costs
 

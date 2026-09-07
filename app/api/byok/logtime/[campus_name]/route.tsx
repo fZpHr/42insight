@@ -7,7 +7,6 @@ import {
   getUserApi,
   keyRequiredResponse,
   MissingUserKeyError,
-  withCallCount,
 } from "@/lib/forty-two/user-api";
 
 /**
@@ -93,17 +92,14 @@ export async function POST(
     const processed = offset + chunk.length;
     const done = processed >= students.length;
 
-    return withCallCount(
-      NextResponse.json({
-        entries,
-        processed,
-        total: students.length,
-        failed,
-        nextOffset: done ? null : processed,
-        done,
-      }),
-      api,
-    );
+    return NextResponse.json({
+      entries,
+      processed,
+      total: students.length,
+      failed,
+      nextOffset: done ? null : processed,
+      done,
+    });
   } catch (error: any) {
     if (error instanceof MissingUserKeyError) return keyRequiredResponse();
 

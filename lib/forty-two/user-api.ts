@@ -171,8 +171,6 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 export class UserApi {
   private lastRequestAt = 0;
-  /** Requests sent through this instance, for the response's call count. */
-  public calls = 0;
 
   constructor(
     private readonly token: string,
@@ -187,7 +185,6 @@ export class UserApi {
     }
     this.lastRequestAt = Date.now();
 
-    this.calls++;
     recordRequest(this.keyId);
 
     const response = await fetch(`https://api.intra.42.fr/v2${path}`, {
@@ -266,19 +263,4 @@ export const getUserApi = async (): Promise<UserApi | null> => {
   if (!token) return null;
 
   return new UserApi(token, credentials.clientId);
-};
-
-/**
- * Tells the browser how many 42 requests this response spent on the visitor's
- * key, so it can keep a running total that survives being served by a
- * different server instance next time.
- */
-export const withCallCount = <T extends NextResponse>(
-  response: T,
-  api: UserApi | null,
-): T => {
-  if (api && api.calls > 0) {
-    response.headers.set("X-42-Calls", String(api.calls));
-  }
-  return response;
 };

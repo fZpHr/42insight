@@ -103,6 +103,11 @@ export default withAuth(
     return NextResponse.next()
   },
   {
+    // withAuth looks for NEXTAUTH_SECRET, which this project has never used --
+    // it signs with JWT_SECRET. Without this the middleware finds no secret,
+    // logs NO_SECRET and redirects every signed-in visitor to
+    // /api/auth/error?error=Configuration, right after a successful login.
+    secret: process.env.JWT_SECRET,
     callbacks: {
       authorized: ({ token }) => token && !token.error
     },

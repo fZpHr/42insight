@@ -12,7 +12,6 @@ import { addToLocalStorage, getFromLocalStorage } from "@/utils/localStorage";
 import { useSession } from "next-auth/react";
 import { ApiKeyDialog } from "@/components/ApiKeyDialog";
 import { hasApiKey } from "@/lib/api-client";
-import { recordResponse } from "@/lib/quota-store";
 
 export default function Query() {
   const { data: session } = useSession();
@@ -71,7 +70,6 @@ export default function Query() {
       }
       setIsLoading(true);
       const response = await fetch(`/api/proxy/${encodeURIComponent(query)}`);
-      recordResponse(response);
       if (response.status === 429) {
         throw new Error(
           "Too many queries on the shared key. Connect your own to lift the limit.",

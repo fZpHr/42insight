@@ -10,6 +10,7 @@ import { CampusInfoDialog } from "@/components/CampusInfoDialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useSession } from "next-auth/react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ApiStatusBar } from "@/components/ApiStatusBar";
 import { Info } from "lucide-react";
 
 const supportedCampuses = ["Angouleme", "Nice"];
@@ -60,7 +61,10 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         )}
         <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm">
           <div className="flex items-center justify-between gap-3 px-2 py-1 pt-3">
-            <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="h-8 w-8 rounded-md transition-colors" />
+              <ApiStatusBar />
+            </div>
             <div className="flex items-center gap-2">
               {/* Bouton Campus Info pour les campus non supportés */}
               {isRestrictedCampus && (

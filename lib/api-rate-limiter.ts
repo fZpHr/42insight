@@ -287,13 +287,18 @@ class ApiRateLimiter {
    * The client_id is not returned: it is a credential, and the label is enough
    * to tell the keys apart.
    */
-  async getQuotas(): Promise<Array<KeyUsage & { label: number }>> {
+  async getQuotas(): Promise<
+    Array<KeyUsage & { label: number; isSignInKey: boolean }>
+  > {
     await this.initTokens();
 
     return this.clientIds.map((clientId, slot) => ({
       ...usageFor(clientId),
       keyId: `key ${this.tokenLabels[slot]}`,
       label: this.tokenLabels[slot],
+      // True only when this deployment has no spare key, so browsing is
+      // drawing from the same budget next-auth needs to sign people in.
+      isSignInKey: this.tokenLabels[slot] === OAUTH_KEY_INDEX,
     }));
   }
 
