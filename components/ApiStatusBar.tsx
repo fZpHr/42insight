@@ -35,6 +35,15 @@ import { hasApiKey } from "@/lib/api-client";
  * slow correction for traffic this tab did not cause.
  */
 const POLL_MS = 120000;
+/**
+ * How often the open panel re-reads the call log.
+ *
+ * Only while it is open, and only that route: it answers "what is happening
+ * right now", which is a question that stops mattering the moment the panel is
+ * closed. Two seconds keeps a page walk legible without turning the panel into
+ * its own source of traffic.
+ */
+const ACTIVITY_POLL_MS = 2000;
 /** Never re-read the quota more than this often, whatever triggers it. */
 const MIN_REFRESH_MS = 10000;
 
@@ -72,6 +81,7 @@ export function ApiStatusBar() {
   const [keyPresent, setKeyPresent] = useState(false);
   const [personal, setPersonal] = useState<QuotaLine | null>(null);
   const [calls, setCalls] = useState<ApiCall[] | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const lastRefresh = useRef(0);
   const wasFetching = useRef(false);
 
@@ -97,6 +107,31 @@ export function ApiStatusBar() {
     const timer = setInterval(refresh, POLL_MS);
     return () => clearInterval(timer);
   }, []);
+
+  // While the panel is open, keep it current. A diagnostic that needs closing
+  // and reopening to show the request you are watching is not much of one.
+  useEffect(() => {
+    if (!panelOpen) return;
+
+    let cancelled = false;
+    const read = () =>
+      fetch("/api/activity")
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => {
+          if (!cancelled) setCalls(data?.calls ?? []);
+        })
+        .catch(() => {
+          if (!cancelled) setCalls([]);
+        });
+
+    read();
+    const timer = setInterval(read, ACTIVITY_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [panelOpen]);
 
   // Only on the edge from busy to idle: that is when the spend has changed.
   useEffect(() => {
@@ -130,14 +165,10 @@ export function ApiStatusBar() {
       )}
 
       <DropdownMenu
+        open={panelOpen}
         onOpenChange={(open) => {
-          if (!open) return;
-          // Only when someone asks: this is a diagnostic, not a dashboard.
-          setCalls(null);
-          fetch("/api/activity")
-            .then((response) => (response.ok ? response.json() : null))
-            .then((data) => setCalls(data?.calls ?? []))
-            .catch(() => setCalls([]));
+          setPanelOpen(open);
+          if (!open) setCalls(null);
         }}
       >
         <DropdownMenuTrigger
