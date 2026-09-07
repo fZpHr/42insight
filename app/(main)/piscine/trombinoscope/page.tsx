@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { StudentCard } from "@/components/trombi-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, EyeClosed, Star, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,18 +23,8 @@ const INITIAL_LOAD = 20;
 const LOAD_MORE = 10;
 
 
-const fetchPoolStudents = async (): Promise<PoolUser[]> => {
-  try {
-    const response = await fetch("/api/users/pool");
-    if (!response.ok) {
-      throw new Error("Failed to fetch pool students");
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching pool students:", error);
-    return [];
-  }
-};
+const fetchPoolStudents = (): Promise<PoolUser[]> =>
+  fetchJson<PoolUser[]>("/api/users/pool");
 
 export default function Trombinoscope() {
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
@@ -95,6 +87,10 @@ export default function Trombinoscope() {
       console.error("Error fetching students:", error);
     }
   }, [error]);
+
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="The piscine trombinoscope" />;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-3">

@@ -1,6 +1,7 @@
 "use client";
 
 import type * as React from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,6 +23,7 @@ import {
   Workflow,
   GamepadIcon,
   Award,
+  KeyRound,
 } from "lucide-react";
 
 import {
@@ -56,6 +58,8 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react"
+import { ApiKeyDialog } from "@/components/ApiKeyDialog"
+import { hasApiKey } from "@/lib/api-client"
 import { CampusSwitcher } from "@/components/CampusSwitcher";
 import { useCampus } from "@/contexts/CampusContext";
 
@@ -247,6 +251,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const dayOfWeek = today.getDay();
     return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
   };
+
+  const [keyDialogOpen, setKeyDialogOpen] = useState(false)
+  const [keyPresent, setKeyPresent] = useState(false)
+
+  useEffect(() => {
+    setKeyPresent(hasApiKey())
+  }, [keyDialogOpen])
 
   const signOutfunc = async () => {
     document.cookie.split(";").forEach((c) => {
@@ -525,6 +536,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                         Settings
                                     </Link>
                                 </DropdownMenuItem> */}
+                <DropdownMenuItem onClick={() => setKeyDialogOpen(true)}>
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  {keyPresent ? "Replace my 42 API key" : "Connect my 42 API key"}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOutfunc}>
                   <span className="text-destructive">Sign out</span>
                 </DropdownMenuItem>
@@ -532,6 +547,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
+        <ApiKeyDialog open={keyDialogOpen} onOpenChange={setKeyDialogOpen} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

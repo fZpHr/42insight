@@ -5,6 +5,11 @@ import {
   CAMPUS_IDS,
   getEnrichedCampusStudents,
 } from "@/lib/forty-two/live-campus";
+import {
+  getUserApi,
+  keyRequiredResponse,
+  MissingUserKeyError,
+} from "@/lib/forty-two/user-api";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -13,14 +18,17 @@ export async function GET() {
   }
 
   try {
-    const perCampus = await Promise.all(
-      Object.keys(CAMPUS_IDS).map((campus) =>
-        getEnrichedCampusStudents(campus).catch(() => []),
-      ),
-    );
+    const api = await getUserApi();
+    const perCampus: Awaited<ReturnType<typeof getEnrichedCampusStudents>>[] = [];
+
+    for (const campus of Object.keys(CAMPUS_IDS)) {
+      perCampus.push(await getEnrichedCampusStudents(campus, api));
+    }
 
     return NextResponse.json(perCampus.flat());
   } catch (error: any) {
+    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
+
     console.error("[users] failed to build:", error.message);
     return NextResponse.json(
       { error: "Failed to fetch students" },

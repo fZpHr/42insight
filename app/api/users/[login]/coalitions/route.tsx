@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import {
+  getUserApi,
+  keyRequiredResponse,
+  MissingUserKeyError,
+} from "@/lib/forty-two/user-api";
 
 const coalitionCache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 30 * 60 * 1000; 
@@ -27,7 +31,9 @@ export async function GET(
   }
 
   try {
-    const userResponse = await apiRateLimiter.fetch(`/users/${login}`);
+    const api = await getUserApi();
+    if (!api) return keyRequiredResponse();
+    const userResponse = await api.fetch(`/users/${login}`);
     if (!userResponse.ok) {
       if (userResponse.status === 429 && cached) {
         console.warn(`[WARN] Rate limited fetching user ${login}. Serving stale cache.`);
@@ -41,7 +47,7 @@ export async function GET(
 
     const user = await userResponse.json();
 
-    const coalitionResponse = await apiRateLimiter.fetch(`/users/${user.id}/coalitions`);
+    const coalitionResponse = await api.fetch(`/users/${user.id}/coalitions`);
 
     if (!coalitionResponse.ok) {
       if (coalitionResponse.status === 429 && cached) {
@@ -79,6 +85,7 @@ export async function GET(
 
     return NextResponse.json(result);
   } catch (error: any) {
+    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
     console.error(`[FATAL ERROR] in /api/users/${login}/coalitions:`, error.message);
     return NextResponse.json(
       {

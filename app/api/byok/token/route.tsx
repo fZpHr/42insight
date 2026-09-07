@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { KEY_PRESENT_COOKIE, TOKEN_COOKIE } from "@/lib/forty-two/user-api";
 
 /**
  * Exchanges a student's own 42 application credentials for an access token.
@@ -8,8 +9,15 @@ import { authOptions } from "../../auth/[...nextauth]/route";
  * The browser cannot call api.intra.42.fr itself -- there are no CORS headers on
  * it, which is the reason /api/proxy exists -- so the secret has to cross the
  * wire once. It is used for this exchange and then dropped: nothing is written
- * to a database, a cache, or a log. The browser keeps only the returned token.
+ * to a database, a cache, or a log.
+ *
+ * The token comes back as an httpOnly cookie so every later request carries it
+ * without any call site passing it around, and page scripts cannot read it. A
+ * second, readable cookie exists only so the interface knows a key is set.
  */
+
+const FALLBACK_TTL = 7200;
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -53,11 +61,27 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
+    const maxAge = Number(data.expires_in) || FALLBACK_TTL;
 
-    return NextResponse.json({
-      access_token: data.access_token,
-      expires_in: data.expires_in,
+    const result = NextResponse.json({ ok: true, expires_in: maxAge });
+
+    result.cookies.set(TOKEN_COOKIE, data.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge,
     });
+
+    result.cookies.set(KEY_PRESENT_COOKIE, "1", {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge,
+    });
+
+    return result;
   } catch (error: any) {
     console.error("[byok] token exchange failed:", error.message);
     return NextResponse.json(
@@ -65,4 +89,12 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
+}
+
+/** Forgets the visitor's key. */
+export async function DELETE() {
+  const result = NextResponse.json({ ok: true });
+  result.cookies.delete(TOKEN_COOKIE);
+  result.cookies.delete(KEY_PRESENT_COOKIE);
+  return result;
 }

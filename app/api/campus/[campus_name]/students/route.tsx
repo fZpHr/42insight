@@ -6,6 +6,11 @@ import {
   getEnrichedCampusStudents,
   getLogtimeMeta,
 } from "@/lib/forty-two/live-campus";
+import {
+  getUserApi,
+  keyRequiredResponse,
+  MissingUserKeyError,
+} from "@/lib/forty-two/user-api";
 
 export async function GET(
   _request: Request,
@@ -22,8 +27,9 @@ export async function GET(
   }
 
   try {
+    const api = await getUserApi();
     const [students, logtimeMeta] = await Promise.all([
-      getEnrichedCampusStudents(campus_name),
+      getEnrichedCampusStudents(campus_name, api),
       getLogtimeMeta(campus_name),
     ]);
 
@@ -33,9 +39,11 @@ export async function GET(
         : undefined,
     });
   } catch (error: any) {
-    console.error(`[rankings] failed to build ${campus_name}:`, error.message);
+    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
+
+    console.error(`[campus] failed to build ${campus_name}:`, error.message);
     return NextResponse.json(
-      { error: "Failed to fetch rankings from the 42 API" },
+      { error: "Failed to fetch students from the 42 API" },
       { status: 502 },
     );
   }

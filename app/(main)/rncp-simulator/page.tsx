@@ -18,6 +18,8 @@ import ReactConfetti from "react-confetti"
 import { useSession } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
+import { ApiKeyGate } from "@/components/ApiKeyGate"
+import { isKeyRequired } from "@/lib/api-client"
 import { Loader2, GraduationCap, Trophy, Award } from "lucide-react"
 
 function getManualProjectsKey(session: any) {
@@ -115,7 +117,7 @@ export default function RNCPSimulator() {
     shallow,
   )
 
-  const { data: userIntraInfo, isLoading: isIntraLoading } = useQuery({
+  const { data: userIntraInfo, isLoading: isIntraLoading, error: intraError } = useQuery({
     queryKey: ["userIntraInfo", session?.user?.login],
     queryFn: () => fetchUserIntraInfo(session!.user!.login!),
     enabled: !!session?.user?.login,
@@ -214,6 +216,10 @@ export default function RNCPSimulator() {
   }, [isDataProcessed, manualProjects, setProjectMark, toggleCoalitionBonus, coalitionProjects])
 
   const isLoading = !hydrated || isIntraLoading || areEventsLoading || !isDataProcessed
+
+  if (isKeyRequired(intraError)) {
+    return <ApiKeyGate what="The RNCP simulator" />
+  }
 
   if (isLoading) {
     return (

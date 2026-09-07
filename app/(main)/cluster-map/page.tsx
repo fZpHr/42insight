@@ -22,6 +22,8 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { KeyRequiredError, isKeyRequired } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -59,6 +61,7 @@ const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
       const response = await fetch(
         `/api/proxy/campus/${campusId}/locations?&filter[active]=true&per_page=100&page=${page}`
       );
+      if (response.status === 428) throw new KeyRequiredError();
       if (!response.ok) throw new Error("Failed to fetch students");
       const data: ClusterUser[] = await response.json();
       allStudents.push(...data);
@@ -68,6 +71,7 @@ const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
 
     return allStudents;
   } catch (e) {
+    if (isKeyRequired(e)) throw e;
     console.error("Error fetching students:", e);
     return [];
   }
@@ -122,6 +126,7 @@ export default function ClusterMap() {
     refetch,
     isFetching,
     isSuccess,
+    error,
   } = useQuery<ClusterUser[]>({
     queryKey: ["students", effectiveCampus],
     queryFn: () => fetchStudents(effectiveCampus),
@@ -330,6 +335,10 @@ export default function ClusterMap() {
 
 
 
+
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="The cluster map" />;
+  }
 
   if (!showTimeoutError && (status === "loading" || !effectiveCampus || (isLoading || isFetching) && !isSuccess)) {
     return <LoadingScreen message="Loading cluster map..." />;

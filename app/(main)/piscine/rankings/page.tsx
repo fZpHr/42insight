@@ -1,5 +1,7 @@
 "use client";
 import { toast } from "sonner";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -42,18 +44,8 @@ const sortOptions: SortOption[] = [
   },
 ];
 
-const fetchPoolStudents = async (): Promise<PoolUser[]> => {
-  try {
-    const response = await fetch("/api/users/pool");
-    if (!response.ok) {
-      throw new Error("Failed to fetch pool students");
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching pool students:", error);
-    return [];
-  }
-};
+const fetchPoolStudents = (): Promise<PoolUser[]> =>
+  fetchJson<PoolUser[]>("/api/users/pool");
 
 
 export default function Piscine() {
@@ -195,6 +187,10 @@ export default function Piscine() {
       ),
     [],
   );
+
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="The piscine rankings" />;
+  }
 
   if (error) {
     return (

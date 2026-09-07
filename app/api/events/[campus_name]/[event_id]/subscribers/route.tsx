@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import {
+  getUserApi,
+  keyRequiredResponse,
+  MissingUserKeyError,
+} from "@/lib/forty-two/user-api";
 
 export async function GET(
   request: Request,
@@ -15,6 +19,8 @@ export async function GET(
         )
     }
   try {
+    const api = await getUserApi();
+    if (!api) return keyRequiredResponse();
     const { campus_name, event_id } = await params
 
     const campusMapping: { [key: string]: number } = {
@@ -26,7 +32,7 @@ export async function GET(
     if (!campusId) {
       return NextResponse.json({ error: "Campus not found" }, { status: 404 });
     }
-    const response = await apiRateLimiter.fetch(
+    const response = await api.fetch(
       `/events/${event_id}/events_users?page[size]=100&page[number]=1 `,
     );
 
@@ -40,6 +46,7 @@ export async function GET(
     const subscribers = await response.json();
     return NextResponse.json(subscribers);
   } catch (error: any) {
+    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
     const { campus_name } = await params
     console.error(
       `[FATAL ERROR] in /api/campus/${campus_name}/intra:`,

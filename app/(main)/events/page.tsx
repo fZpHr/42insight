@@ -20,20 +20,11 @@ import { FeedbackButton } from "@/components/FeedbackButton";
 import { MapPin, User, Calendar, AlertCircle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useCampus } from "@/contexts/CampusContext";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
 
-const getCampusEvents = async (campus_name: string) => {
-  try {
-    const response = await fetch(`/api/events/${campus_name}`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch campus events");
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching campus events:", error);
-    return [];
-  }
-};
+const getCampusEvents = async (campus_name: string) =>
+  fetchJson<any[]>(`/api/events/${campus_name}`);
 
 const getEventsFeedback = async (campus_name: string, event_id: string) => {
   try {
@@ -97,6 +88,10 @@ export default function EventsPage() {
     enabled: !!effectiveCampus,
     refetchOnMount: 'always',
   });
+
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="Campus events" />;
+  }
 
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return (

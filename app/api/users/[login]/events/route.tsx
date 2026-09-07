@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import {
+  getUserApi,
+  keyRequiredResponse,
+  MissingUserKeyError,
+} from "@/lib/forty-two/user-api";
 
 
 const eventsCache = new Map<string, { events: any[], timestamp: number }>();
@@ -25,8 +29,10 @@ export async function GET(
   }
 
   try {
+    const api = await getUserApi();
+    if (!api) return keyRequiredResponse();
 
-    const userRes = await apiRateLimiter.fetch(`/users/${login}`);
+    const userRes = await api.fetch(`/users/${login}`);
     if (!userRes.ok) {
       if (userRes.status === 429 && cached) {
         console.warn(`[WARN] Rate limited fetching user for events ${login}. Serving stale cache.`);
@@ -41,7 +47,7 @@ export async function GET(
     const perPage = 100;
     let eventsPage;
     do {
-      const eventsRes = await apiRateLimiter.fetch(`/users/${user.id}/events?per_page=${perPage}&page=${page}`);
+      const eventsRes = await api.fetch(`/users/${user.id}/events?per_page=${perPage}&page=${page}`);
       if (!eventsRes.ok) {
 
         if (eventsRes.status === 429 && cached) {
@@ -62,6 +68,7 @@ export async function GET(
 
     return NextResponse.json({ events: allEvents });
   } catch (error: any) {
+    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
     console.error("[ERROR] /api/users/[login]/events:", error.message);
     return NextResponse.json({ error: "Failed to fetch events", details: error.message }, { status: 500 });
   }

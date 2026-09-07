@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import {
+  getUserApi,
+  keyRequiredResponse,
+  MissingUserKeyError,
+} from "@/lib/forty-two/user-api";
 
 
 const intraCache = new Map<string, { data: any, timestamp: number }>();
@@ -28,7 +32,9 @@ export async function GET(
   }
 
   try {
-    const response = await apiRateLimiter.fetch(`/users/${login}`);
+    const api = await getUserApi();
+    if (!api) return keyRequiredResponse();
+    const response = await api.fetch(`/users/${login}`);
 
     if (!response.ok) {
 
@@ -51,7 +57,7 @@ export async function GET(
     let projectsPage;
 
     do {
-      const projectsResponse = await apiRateLimiter.fetch(`/users/${user.id}/projects_users?per_page=${perPage}&page=${page}`);
+      const projectsResponse = await api.fetch(`/users/${user.id}/projects_users?per_page=${perPage}&page=${page}`);
       if (!projectsResponse.ok) {
         if (projectsResponse.status === 429 && cached) {
           console.warn(`[WARN] Rate limited fetching projects for ${login}. Serving stale cache.`);
@@ -72,6 +78,7 @@ export async function GET(
 
     return NextResponse.json(user);
   } catch (error: any) {
+    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
     console.error(`[FATAL ERROR] in /api/users/${login}/intra:`, error.message);
     return NextResponse.json(
       {

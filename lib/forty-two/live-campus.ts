@@ -1,21 +1,18 @@
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
-import { Redis } from "@upstash/redis";
 import type { Student } from "@/types";
+import { redis } from "@/lib/redis";
+import { MissingUserKeyError, UserApi } from "@/lib/forty-two/user-api";
+import { clearProgress, setProgress } from "@/lib/forty-two/progress";
 
 /**
- * Live campus data, straight from the 42 API.
+ * Live campus data, straight from the 42 API, on the visitor's own key.
  *
- * This replaces the refresh-42 cron jobs: nothing here reads a database. What a
- * single campus-wide call can produce is served to everyone through the
- * application tokens (tier 1). What needs one call per student -- logtime above
- * all -- is built by students who bring their own API keys and lands in the
- * shared index below, so the whole campus benefits from it (tier 2).
+ * This replaces the refresh-42 cron jobs: nothing here reads a database, and
+ * nothing here touches the site's credentials, which are reserved for OAuth.
+ *
+ * What one campus-wide call produces is cached and shared, so a visitor without
+ * a key still reads what someone else's key already fetched. Only a cold cache
+ * needs a key, and only the visitor who has one pays for the build.
  */
-
-const redis = new Redis({
-  url: process.env.REDIS_URL!,
-  token: process.env.REDIS_PASSWORD!,
-});
 
 export const CAMPUS_IDS: { [key: string]: number } = {
   Angouleme: 31,
@@ -23,6 +20,7 @@ export const CAMPUS_IDS: { [key: string]: number } = {
 };
 
 export const CURSUS_ID = 21;
+export const POOL_CURSUS_ID = 9;
 
 /**
  * The rankings page hides the correction ratio column when it sees this value.
@@ -30,11 +28,10 @@ export const CURSUS_ID = 21;
  */
 export const NO_CORRECTION_DATA = 420;
 
-const PAGE_SIZE = 100;
-const MAX_PAGES = 40;
 const STUDENTS_TTL = 300;
+const POOL_TTL = 900;
 
-export const studentsCacheKey = (campus: string) => `rankings:v1:${campus}`;
+export const studentsCacheKey = (campus: string) => `rankings:v2:${campus}`;
 export const logtimeIndexKey = (campus: string) => `logtime:v1:${campus}`;
 export const logtimeMetaKey = (campus: string) => `logtime:v1:${campus}:meta`;
 
@@ -43,6 +40,15 @@ export interface LogtimeIndexMeta {
   builtBy: string;
   covered: number;
 }
+
+/**
+ * The piscine promotion, which pool-data.js carried as a hardcoded line edited
+ * by hand every year.
+ */
+export const currentPool = () => ({
+  month: (process.env.POOL_MONTH ?? "september").toLowerCase(),
+  year: process.env.POOL_YEAR ?? String(new Date().getFullYear()),
+});
 
 const daysUntil = (date: string | null): number => {
   if (!date) return 0;
@@ -74,47 +80,19 @@ const toStudent = (cursusUser: any, campusName: string): Student => {
     correctionPercentage: NO_CORRECTION_DATA,
     // Needs projects_users per student.
     work: 0,
-    // Filled from the tier 2 index when a student has built it.
+    // Filled from the shared logtime index when it has been built.
     activityData: {} as Student["activityData"],
     relation: null,
   };
 };
 
-const fetchCampusFromApi = async (
-  campusId: number,
-  campusName: string,
-): Promise<Student[]> => {
-  const students: Student[] = [];
-
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const response = await apiRateLimiter.fetch(
-      `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}&page[size]=${PAGE_SIZE}&page[number]=${page}`,
-    );
-
-    if (!response.ok) {
-      throw new Error(`42 API responded ${response.status} on page ${page}`);
-    }
-
-    const pageData = await response.json();
-    if (!Array.isArray(pageData) || pageData.length === 0) break;
-
-    for (const cursusUser of pageData) {
-      if (!cursusUser.user || cursusUser.user["staff?"]) continue;
-      students.push(toStudent(cursusUser, campusName));
-    }
-
-    if (pageData.length < PAGE_SIZE) break;
-  }
-
-  return students;
-};
-
 /**
- * Tier 1: the whole campus from one paginated call, cached so that a campus
- * opening the page costs one build rather than one per visitor.
+ * The whole campus from one paginated call. Served from the shared cache when
+ * it is warm; building it cold requires the visitor to have a key.
  */
 export const getCampusStudents = async (
   campusName: string,
+  api: UserApi | null,
 ): Promise<Student[]> => {
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
@@ -128,7 +106,25 @@ export const getCampusStudents = async (
     console.error("[live-campus] cache read failed:", error);
   }
 
-  const students = await fetchCampusFromApi(campusId, campusName);
+  if (!api) throw new MissingUserKeyError();
+
+  const cursusUsers = await api.fetchAllPages(
+    `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
+    {
+      onProgress: (done, total) =>
+        setProgress(`campus:${campusName}`, {
+          phase: `Fetching ${campusName} students from the 42 API`,
+          done,
+          total,
+        }),
+    },
+  );
+
+  await clearProgress(`campus:${campusName}`);
+
+  const students = cursusUsers
+    .filter((cursusUser) => cursusUser.user && !cursusUser.user["staff?"])
+    .map((cursusUser) => toStudent(cursusUser, campusName));
 
   if (students.length > 0) {
     try {
@@ -141,11 +137,6 @@ export const getCampusStudents = async (
   return students;
 };
 
-/**
- * Tier 2: the logtime index built by students who brought their own keys.
- * Absent until someone builds it, which the pages handle by hiding the sorts
- * that depend on it.
- */
 export const getLogtimeIndex = async (
   campusName: string,
 ): Promise<Record<string, any>> => {
@@ -173,14 +164,12 @@ export const getLogtimeMeta = async (
   }
 };
 
-/**
- * Tier 1 + tier 2: the campus with whatever enriched data currently exists.
- */
 export const getEnrichedCampusStudents = async (
   campusName: string,
+  api: UserApi | null,
 ): Promise<Student[]> => {
   const [students, logtimeIndex] = await Promise.all([
-    getCampusStudents(campusName),
+    getCampusStudents(campusName, api),
     getLogtimeIndex(campusName),
   ]);
 
@@ -197,29 +186,16 @@ export const getEnrichedCampusStudents = async (
   });
 };
 
-/**
- * The piscine cursus. pool-data.js carried the promotion as a hardcoded line
- * edited by hand every year; it lives in POOL_MONTH / POOL_YEAR now so that
- * moving to the next piscine is an environment change rather than a code one.
- */
-export const POOL_CURSUS_ID = 9;
-
-const POOL_TTL = 900;
-
-export const currentPool = () => ({
-  month: (process.env.POOL_MONTH ?? "september").toLowerCase(),
-  year: process.env.POOL_YEAR ?? String(new Date().getFullYear()),
-});
-
 export const getPoolUsers = async (
   campusName: string,
   month: string,
   year: string,
+  api: UserApi | null,
 ): Promise<any[]> => {
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
-  const cacheKey = `pool:v1:${campusName}:${month}:${year}`;
+  const cacheKey = `pool:v2:${campusName}:${month}:${year}`;
 
   try {
     const cached = await redis.get<any[]>(cacheKey);
@@ -228,27 +204,22 @@ export const getPoolUsers = async (
     console.error("[live-campus] pool cache read failed:", error);
   }
 
-  const poolUsers: any[] = [];
+  if (!api) throw new MissingUserKeyError();
 
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const response = await apiRateLimiter.fetch(
-      `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${POOL_CURSUS_ID}&page[size]=${PAGE_SIZE}&page[number]=${page}`,
-    );
+  const cursusUsers = await api.fetchAllPages(
+    `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${POOL_CURSUS_ID}`,
+  );
 
-    if (!response.ok) {
-      throw new Error(`42 API responded ${response.status} on pool page ${page}`);
-    }
-
-    const pageData = await response.json();
-    if (!Array.isArray(pageData) || pageData.length === 0) break;
-
-    for (const cursusUser of pageData) {
+  const poolUsers = cursusUsers
+    .filter((cursusUser) => {
       const user = cursusUser.user;
-      if (!user || user["staff?"]) continue;
-      if ((user.pool_month ?? "").toLowerCase() !== month) continue;
-      if (String(user.pool_year) !== year) continue;
-
-      poolUsers.push({
+      if (!user || user["staff?"]) return false;
+      if ((user.pool_month ?? "").toLowerCase() !== month) return false;
+      return String(user.pool_year) === year;
+    })
+    .map((cursusUser) => {
+      const user = cursusUser.user;
+      return {
         id: user.id,
         name: user.login,
         firstName: user.first_name ?? "",
@@ -269,11 +240,8 @@ export const getPoolUsers = async (
         examGrades: {},
         currentProjects: "",
         has_succeeded: false,
-      });
-    }
-
-    if (pageData.length < PAGE_SIZE) break;
-  }
+      };
+    });
 
   if (poolUsers.length > 0) {
     try {

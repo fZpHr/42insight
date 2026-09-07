@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
 import {
   CAMPUS_IDS,
   getCampusStudents,
   redis,
 } from "@/lib/forty-two/live-campus";
+import {
+  getUserApi,
+  keyRequiredResponse,
+  MissingUserKeyError,
+} from "@/lib/forty-two/user-api";
 import type { Project, ProjectSubscriber } from "@/types";
 
 /**
@@ -18,59 +22,8 @@ import type { Project, ProjectSubscriber } from "@/types";
  * only an id and a login.
  */
 
-const PAGE_SIZE = 100;
-const MAX_PAGES = 30;
 const CACHE_TTL = 600;
-const CACHE_KEY = "peers:v1";
-
-const fetchCampusProjectUsers = async (
-  campusId: number,
-  campusName: string,
-  photos: Map<number, string>,
-  projects: Map<number, Project>,
-) => {
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const response = await apiRateLimiter.fetch(
-      `/projects_users?filter[campus_id]=${campusId}&filter[status]=in_progress&page[size]=${PAGE_SIZE}&page[number]=${page}`,
-    );
-
-    if (!response.ok) {
-      throw new Error(`42 API responded ${response.status} on peers page ${page}`);
-    }
-
-    const pageData = await response.json();
-    if (!Array.isArray(pageData) || pageData.length === 0) break;
-
-    for (const projectUser of pageData) {
-      const project = projectUser.project;
-      const user = projectUser.user;
-      if (!project || !user) continue;
-
-      if (!projects.has(project.id)) {
-        projects.set(project.id, {
-          id: project.id,
-          name: project.name,
-          subscribers: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      }
-
-      const subscriber: ProjectSubscriber = {
-        userId: user.id,
-        login: user.login,
-        photoUrl: photos.get(user.id) ?? null,
-        validated: projectUser["validated?"] ?? null,
-        status: projectUser.status,
-        campus: campusName,
-      };
-
-      projects.get(project.id)!.subscribers.push(subscriber);
-    }
-
-    if (pageData.length < PAGE_SIZE) break;
-  }
-};
+const CACHE_KEY = "peers:v2";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -86,14 +39,47 @@ export async function GET() {
   }
 
   try {
+    const api = await getUserApi();
+    if (!api) throw new MissingUserKeyError();
+
     const projects = new Map<number, Project>();
     const photos = new Map<number, string>();
 
     for (const [campusName, campusId] of Object.entries(CAMPUS_IDS)) {
-      const students = await getCampusStudents(campusName).catch(() => []);
+      const students = await getCampusStudents(campusName, api).catch(() => []);
       for (const student of students) photos.set(student.id, student.photoUrl);
 
-      await fetchCampusProjectUsers(campusId, campusName, photos, projects);
+      const projectUsers = await api.fetchAllPages(
+        `/projects_users?filter[campus_id]=${campusId}&filter[status]=in_progress`,
+        { maxPages: 30 },
+      );
+
+      for (const projectUser of projectUsers) {
+        const project = projectUser.project;
+        const user = projectUser.user;
+        if (!project || !user) continue;
+
+        if (!projects.has(project.id)) {
+          projects.set(project.id, {
+            id: project.id,
+            name: project.name,
+            subscribers: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        }
+
+        const subscriber: ProjectSubscriber = {
+          userId: user.id,
+          login: user.login,
+          photoUrl: photos.get(user.id) ?? null,
+          validated: projectUser["validated?"] ?? null,
+          status: projectUser.status,
+          campus: campusName,
+        };
+
+        projects.get(project.id)!.subscribers.push(subscriber);
+      }
     }
 
     const result = [...projects.values()];
@@ -108,6 +94,8 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error: any) {
+    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
+
     console.error("[peers] failed to build:", error.message);
     return NextResponse.json(
       { error: "Failed to fetch peers from the 42 API" },

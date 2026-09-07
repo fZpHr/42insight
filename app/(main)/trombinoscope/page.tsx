@@ -26,25 +26,16 @@ import { useSession } from "next-auth/react";
 import { Student } from "@/types";
 import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
 const INITIAL_LOAD = 20;
 const LOAD_MORE = 10;
 
-const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
-  try {
-
-    const response = await fetch(`/api/campus/${campus}/students`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch students");
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching students:", error);
-    throw error;
-  }
-};
+const fetchCampusStudents = (campus: string): Promise<Student[]> =>
+  fetchJson<Student[]>(`/api/campus/${campus}/students`);
 
 export default function Trombinoscope() {
     const { data: session, status } = useSession();
@@ -149,8 +140,17 @@ export default function Trombinoscope() {
   }
 
 
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="The trombinoscope" />;
+  }
+
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
-    return <LoadingScreen message="Loading trombinoscope..." />;
+    return (
+      <LoadingScreen
+        message="Loading trombinoscope..."
+        progressScope={effectiveCampus ? `campus:${effectiveCampus}` : undefined}
+      />
+    );
   }
 
 

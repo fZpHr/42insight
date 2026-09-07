@@ -6,6 +6,11 @@ import {
   currentPool,
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
+import {
+  getUserApi,
+  keyRequiredResponse,
+  MissingUserKeyError,
+} from "@/lib/forty-two/user-api";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -19,14 +24,17 @@ export async function GET(request: Request) {
     const month = (searchParams.get("month") ?? pool.month).toLowerCase();
     const year = searchParams.get("year") ?? pool.year;
 
-    const perCampus = await Promise.all(
-      Object.keys(CAMPUS_IDS).map((campus) =>
-        getPoolUsers(campus, month, year).catch(() => []),
-      ),
-    );
+    const api = await getUserApi();
+    const poolUsers: any[] = [];
 
-    return NextResponse.json(perCampus.flat());
+    for (const campus of Object.keys(CAMPUS_IDS)) {
+      poolUsers.push(...(await getPoolUsers(campus, month, year, api)));
+    }
+
+    return NextResponse.json(poolUsers);
   } catch (error: any) {
+    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
+
     console.error("[pool] failed to build:", error.message);
     return NextResponse.json(
       { error: "Failed to fetch pool users" },

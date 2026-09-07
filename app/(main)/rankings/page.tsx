@@ -74,6 +74,8 @@ import {
 import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
 
 const sortOptions: StudentSortOption[] = [
   { value: "level", label: "Level", key: "level" },
@@ -176,19 +178,8 @@ const loginTimeCategories = {
  */
 const NO_CORRECTION_DATA = 420;
 
-const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
-  try {
-
-    const response = await fetch(`/api/campus/${campus}/students`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch students");
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching students:", error);
-    throw error;
-  }
-};
+const fetchCampusStudents = (campus: string): Promise<Student[]> =>
+  fetchJson<Student[]>(`/api/campus/${campus}/students`);
 
 type SortDirection = "asc" | "desc";
 
@@ -796,8 +787,21 @@ export default function Rankings() {
   );
 
 
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="The rankings" />;
+  }
+
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
-    return <LoadingScreen message="Loading rankings..." />;
+    return (
+      <LoadingScreen
+        message="Loading rankings..."
+        progressScope={
+          effectiveCampus && effectiveCampus !== "Global"
+            ? `campus:${effectiveCampus}`
+            : undefined
+        }
+      />
+    );
   }
 
   return (

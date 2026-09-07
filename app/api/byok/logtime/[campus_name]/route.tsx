@@ -9,27 +9,28 @@ import {
   logtimeMetaKey,
   redis,
 } from "@/lib/forty-two/live-campus";
+import {
+  getUserApi,
+  keyRequiredResponse,
+  MissingUserKeyError,
+} from "@/lib/forty-two/user-api";
 
 /**
- * Builds the campus logtime index with a student's own API key.
+ * Builds the campus logtime index with the visitor's own API key.
  *
  * This is what replaces the refresh_activity cron. One request per student
  * against /locations_stats, paid for by the key of whoever triggers the build,
- * and the result lands in a shared index so every visitor reads it afterwards
- * without a key of their own.
+ * and the result lands in a shared index so every visitor reads it afterwards.
  *
  * The work is chunked because a whole campus takes minutes at the 42 rate limit
- * of 2 requests per second, far past any serverless timeout. The browser calls
+ * of two requests per second, far past any serverless timeout. The browser calls
  * this repeatedly with the offset it gets back, which also gives it a progress
  * bar and makes an interrupted build resumable.
  */
 
 const DEFAULT_CHUNK = 40;
 const MAX_CHUNK = 60;
-const REQUEST_DELAY_MS = 500; // 42 allows 2 requests per second per application
 const INDEX_TTL = 86_400;
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function POST(
   request: Request,
@@ -45,45 +46,36 @@ export async function POST(
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });
   }
 
-  let token: string;
   let offset: number;
   let limit: number;
 
   try {
     const body = await request.json();
-    token = body.token;
     offset = Math.max(0, Number(body.offset) || 0);
     limit = Math.min(MAX_CHUNK, Number(body.limit) || DEFAULT_CHUNK);
   } catch {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  if (!token) {
-    return NextResponse.json(
-      { error: "A 42 access token is required" },
-      { status: 400 },
-    );
-  }
-
   try {
-    const students = await getCampusStudents(campus_name);
+    const api = await getUserApi();
+    if (!api) return keyRequiredResponse();
+
+    const students = await getCampusStudents(campus_name, api);
     const chunk = students.slice(offset, offset + limit);
 
     const computed: Record<string, unknown> = {};
     let failed = 0;
 
-    for (const [index, student] of chunk.entries()) {
-      if (index > 0) await sleep(REQUEST_DELAY_MS);
-
+    for (const student of chunk) {
       try {
-        const response = await fetch(
-          `https://api.intra.42.fr/v2/users/${student.id}/locations_stats`,
-          { headers: { Authorization: `Bearer ${token}` } },
+        const response = await api.fetch(
+          `/users/${student.id}/locations_stats`,
         );
 
         if (response.status === 401) {
           return NextResponse.json(
-            { error: "The 42 API rejected this token" },
+            { error: "The 42 API rejected this key" },
             { status: 401 },
           );
         }
@@ -94,7 +86,7 @@ export async function POST(
         }
 
         computed[String(student.id)] = computeLogtime(await response.json());
-      } catch (error) {
+      } catch {
         failed++;
       }
     }
@@ -128,7 +120,12 @@ export async function POST(
       done,
     });
   } catch (error: any) {
-    console.error(`[byok] logtime build failed for ${campus_name}:`, error.message);
+    if (error instanceof MissingUserKeyError) return keyRequiredResponse();
+
+    console.error(
+      `[byok] logtime build failed for ${campus_name}:`,
+      error.message,
+    );
     return NextResponse.json(
       { error: "Failed to build the logtime index" },
       { status: 502 },

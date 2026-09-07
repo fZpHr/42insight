@@ -31,6 +31,8 @@ import {
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { useSession, signOut } from "next-auth/react";
 import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { isKeyRequired } from "@/lib/api-client";
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 import { Changelog } from "@/components/Changelog";
 import { CoalitionInfo } from "@/components/CoalitionInfo";
@@ -403,6 +405,10 @@ export default function Dashboard() {
 
   if (status === "unauthenticated") {
     return <LoadingDashboard />;
+  }
+
+  if (isKeyRequired(intraError)) {
+    return <ApiKeyGate what="Your dashboard" />;
   }
 
   if (isPageLoading) {

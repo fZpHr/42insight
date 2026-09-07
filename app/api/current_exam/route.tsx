@@ -2,7 +2,6 @@ import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
 const redis = new Redis({
     url: process.env.REDIS_URL,

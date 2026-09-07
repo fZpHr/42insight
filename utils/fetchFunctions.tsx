@@ -1,3 +1,4 @@
+import { KeyRequiredError } from "@/lib/api-client";
 import { UserIntraInfo } from "@/types";
 
 export const fetchUserIntraInfo = async (
@@ -5,6 +6,9 @@ export const fetchUserIntraInfo = async (
   ): Promise<UserIntraInfo | null> => {
     try {
       const response = await fetch(`/api/users/${login}/intra`)
+      if (response.status === 428) {
+        throw new KeyRequiredError();
+      }
       if (!response.ok) {
         throw new Error("Failed to fetch user info");
       }
