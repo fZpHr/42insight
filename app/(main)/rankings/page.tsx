@@ -773,6 +773,24 @@ export default function Rankings() {
     }
   };
 
+  // Hooks must run on every render, so this sits above every early return
+  // below. It used to live after the error branch, which meant a failed load
+  // rendered fewer hooks than a successful one and React tore the page down.
+  const debouncedSearch = useMemo(
+    () =>
+      debounce(
+        (term: string) => {
+          setSearchTerm(term);
+        },
+        { wait: 400 },
+      ),
+    [],
+  );
+
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="The rankings" />;
+  }
+
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4">
@@ -792,22 +810,6 @@ export default function Rankings() {
         </Card>
       </div>
     );
-  }
-
-  const debouncedSearch = useMemo(
-    () =>
-      debounce(
-        (term: string) => {
-          setSearchTerm(term);
-        },
-        { wait: 400 },
-      ),
-    [],
-  );
-
-
-  if (isKeyRequired(error)) {
-    return <ApiKeyGate what="The rankings" />;
   }
 
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {

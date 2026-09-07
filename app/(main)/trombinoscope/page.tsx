@@ -112,7 +112,8 @@ export default function Trombinoscope() {
   }, [effectiveCampus]);
 
   useEffect(() => {
-    if (error) {
+    // A missing key is not a failure; the page shows the prompt instead.
+    if (error && !isKeyRequired(error)) {
       toast.error(
         error instanceof Error ? error.message : "Failed to load students",
         {

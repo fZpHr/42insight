@@ -407,6 +407,12 @@ export default function Dashboard() {
     return <LoadingDashboard />;
   }
 
+  // Before the loading branch: without a key the data never arrives, so
+  // isPageLoading stays true forever and the dashboard spins for good.
+  if (isKeyRequired(intraError)) {
+    return <ApiKeyGate what="Your dashboard" />;
+  }
+
   if (isPageLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
@@ -463,10 +469,6 @@ export default function Dashboard() {
         </div>
       </div>
     );
-  }
-
-  if (isKeyRequired(intraError)) {
-    return <ApiKeyGate what="Your dashboard" />;
   }
 
   if (intraError) {
