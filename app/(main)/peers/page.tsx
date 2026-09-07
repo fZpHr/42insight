@@ -27,8 +27,9 @@ import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { fetchJson } from "@/lib/api-client";
 
-async function fetchPeersData() {
-    return fetchJson<Project[]>('/api/peers');
+async function fetchPeersData(campus?: string) {
+    const query = campus ? `?campus=${encodeURIComponent(campus)}` : "";
+    return fetchJson<Project[]>(`/api/peers${query}`);
 }
 
 
@@ -214,14 +215,17 @@ export default function PeersPage() {
     }, [effectiveCampus]);
     
     const { data, error, isLoading, isSuccess, isFetching } = useQuery<Project[]>({
-        queryKey: ['peersData'],
-        queryFn: fetchPeersData,
+        queryKey: ['peersData', effectiveCampus],
+        queryFn: () => fetchPeersData(effectiveCampus),
         staleTime: 30 * 60 * 1000,
         refetchOnMount: 'always',
     });
 
 
-    if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
+    // Keep the loading screen for as long as the request is actually running.
+    // The timeout used to dismiss it at 15s while the fetch was still going,
+    // so a slow campus rendered "No Peers found" over data that then arrived.
+    if ((isLoading || isFetching) && !isSuccess) {
         return <LoadingScreen message="Loading peers..." />;
     }
 

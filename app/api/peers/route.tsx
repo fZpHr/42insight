@@ -19,7 +19,7 @@ import type { Project, ProjectSubscriber } from "@/types";
 const CACHE_TTL = 600;
 const CACHE_KEY = "peers";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,12 +28,26 @@ export async function GET() {
   const api = await getApi();
   if (!api) return keyRequiredResponse();
 
+  // One campus, not every campus. The page filters on the selected one
+  // anyway, so walking the others threw away half of a very expensive fetch.
+  const requested = new URL(request.url).searchParams.get("campus");
+  const campuses = Object.entries(CAMPUS_IDS).filter(
+    ([name]) => !requested || name === requested,
+  );
+
+  if (campuses.length === 0) {
+    return NextResponse.json({ error: "Campus not found" }, { status: 404 });
+  }
+
   try {
-    const result = await cachedOnce(CACHE_KEY, CACHE_TTL, async () => {
+    const result = await cachedOnce(
+      `${CACHE_KEY}:${requested ?? "all"}`,
+      CACHE_TTL,
+      async () => {
     const projects = new Map<number, Project>();
     const photos = new Map<number, string>();
 
-    for (const [campusName, campusId] of Object.entries(CAMPUS_IDS)) {
+    for (const [campusName, campusId] of campuses) {
       const students = await getCampusStudents(campusName, api).catch(() => []);
       for (const student of students) photos.set(student.id, student.photoUrl);
 
@@ -75,7 +89,8 @@ export async function GET() {
     }
 
       return [...projects.values()];
-    });
+      },
+    );
 
     return NextResponse.json(result);
   } catch (error: any) {
