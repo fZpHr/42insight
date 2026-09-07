@@ -18,7 +18,11 @@ export const copy = {
     titleConnect: "Connect your 42 API key",
     subtitle: "42Insight reads everything live from the 42 API, on your key.",
     why:
-      "The site's own 42 application is reserved for signing people in. 42 meters per application, so if pages were fetched on it too, a busy afternoon would spend the budget logging in depends on, and nobody could sign in until the hour rolled over. Your key is yours alone: 1200 requests an hour that nobody else draws from.",
+      "42Insight is becoming a site that runs on its own. No database to keep in sync, no background jobs to babysit, nothing that quietly breaks when the person maintaining it looks away: everything is read live from the 42 API, and nothing is stored. That is what asks a key of you today, and it is also what makes the site something anyone can clone and run rather than one person's to keep alive.",
+    quota:
+      "With your key you browse on your own budget: 1200 requests an hour that nobody else draws from. The site's own 42 application stays reserved for signing people in, because 42 meters per application and a busy afternoon on a shared key would spend the budget logging in depends on.",
+    transparency:
+      "Nothing happens behind your back. The counter in the top left shows how many requests are in flight, and opening it lists every call made on your key: which endpoint, what it answered, how long it took.",
     storage:
       "Your credentials are exchanged for a token and sealed into an encrypted, httpOnly cookie that lasts a month. They are never written to a database or a log. There is no database here.",
     step1Before: "Open ",
@@ -47,9 +51,14 @@ export const copy = {
     guideUid: "this is your Client ID",
     guideSecret: "this is your Client secret",
     guideValidUntil:
-      "A validity date is shown here. 42 rotates the secret, so you will need to reconnect your key when it does.",
+      "42 replaces this secret every 30 days, counted from when the application was created. The intra shows the expiry date, and the secret that will take over under NEXT SECRET. When it rotates, come back here and reconnect your key.",
     guideCaption:
       "On the intra, your application page looks roughly like this. Copy the two fields marked below.",
+    guideNextSecret: "NEXT SECRET",
+    activityTitle: "Recent 42 API calls",
+    activityEmpty: "Nothing fetched yet on this server.",
+    activityCaption:
+      "Once your key is connected, the counter in the header opens onto this: everything the site has asked the 42 API for, on your key.",
     forget: "Forget my key",
     replace: "Replace it",
     connected: "Key connected. The rest of the site is open.",
@@ -64,7 +73,11 @@ export const copy = {
     subtitle:
       "42Insight lit tout en direct depuis l'API 42, avec votre clé.",
     why:
-      "L'application 42 du site est réservée à la connexion. 42 compte par application : si les pages y puisaient aussi, un après-midi chargé consommerait le budget dont la connexion dépend, et plus personne ne pourrait se connecter avant le changement d'heure. Votre clé n'appartient qu'à vous : 1200 requêtes par heure que personne d'autre n'entame.",
+      "42Insight cherche à tourner tout seul. Plus de base de données à tenir à jour, plus de tâches de fond à surveiller, plus rien qui casse en silence dès qu'on regarde ailleurs : tout est lu en direct depuis l'API 42, et rien n'est stocké. C'est ce qui vous demande une clé aujourd'hui, et c'est aussi ce qui rend le site clonable et utilisable par n'importe qui, au lieu de dépendre d'une seule personne.",
+    quota:
+      "Avec votre clé, vous naviguez sur votre propre budget : 1200 requêtes par heure que personne d'autre n'entame. L'application 42 du site reste réservée à la connexion, car 42 compte par application et un après-midi chargé sur une clé partagée consommerait le budget dont la connexion dépend.",
+    transparency:
+      "Rien ne se passe dans votre dos. Le compteur en haut à gauche indique combien de requêtes sont en cours, et l'ouvrir liste chaque appel parti sur votre clé : quel endpoint, ce qu'il a répondu, combien de temps il a pris.",
     storage:
       "Vos identifiants sont échangés contre un jeton, puis scellés dans un cookie chiffré et httpOnly valable un mois. Ils ne sont jamais écrits dans une base ni dans un journal. Il n'y a pas de base de données ici.",
     step1Before: "Ouvrez ",
@@ -93,9 +106,14 @@ export const copy = {
     guideUid: "c'est votre Client ID",
     guideSecret: "c'est votre Client secret",
     guideValidUntil:
-      "Une date de validité est affichée ici. 42 fait tourner le secret, il faudra reconnecter votre clé à ce moment-là.",
+      "42 remplace ce secret tous les 30 jours, comptés depuis la création de l'application. L'intra affiche la date d'expiration, et le secret qui prendra le relais sous NEXT SECRET. Quand il tourne, revenez ici reconnecter votre clé.",
     guideCaption:
       "Sur l'intra, la page de votre application ressemble à ceci. Copiez les deux champs indiqués ci-dessous.",
+    guideNextSecret: "NEXT SECRET",
+    activityTitle: "Recent 42 API calls",
+    activityEmpty: "Nothing fetched yet on this server.",
+    activityCaption:
+      "Une fois votre clé connectée, le compteur de l'en-tête s'ouvre là-dessus : tout ce que le site a demandé à l'API 42, avec votre clé.",
     forget: "Oublier ma clé",
     replace: "La remplacer",
     connected: "Clé connectée. Le reste du site est ouvert.",

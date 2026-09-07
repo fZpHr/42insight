@@ -49,7 +49,14 @@ export function IntraKeyGuide({ language }: { language: Language }) {
             <p className="mt-1.5 text-[11px] font-medium text-primary">
               ↑ {t.guideSecret}
             </p>
-            <p className="mt-1 text-[10px] italic text-zinc-500">
+            <div className="mt-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-600">
+              <span aria-hidden>🔒</span> {t.guideNextSecret}
+            </div>
+            <div className="mt-1 flex items-center gap-2 rounded border border-zinc-800/60 bg-zinc-900/50 px-2 py-1">
+              <code className="text-[10px] text-zinc-600">s-s4t2ud-</code>
+              <span className="h-2.5 flex-1 rounded-sm bg-zinc-800" />
+            </div>
+            <p className="mt-1.5 text-[10px] italic text-zinc-500">
               {t.guideValidUntil}
             </p>
           </div>

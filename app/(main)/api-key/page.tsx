@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { hasApiKey } from "@/lib/api-client";
 import { IntraKeyGuide } from "@/components/IntraKeyGuide";
+import { ActivityGuide } from "@/components/ActivityGuide";
 import {
   LANGUAGE_STORAGE_KEY,
   copy,
@@ -164,8 +165,12 @@ export default function ApiKeyPage() {
         <CardContent className="space-y-5">
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>{t.why}</p>
+            <p>{t.quota}</p>
+            <p>{t.transparency}</p>
             <p>{t.storage}</p>
           </div>
+
+          <ActivityGuide language={language} />
 
           {keyPresent ? (
             <>
