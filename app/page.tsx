@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Star, Activity, MousePointer, Bug } from "lucide-react";
+import { Loader2, Star, Activity, MousePointer, Bug, Pause, Play } from "lucide-react";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { signIn } from "next-auth/react";
 import { 
@@ -13,6 +13,23 @@ import {
   useSpring, 
   useAnimation 
 } from "framer-motion";
+
+/**
+ * Whether the background is running.
+ *
+ * The sign-in page animates a few hundred elements at once -- drifting stars,
+ * black holes, shooting stars, floating stats. That is a fan spinning up on a
+ * laptop and a distraction for anyone who just wants to read the page, so it
+ * can be stopped. The choice is remembered, because having to stop it on every
+ * visit would be worse than the animation.
+ *
+ * A context rather than a prop, because the animated pieces sit four levels
+ * down and none of the layers in between have any business knowing about it.
+ */
+const MotionPausedContext = createContext(false);
+const usePaused = () => useContext(MotionPausedContext);
+
+const PAUSE_STORAGE_KEY = "42insight:background-paused";
 
 const allFloatingStats = [
   // --- API & USERS (Blue) ---
@@ -96,8 +113,13 @@ const useWrapPosition = (
 
 const ShootingStarItem = ({ delay }: { delay: number }) => {
   const controls = useAnimation();
+  const paused = usePaused();
 
   useEffect(() => {
+    if (paused) {
+      controls.stop();
+      return;
+    }
     let isMounted = true;
 
     const sequence = async () => {
@@ -155,7 +177,7 @@ const ShootingStarItem = ({ delay }: { delay: number }) => {
 
     sequence();
     return () => { isMounted = false; };
-  }, [delay, controls]);
+  }, [delay, controls, paused]);
 
   return (
     <motion.div
@@ -172,6 +194,7 @@ const ShootingStarItem = ({ delay }: { delay: number }) => {
 };
 
 const StarItem = ({ data, cameraX, cameraY }: { data: any, cameraX: MotionValue, cameraY: MotionValue }) => {
+  const paused = usePaused();
   const x = useWrapPosition(data.x, cameraX, 0.05);
   const y = useWrapPosition(data.y, cameraY, 0.05);
 
@@ -184,7 +207,7 @@ const StarItem = ({ data, cameraX, cameraY }: { data: any, cameraX: MotionValue,
         width: data.size,
         height: data.size,
       }}
-      animate={{
+      animate={paused ? undefined : {
         opacity: [data.opacity, 1, data.opacity],
         scale: [1, 1.2, 1],
       }}
@@ -199,6 +222,7 @@ const StarItem = ({ data, cameraX, cameraY }: { data: any, cameraX: MotionValue,
 };
 
 const BlackHole = ({ data, cameraX, cameraY }: { data: any, cameraX: MotionValue, cameraY: MotionValue }) => {
+  const paused = usePaused();
   const x = useWrapPosition(data.x, cameraX, 0.02);
   const y = useWrapPosition(data.y, cameraY, 0.02);
 
@@ -214,7 +238,7 @@ const BlackHole = ({ data, cameraX, cameraY }: { data: any, cameraX: MotionValue
     >
       <motion.div 
         className="absolute w-24 h-24 rounded-full border-[1px] border-white/10 blur-sm"
-        animate={{ rotate: 360, scale: [1, 1.05, 1] }}
+        animate={paused ? undefined : { rotate: 360, scale: [1, 1.05, 1] }}
         transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
         style={{
           boxShadow: "0 0 40px 10px rgba(100, 0, 150, 0.1), inset 0 0 20px rgba(0,0,0,1)"
@@ -232,11 +256,16 @@ const StatItem = ({ stat, cameraX, cameraY }: { stat: any, cameraX: MotionValue,
   });
 
   const controls = useAnimation();
+  const paused = usePaused();
 
   const x = useWrapPosition(pos.x, cameraX, 0.15);
   const y = useWrapPosition(pos.y, cameraY, 0.15);
 
   useEffect(() => {
+    if (paused) {
+      controls.stop();
+      return;
+    }
     let isMounted = true;
 
     const sequence = async () => {
@@ -276,7 +305,7 @@ const StatItem = ({ stat, cameraX, cameraY }: { stat: any, cameraX: MotionValue,
     sequence();
 
     return () => { isMounted = false; };
-  }, [controls]);
+  }, [controls, paused]);
 
   return (
     <motion.div
@@ -311,7 +340,7 @@ const StatItem = ({ stat, cameraX, cameraY }: { stat: any, cameraX: MotionValue,
           </div>
           <motion.div 
             className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${stat.color.replace('text-', 'bg-')} blur-[2px]`}
-            animate={{ opacity: [0.2, 0.8, 0.2] }}
+            animate={paused ? undefined : { opacity: [0.2, 0.8, 0.2] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
         </div>
@@ -361,6 +390,29 @@ const HeartExplosion = ({ isHovered }: { isHovered: boolean }) => {
 
 export default function Home() {
   const [loader, setLoader] = useState(false);
+  // Read after mount: localStorage does not exist during the server render,
+  // and guessing wrong would flash the animation at someone who turned it off.
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    try {
+      setPaused(window.localStorage.getItem(PAUSE_STORAGE_KEY) === "true");
+    } catch {
+      // Private browsing, or storage refused. The animation simply runs.
+    }
+  }, []);
+
+  const togglePaused = () => {
+    setPaused((wasPaused) => {
+      const next = !wasPaused;
+      try {
+        window.localStorage.setItem(PAUSE_STORAGE_KEY, String(next));
+      } catch {
+        // Not remembering it is a smaller failure than not honouring it.
+      }
+      return next;
+    });
+  };
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isStarHovered, setIsStarHovered] = useState(false);
@@ -479,6 +531,7 @@ export default function Home() {
   };
 
   return (
+    <MotionPausedContext.Provider value={paused}>
     <div 
       ref={containerRef} 
       className={`relative min-h-screen overflow-hidden bg-[#0a0a0f] text-foreground select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -493,13 +546,13 @@ export default function Home() {
             top: '50%', left: '50%',
             x: '-50%', y: '-50%'
           }}
-          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+          animate={paused ? undefined : { scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
           className="absolute w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] rounded-full blur-[100px] opacity-15"
           style={{ background: 'radial-gradient(circle, rgba(180, 50, 255, 0.4), transparent 70%)' }}
-          animate={{ x: [0, 100, -100, 0], y: [0, -100, 100, 0] }}
+          animate={paused ? undefined : { x: [0, 100, -100, 0], y: [0, -100, 100, 0] }}
           transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
         />
       </div>
@@ -684,6 +737,31 @@ export default function Home() {
           </motion.p>
         </footer>
       </div>
+
+      <button
+        type="button"
+        onClick={togglePaused}
+        aria-pressed={paused}
+        title={
+          paused
+            ? "Resume the background animation"
+            : "Pause the background animation"
+        }
+        className="absolute bottom-4 right-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
+      >
+        {paused ? (
+          <>
+            <Play className="h-3.5 w-3.5" />
+            Animation off
+          </>
+        ) : (
+          <>
+            <Pause className="h-3.5 w-3.5" />
+            Pause animation
+          </>
+        )}
+      </button>
     </div>
+    </MotionPausedContext.Provider>
   );
 }
