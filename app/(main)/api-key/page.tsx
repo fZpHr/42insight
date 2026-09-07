@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { KeyRound, ExternalLink } from "lucide-react";
+import { KeyRound, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -51,6 +51,7 @@ export default function ApiKeyPage() {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
   const [keyPresent, setKeyPresent] = useState<boolean | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [language, setLanguage] = useState<Language>("fr");
@@ -272,29 +273,48 @@ export default function ApiKeyPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label htmlFor="client-secret" className="text-sm font-medium">{t.clientSecret}</label>
-                  <Input
-                    id="client-secret"
-                    type="password"
-                    value={clientSecret}
-                    onChange={(event) => setClientSecret(event.target.value)}
-                    autoComplete="off"
-                    placeholder="s-s4t2ud-…"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="client-secret"
+                      type={showSecret ? "text" : "password"}
+                      value={clientSecret}
+                      onChange={(event) => setClientSecret(event.target.value)}
+                      autoComplete="off"
+                      placeholder="s-s4t2ud-…"
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecret((shown) => !shown)}
+                      aria-label={showSecret ? t.hideSecret : t.showSecret}
+                      title={showSecret ? t.hideSecret : t.showSecret}
+                      className="absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {showSecret ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <Button
-                onClick={save}
-                disabled={saving || !clientId.trim() || !clientSecret.trim()}
-                className="w-full gap-2"
-              >
-                <KeyRound className="h-4 w-4" />
-                {saving ? t.checking : t.connect}
-              </Button>
             </>
           )}
 
           <ActivityGuide language={language} />
+
+          {!keyPresent && (
+            <Button
+              onClick={save}
+              disabled={saving || !clientId.trim() || !clientSecret.trim()}
+              className="w-full gap-2"
+            >
+              <KeyRound className="h-4 w-4" />
+              {saving ? t.checking : t.connect}
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>
