@@ -22,6 +22,8 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { isKeyRequired, KeyRequiredError } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -45,10 +47,14 @@ const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
     if (!campus) return [];
 
     const response = await fetch(`/api/locations/${campus}`);
+    if (response.status === 428) throw new KeyRequiredError();
     if (!response.ok) throw new Error("Failed to fetch students");
 
     return await response.json();
   } catch (e) {
+    // A missing key has to reach the caller, or the page waits forever on data
+    // that will never come instead of asking for one.
+    if (isKeyRequired(e)) throw e;
     console.error("Error fetching students:", e);
     return [];
   }
@@ -103,6 +109,7 @@ export default function ClusterMap() {
     refetch,
     isFetching,
     isSuccess,
+    error,
   } = useQuery<ClusterUser[]>({
     queryKey: ["students", effectiveCampus],
     queryFn: () => fetchStudents(effectiveCampus),
@@ -311,6 +318,10 @@ export default function ClusterMap() {
 
 
 
+
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="The cluster map" />;
+  }
 
   if (!showTimeoutError && (status === "loading" || !effectiveCampus || (isLoading || isFetching) && !isSuccess)) {
     return <LoadingScreen message="Loading cluster map..." />;

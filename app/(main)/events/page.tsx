@@ -20,7 +20,8 @@ import { FeedbackButton } from "@/components/FeedbackButton";
 import { MapPin, User, Calendar, AlertCircle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useCampus } from "@/contexts/CampusContext";
-import { fetchJson } from "@/lib/api-client";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
 
 const getCampusEvents = async (campus_name: string) =>
   fetchJson<any[]>(`/api/events/${campus_name}`);
@@ -87,6 +88,10 @@ export default function EventsPage() {
     enabled: !!effectiveCampus,
     refetchOnMount: 'always',
   });
+
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="Campus events" />;
+  }
 
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return (

@@ -1,6 +1,7 @@
 "use client";
 import { toast } from "sonner";
-import { fetchJson } from "@/lib/api-client";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -186,6 +187,10 @@ export default function Piscine() {
       ),
     [],
   );
+
+  if (isKeyRequired(error)) {
+    return <ApiKeyGate what="The piscine rankings" />;
+  }
 
   if (error) {
     return (

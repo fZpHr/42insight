@@ -1,5 +1,4 @@
 import type { Student } from "@/types";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
 import type { FortyTwoApi } from "@/lib/forty-two/api";
 import { cachedOnce } from "@/lib/memory-cache";
 
@@ -17,10 +16,9 @@ import { cachedOnce } from "@/lib/memory-cache";
  * student, which no page load can afford. It is built by a visitor's own key
  * and stored in their browser, never here.
  *
- * Whichever key a visitor is browsing on does the fetching -- their own when
- * they have connected one, the site's otherwise -- and either way the result
- * lands in the same shared cache, so a page one visitor pays to load is free
- * for the next.
+ * The fetching runs on the visitor's own key -- the site's credentials are for
+ * signing in and nothing else. What one visitor pays to load lands in the
+ * shared cache, so the next reader gets it without spending anything.
  */
 
 export const CAMPUS_IDS: { [key: string]: number } = {
@@ -93,7 +91,7 @@ const toStudent = (cursusUser: any, campusName: string): Student => {
  */
 export const getCampusStudents = async (
   campusName: string,
-  api: FortyTwoApi = apiRateLimiter,
+  api: FortyTwoApi,
 ): Promise<Student[]> => {
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
@@ -120,7 +118,7 @@ export const getPoolUsers = async (
   campusName: string,
   month: string,
   year: string,
-  api: FortyTwoApi = apiRateLimiter,
+  api: FortyTwoApi,
 ): Promise<any[]> => {
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);

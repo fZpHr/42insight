@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
+import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { getServerSession } from "next-auth";
 import { cached } from "@/lib/memory-cache";
 
@@ -26,7 +27,8 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { api } = await getApi();
+  const api = await getApi();
+  if (!api) return keyRequiredResponse();
 
   const campus = session.user?.campus || "";
 

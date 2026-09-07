@@ -1,22 +1,17 @@
-# The only thing the site needs to run.
+# The site's own 42 application. It does exactly one thing: sign people in.
 #
-# No database, no Redis, no cron, no runner. Everything is read from the 42 API
-# on demand and cached in the server's own memory.
-
-# Sign-in. next-auth uses CLIENT_ID1, so it is kept out of the data pool as
-# soon as a second key exists: browsing must never be able to lock people out
-# of logging in.
+# No data is ever fetched on it. 42 meters per application, so a page load made
+# on this key would compete with logging in -- browse hard enough and nobody
+# can sign in until the hour rolls over. Visitors bring their own key for data.
 CLIENT_ID1=
 CLIENT_SECRET1=
 
-# Extra 42 applications for data. Each one adds 2 requests/second and
-# 1200/hour to the budget the site fetches with. CLIENT_ID2 through CLIENT_ID6
-# are read. With only CLIENT_ID1 configured the site still works, sharing that
-# one key between browsing and signing in.
-CLIENT_ID2=
-CLIENT_SECRET2=
-
+# Signs the session cookie, and encrypts the 42 credentials visitors connect.
 JWT_SECRET=
+
+# Where the site is reachable, for the OAuth callback.
+# In local development: http://localhost:3000
+NEXTAUTH_URL=
 
 # The piscine the site reports on. Used to be a hardcoded line in the cron repo.
 POOL_MONTH=september

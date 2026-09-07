@@ -19,9 +19,9 @@ import { hasApiKey } from "@/lib/api-client";
 /**
  * Connects a student's own 42 application, and shows what it has left.
  *
- * 42 meters per application, so everyone browsing on the site's keys shares one
- * queue and waits behind each other at busy moments. A key of your own is a
- * lane of your own: 1200 requests an hour that nobody else is drawing from.
+ * The site's credentials sign people in and do nothing else, so a key here is
+ * what makes the site show anything at all. 42 meters per application: yours is
+ * 1200 requests an hour that nobody else draws from.
  *
  * The credentials are exchanged for a token, sealed into an encrypted httpOnly
  * cookie that lasts a month, and never written anywhere else -- so the key is
@@ -33,14 +33,13 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-interface SharedQuota {
+interface KeyQuota {
   keyId: string;
   used: number;
   remaining: number;
   limit: number;
   source?: "42" | "counted";
   observedAt?: string | null;
-  includesSignInKey?: boolean;
 }
 
 /** Says where a figure comes from, so nobody has to trust it blindly. */
@@ -89,9 +88,8 @@ export function ApiKeyDialog({ open, onOpenChange }: Props) {
   const [clientSecret, setClientSecret] = useState("");
   const [saving, setSaving] = useState(false);
   const [keyPresent, setKeyPresent] = useState(false);
-  const [personal, setPersonal] = useState<SharedQuota | null>(null);
-  const [shared, setShared] = useState<SharedQuota[]>([]);
-  const [signInKeyShared, setSignInKeyShared] = useState(false);
+  const [personal, setPersonal] = useState<KeyQuota | null>(null);
+
 
   useEffect(() => {
     if (!open) return;
@@ -100,12 +98,8 @@ export function ApiKeyDialog({ open, onOpenChange }: Props) {
 
     fetch("/api/quota")
       .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        setShared(data?.shared ?? []);
-        setPersonal(data?.personal?.present ? data.personal : null);
-        setSignInKeyShared(Boolean(data?.signInKeyShared));
-      })
-      .catch(() => setShared([]));
+      .then((data) => setPersonal(data?.personal?.present ? data.personal : null))
+      .catch(() => setPersonal(null));
   }, [open]);
 
   const save = async () => {
@@ -145,7 +139,7 @@ export function ApiKeyDialog({ open, onOpenChange }: Props) {
       await fetch("/api/byok/token", { method: "DELETE" });
       setKeyPresent(false);
       setPersonal(null);
-      toast.success("Key forgotten. Back on the shared keys.");
+      toast.success("Key forgotten. Pages will ask for one again.");
       await queryClient.invalidateQueries();
     } catch {
       toast.error("Could not reach the server");
@@ -160,13 +154,12 @@ export function ApiKeyDialog({ open, onOpenChange }: Props) {
             {keyPresent ? "Your 42 API key" : "Connect your 42 API key"}
           </DialogTitle>
           <DialogDescription>
-            Optional. 42 allows each application 1200 requests an hour, and
-            everyone without a key of their own draws from the site&apos;s — so
-            at busy moments your pages queue behind other people&apos;s. Your
-            own key is your own lane. Create an application on the intra —
-            Settings → API → Register a new app — and paste its credentials
-            below. They are exchanged for a token and never stored in readable
-            form.
+            42Insight reads everything live from the 42 API, on your key. The
+            site&apos;s own application is reserved for signing in — fetching on
+            it would compete with logging in, and a busy day would lock people
+            out. Create an application on the intra — Settings → API → Register
+            a new app — and paste its credentials below. They are exchanged for
+            a token and never stored in readable form.
           </DialogDescription>
         </DialogHeader>
 
@@ -180,29 +173,11 @@ export function ApiKeyDialog({ open, onOpenChange }: Props) {
             />
           )}
 
-          {shared.map((quota) => (
-            <Meter
-              key={quota.keyId}
-              label={
-                quota.includesSignInKey
-                  ? "Site key — also signs people in"
-                  : `Site: ${quota.keyId}`
-              }
-              used={quota.used}
-              limit={quota.limit}
-              note={provenance(quota)}
-            />
-          ))}
-
-          {signInKeyShared && (
-            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
-              This deployment has a single 42 application configured, so browsing
-              spends the same budget next-auth needs to sign people in — run it
-              down and nobody can log in until the hour rolls over. Adding
-              <code className="mx-1">CLIENT_ID2</code>/
-              <code className="mx-1">CLIENT_SECRET2</code> to the server&apos;s
-              <code className="mx-1">.env</code> moves data onto its own key and
-              leaves sign-in alone.
+          {!keyPresent && (
+            <p className="rounded-md border border-muted bg-muted/40 p-2 text-xs text-muted-foreground">
+              Until you connect one, pages have nothing to load: the site&apos;s
+              own 42 application is reserved for signing in, so no data is
+              fetched on it. Yours takes about a minute to register.
             </p>
           )}
 

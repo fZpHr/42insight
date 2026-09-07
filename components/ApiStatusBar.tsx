@@ -16,10 +16,10 @@ import { hasApiKey } from "@/lib/api-client";
  * work, and without a live count it reads as the site being stuck. So the
  * number of requests in flight is shown as it happens.
  *
- * And every one of those requests spends from an hourly budget of 1200 that
- * runs out quietly. The figure shown is the 42 API's own -- it reports what is
- * left on every response -- so it is a reading, not an estimate. That is why it
- * sits in the header rather than behind a menu.
+ * And every one of those requests spends from the visitor's own hourly budget
+ * of 1200, which runs out quietly. The figure shown is the 42 API's own -- it
+ * reports what is left on every response -- so it is a reading, not an
+ * estimate. That is why it sits in the header rather than behind a menu.
  */
 
 const POLL_MS = 30000;
@@ -32,13 +32,11 @@ interface QuotaLine {
   remaining: number;
   limit: number;
   source?: "42" | "counted";
-  includesSignInKey?: boolean;
 }
 
 export function ApiStatusBar() {
   const fetching = useIsFetching();
   const [keyPresent, setKeyPresent] = useState(false);
-  const [shared, setShared] = useState<QuotaLine | null>(null);
   const [personal, setPersonal] = useState<QuotaLine | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const lastRefresh = useRef(0);
@@ -55,10 +53,7 @@ export function ApiStatusBar() {
 
     fetch("/api/quota")
       .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        setShared(data?.shared?.[0] ?? null);
-        setPersonal(data?.personal?.present ? data.personal : null);
-      })
+      .then((data) => setPersonal(data?.personal?.present ? data.personal : null))
       .catch(() => {
         // The header must never be the thing that breaks a page.
       });
@@ -76,9 +71,9 @@ export function ApiStatusBar() {
     wasFetching.current = fetching > 0;
   }, [fetching]);
 
-  // A visitor with a key browses on it, so that is the budget that matters to
-  // them. Without one they are on the shared keys, and so is everyone else.
-  const active = keyPresent && personal ? personal : shared;
+  // There is only ever one budget to show: the visitor's own. Without a key
+  // there is nothing to report, because nothing is fetched.
+  const active = keyPresent ? personal : null;
   const percentageLeft = active
     ? Math.max(0, Math.min(100, (active.remaining / active.limit) * 100))
     : 100;
@@ -106,10 +101,8 @@ export function ApiStatusBar() {
         onClick={() => setDialogOpen(true)}
         title={
           keyPresent
-            ? "Browsing on your own 42 key, as reported by the 42 API. Click to manage it."
-            : shared?.includesSignInKey
-              ? "Browsing on the site's only 42 application — the same one that signs people in. Click for details."
-              : "Browsing on the site keys, along with everyone else. Click to connect your own."
+            ? "Your 42 key's remaining budget this hour, as reported by the 42 API. Click to manage it."
+            : "No 42 key connected — pages have nothing to load. Click to connect one."
         }
         className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs transition-colors hover:bg-muted"
       >
@@ -124,19 +117,17 @@ export function ApiStatusBar() {
           <>
             <KeyRound className={`h-3.5 w-3.5 ${keyPresent ? "text-primary" : "text-muted-foreground"}`} />
             {active ? (
-              <span className={`tabular-nums ${tone}`}>
-                {active.remaining}/{active.limit}
-              </span>
+              <>
+                <span className={`tabular-nums ${tone}`}>
+                  {active.remaining}/{active.limit}
+                </span>
+                <span className="hidden text-muted-foreground sm:inline">
+                  your key
+                </span>
+              </>
             ) : (
-              <span className="text-muted-foreground">42 API</span>
+              <span className="text-muted-foreground">Connect your 42 key</span>
             )}
-            <span className="hidden text-muted-foreground sm:inline">
-              {keyPresent
-                ? "your key"
-                : shared?.includesSignInKey
-                  ? "site + sign-in key"
-                  : "site key"}
-            </span>
           </>
         )}
       </button>

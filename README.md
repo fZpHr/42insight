@@ -24,43 +24,32 @@ All of the Old Features from our existing website have been moved to one website
 ## Where the data comes from
 
 Everything is read live from the 42 API. There is no database, no Redis, no
-cron and no runner: clone the repo, fill in a `.env` with your 42 credentials,
-and it runs. The cache is the server's own memory.
+cron and no runner: clone the repo, fill in a `.env`, and it runs.
 
-Requests are split by what they cost:
+Two keys, with one job each.
 
-**On the site's own keys.** A whole campus arrives in one paginated call -- a
-dozen or so requests, however many students there are -- so rankings, the
-trombinoscope, the piscine, find-peers, events, the cluster map and every
-dashboard are fetched on demand and held for a few minutes. Configure
-`CLIENT_ID2`/`CLIENT_SECRET2` and beyond to widen that budget; `CLIENT_ID1` is
-left to next-auth so browsing can never lock anyone out of signing in.
+**The site's key signs people in, and nothing else.** 42 meters per
+application, and next-auth reads a profile on every sign-in. If pages were
+fetched on that same key, a busy afternoon of browsing would spend the budget
+logging in depends on, and nobody could sign in until the hour rolled over. So
+no data request is ever made on it.
 
-**On your own key, if you connect one.** 42 meters per application, so everyone
-browsing on the site's keys shares one paced queue and waits behind each other
-at busy moments. A student who registers their own 42 application (intra ->
-Settings -> API) and connects it from the sidebar gets a lane of their own:
-1200 requests an hour nobody else is drawing from. Their key also fills the
-shared cache, so a page they pay to load is free for the next visitor.
+**Your key fetches the data.** Register an application on the intra (Settings →
+API → Register a new app) and connect it from the header. Until then, pages ask
+for one rather than showing partial data. The credentials are sealed into an
+encrypted httpOnly cookie that lasts a month, so the key is entered once, not
+every session — what is stored is the credentials, not the two-hour access
+token, which is what lets the server mint a fresh one without asking again.
 
-The credentials are sealed into an encrypted httpOnly cookie that lasts a
-month, so the key is entered once rather than every session -- what is stored
-is the credentials, not the two-hour access token, which is what lets the
-server mint a fresh token without asking again.
-
-Logtime is the one thing that needs a key. It costs one request per student,
-more than an hour of any single budget and more than a page load can wait for,
-and the server keeps nothing between requests. Build it from the rankings page
-and it is stored in your browser.
+What one visitor fetches is cached in the server's memory for a few minutes, so
+a page you pay to load is free for the next reader.
 
 **Seeing what is left.** The header shows, on every page, how many requests are
-in flight and how much of the hourly budget remains; `/api/quota` returns the
-same figures. They are the 42 API's own: it reports
-`x-hourly-ratelimit-remaining` on every /v2 response, and it meters per
-application -- a fresh token from the same credentials continues the same
-budget rather than resetting it. So these are readings, not estimates. A key
-that has not been used yet on a given server instance falls back to our own
-count, and says so.
+in flight and how much of your hourly budget remains. The figures are the 42
+API's own: it reports `x-hourly-ratelimit-remaining` on every /v2 response, and
+meters per application — a fresh token from the same credentials continues the
+same budget rather than resetting it. So these are readings, not estimates.
+`/api/quota` returns the same thing.
 
 ### What this costs
 
@@ -69,6 +58,10 @@ somewhere to accumulate it. These were built by the retired cron jobs and are
 not available: correction OK/KO ratios, the peer relation graph, hours per
 workstation on the cluster map, piscine exam grades, and the live exam tracker.
 Sorts that depend on them are hidden rather than ranking everyone on zeroes.
+
+Logtime is the exception, because it is worth the trouble: it costs one request
+per student, so it is built from the rankings page with your key and stored in
+your browser.
 
 ## Tech-Stack
 

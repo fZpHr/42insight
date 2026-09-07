@@ -25,7 +25,8 @@ import { useSession } from 'next-auth/react';
 import { TransparentBadge } from '@/components/TransparentBadge';
 import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { fetchJson } from "@/lib/api-client";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
+import { ApiKeyGate } from "@/components/ApiKeyGate";
 
 async function fetchPeersData() {
     return fetchJson<Project[]>('/api/peers');
@@ -220,6 +221,10 @@ export default function PeersPage() {
         refetchOnMount: 'always',
     });
 
+
+    if (isKeyRequired(error)) {
+        return <ApiKeyGate what="Find-peers" />;
+    }
 
     if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
         return <LoadingScreen message="Loading peers..." />;

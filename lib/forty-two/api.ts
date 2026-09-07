@@ -1,21 +1,20 @@
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
 import { UserApi, getUserApi } from "@/lib/forty-two/user-api";
 
 /**
- * Picking which key a request travels on.
+ * Which key a request travels on: the visitor's, or none at all.
  *
- * 42 meters per application, so every visitor browsing on the site's keys
- * shares one paced queue: when several people load a page at once, each waits
- * behind the others. A visitor who has connected their own 42 application gets
- * their own lane instead -- their requests are paced only against their own
- * budget, and nobody else's browsing slows them down.
+ * The site's own credentials do one thing, and only that thing: sign people in.
+ * They have to. 42 meters per application, next-auth reads the profile on every
+ * sign-in, and a deployment runs one registered app -- so any data request made
+ * on the site key competes with logging in, and a busy afternoon of browsing can
+ * lock students out of the site entirely.
  *
- * Their key also feeds the shared cache, so a page they pay to load is then
- * free for everyone. That is deliberate: it means connecting a key helps the
- * campus rather than only the person who connected it.
+ * Data therefore travels on keys students register themselves. A visitor
+ * without one is not served stale or partial data, and nothing is fetched on
+ * their behalf: the route answers 428 and the page asks for a key.
  */
 
-/** What both clients answer to, so call sites do not care which they hold. */
+/** What the 42 API clients answer to. */
 export interface FortyTwoApi {
   fetch(path: string, init?: RequestInit): Promise<Response>;
   fetchAllPages(
@@ -28,16 +27,11 @@ export interface FortyTwoApi {
   ): Promise<any[]>;
 }
 
-export interface ResolvedApi {
-  api: FortyTwoApi;
-  /**
-   * The visitor's own client when they have one, so the route can report back
-   * how much of their budget the response spent. Null means the shared keys.
-   */
-  personal: UserApi | null;
-}
-
-export const getApi = async (): Promise<ResolvedApi> => {
-  const personal = await getUserApi();
-  return { api: personal ?? apiRateLimiter, personal };
-};
+/**
+ * The caller's own API client, or null when they have not connected a key.
+ *
+ * Routes turn null into keyRequiredResponse(). There is deliberately no
+ * fallback: falling back to the site key is the exact failure this design
+ * exists to prevent.
+ */
+export const getApi = async (): Promise<UserApi | null> => getUserApi();

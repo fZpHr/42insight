@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
+import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { cached } from "@/lib/memory-cache";
 
 /** The events one student attended: two 42 requests, on the site keys. */
@@ -18,7 +19,8 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { api } = await getApi();
+  const api = await getApi();
+  if (!api) return keyRequiredResponse();
 
   try {
     const events = await cached(

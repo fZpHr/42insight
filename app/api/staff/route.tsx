@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
+import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
   CAMPUS_IDS,
   currentPool,
@@ -15,7 +16,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { api } = await getApi();
+  const api = await getApi();
+  if (!api) return keyRequiredResponse();
 
   const user = session.user;
   if (user.role != "admin" && user.role != "staff") {
