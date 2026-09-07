@@ -183,8 +183,6 @@ export default function ApiKeyPage() {
             </p>
           </div>
 
-          <ActivityGuide language={language} />
-
           {keyPresent ? (
             <>
               {quota && (
@@ -295,6 +293,8 @@ export default function ApiKeyPage() {
               </Button>
             </>
           )}
+
+          <ActivityGuide language={language} />
         </CardContent>
       </Card>
     </div>
