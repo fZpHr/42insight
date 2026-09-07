@@ -301,10 +301,35 @@ export default function Rankings() {
     reloadLogtimeIndex();
   }, [reloadLogtimeIndex]);
 
-  const students = useMemo(
-    () => withLogtime(rawStudents ?? [], logtimeIndex),
-    [rawStudents, logtimeIndex],
-  );
+  // Loaded on its own, and late: a year of corrections is a hundred pages.
+  // The table renders on the campus list, and this column fills in after.
+  const { data: corrections } = useQuery({
+    queryKey: ["campus-corrections", effectiveCampus],
+    queryFn: () =>
+      fetchJson<Record<string, { positive: number; negative: number; percentage: number }>>(
+        `/api/campus/${effectiveCampus}/corrections`,
+      ),
+    enabled: !!effectiveCampus && effectiveCampus !== "Global",
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const students = useMemo(() => {
+    const withTime = withLogtime(rawStudents ?? [], logtimeIndex);
+    if (!corrections) return withTime;
+
+    return withTime.map((student: Student) => {
+      const tally = corrections[String(student.id)];
+      if (!tally) return student;
+
+      return {
+        ...student,
+        correctionPositive: tally.positive,
+        correctionNegative: tally.negative,
+        correctionTotal: tally.positive + tally.negative,
+        correctionPercentage: tally.percentage,
+      };
+    });
+  }, [rawStudents, logtimeIndex, corrections]);
 
   // Built from the data, not written by hand: the list used to stop at 2025
   // because someone had to remember to add a line every year, and nobody did.
