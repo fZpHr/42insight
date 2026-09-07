@@ -306,6 +306,16 @@ export default function Rankings() {
     [rawStudents, logtimeIndex],
   );
 
+  // Built from the data, not written by hand: the list used to stop at 2025
+  // because someone had to remember to add a line every year, and nobody did.
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    for (const student of students ?? []) {
+      if (student.year) years.add(String(student.year));
+    }
+    return [...years].sort().reverse();
+  }, [students]);
+
   const hasCorrectionStats = useMemo(
     () =>
       !!students?.some(
@@ -875,19 +885,11 @@ export default function Rankings() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Years</SelectItem>
-                      <SelectItem value="2025">2025</SelectItem>
-                      <SelectItem value="2024">2024</SelectItem>
-                      <SelectItem value="2023">2023</SelectItem>
-                      <SelectItem value="2022">2022</SelectItem>
-                      <SelectItem value="2021">2021</SelectItem>
-                      <SelectItem value="2020">2020</SelectItem>
-                      <SelectItem value="2019">2019</SelectItem>
-                      <SelectItem value="2018">2018</SelectItem>
-                      <SelectItem value="2017">2017</SelectItem>
-                      <SelectItem value="2016">2016</SelectItem>
-                      <SelectItem value="2015">2015</SelectItem>
-                      <SelectItem value="2014">2014</SelectItem>
-                      <SelectItem value="2013">2013</SelectItem>
+                      {availableYears.map((yr) => (
+                        <SelectItem key={yr} value={yr}>
+                          {yr}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1119,19 +1121,11 @@ export default function Rankings() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">All Years</SelectItem>
-                              <SelectItem value="2025">2025</SelectItem>
-                              <SelectItem value="2024">2024</SelectItem>
-                              <SelectItem value="2023">2023</SelectItem>
-                              <SelectItem value="2022">2022</SelectItem>
-                              <SelectItem value="2021">2021</SelectItem>
-                              <SelectItem value="2020">2020</SelectItem>
-                              <SelectItem value="2019">2019</SelectItem>
-                              <SelectItem value="2018">2018</SelectItem>
-                              <SelectItem value="2017">2017</SelectItem>
-                              <SelectItem value="2016">2016</SelectItem>
-                              <SelectItem value="2015">2015</SelectItem>
-                              <SelectItem value="2014">2014</SelectItem>
-                              <SelectItem value="2013">2013</SelectItem>
+                              {availableYears.map((yr) => (
+                                <SelectItem key={yr} value={yr}>
+                                  {yr}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
