@@ -300,15 +300,19 @@ export default function Rankings() {
     reloadLogtimeIndex();
   }, [reloadLogtimeIndex]);
 
-  // Loaded on its own, and late: a year of corrections is a hundred pages.
-  // The table renders on the campus list, and this column fills in after.
-  const { data: corrections } = useQuery({
+  // Asked for, never automatic. A year of corrections is a hundred pages and
+  // three minutes, and every request is paced against the same key -- so
+  // running it on arrival did not merely cost quota, it put every other page
+  // behind it in the queue. Pages that normally take 400ms took three seconds.
+  const [wantCorrections, setWantCorrections] = useState(false);
+
+  const { data: corrections, isFetching: correctionsLoading } = useQuery({
     queryKey: ["campus-corrections", effectiveCampus],
     queryFn: () =>
       fetchJson<Record<string, { positive: number; negative: number; percentage: number }>>(
         `/api/campus/${effectiveCampus}/corrections`,
       ),
-    enabled: !!effectiveCampus && effectiveCampus !== "Global",
+    enabled: wantCorrections && !!effectiveCampus && effectiveCampus !== "Global",
     staleTime: 60 * 60 * 1000,
   });
 
@@ -1119,6 +1123,18 @@ export default function Rankings() {
                     campus={effectiveCampus}
                     onBuilt={reloadLogtimeIndex}
                   />
+                )}
+                {!hasCorrectionStats && effectiveCampus !== "Global" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWantCorrections(true)}
+                    disabled={correctionsLoading}
+                    className="gap-2"
+                    title="A year of evaluations for this campus: about a hundred requests on your key, and a few minutes."
+                  >
+                    {correctionsLoading ? "Reading evaluations…" : "Load correction ratios"}
+                  </Button>
                 )}
               </div>
 
