@@ -315,7 +315,7 @@ export default function Dashboard() {
     queryFn: () => fetchUserIntraInfo(user?.login || ""),
     enabled: !!user && !loading,
     staleTime: 10 * 60 * 1000, 
-    retry: 2,
+    retry: (count: number, error: unknown) => !isKeyRequired(error) && count < 2,
   });
 
   const { data: staffInfo } = useQuery({
@@ -323,7 +323,7 @@ export default function Dashboard() {
     queryFn: () => fetch(`/api/staff?campus=${effectiveCampus}`).then((res) => res.json()),
     enabled: !!user && !loading && (isStaff || isAdmin) && !!effectiveCampus,
     staleTime: 10 * 60 * 1000, 
-    retry: 2,
+    retry: (count: number, error: unknown) => !isKeyRequired(error) && count < 2,
   });
 
   const {
@@ -334,7 +334,7 @@ export default function Dashboard() {
     queryFn: () => getCampusRank(user?.campus || "", user?.login || ""),
     enabled: !!user && !loading && !isStaff,
     staleTime: 10 * 60 * 1000, 
-    retry: 2,
+    retry: (count: number, error: unknown) => !isKeyRequired(error) && count < 2,
   });
 
   const setEvents = useFortyTwoStore(state => state.setEvents)
@@ -350,7 +350,7 @@ export default function Dashboard() {
     },
     enabled: !!user && !loading,
     staleTime: 10 * 60 * 1000,
-    retry: 2,
+    retry: (count: number, error: unknown) => !isKeyRequired(error) && count < 2,
   })
 
 
