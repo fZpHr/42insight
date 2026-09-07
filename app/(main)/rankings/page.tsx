@@ -168,10 +168,17 @@ const loginTimeCategories = {
   }
 };
 
+/**
+ * Metrics the 42 API cannot produce in a single request (correction OK/KO,
+ * logtime, internship status) come back empty from this route. The sorts that
+ * depend on them are hidden rather than ranking everyone on zeroes.
+ */
+const NO_CORRECTION_DATA = 420;
+
 const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
   try {
 
-    const response = await fetch(`/api/users/campus/${campus}`);
+    const response = await fetch(`/api/rankings/${campus}`);
     if (!response.ok) {
       throw new Error("Failed to fetch students");
     }
@@ -286,6 +293,24 @@ export default function Rankings() {
     staleTime: 10 * 60 * 1000,
     refetchOnMount: 'always',
   });
+
+  const hasCorrectionStats = useMemo(
+    () =>
+      !!students?.some(
+        (student: Student) => student.correctionPercentage !== NO_CORRECTION_DATA,
+      ),
+    [students],
+  );
+
+  const hasLogtimeData = useMemo(
+    () => !!students?.some((student: Student) => student.activityData?.logtime),
+    [students],
+  );
+
+  const hasWorkData = useMemo(
+    () => !!students?.some((student: Student) => student.work > 0),
+    [students],
+  );
 
   const sortStudents = (
     students: Student[],
@@ -893,6 +918,8 @@ export default function Rankings() {
                           <DropdownMenuItem onClick={() => handleSortChange("correctionPoints")}>
                             Correction points
                           </DropdownMenuItem>
+                          {hasCorrectionStats && (
+                            <>
                           <DropdownMenuItem onClick={() => handleSortChange("nb_corrections")}>
                             Number of corrections
                           </DropdownMenuItem>
@@ -902,9 +929,13 @@ export default function Rankings() {
                           >
                             Correction ratio
                           </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                       
+                      {hasLogtimeData && (
+                        <>
                       <DropdownMenuSeparator />
                       
                       <DropdownMenuSub>
@@ -1011,7 +1042,11 @@ export default function Rankings() {
                           </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
+                        </>
+                      )}
                       
+                      {hasWorkData && (
+                        <>
                       <DropdownMenuSeparator />
                       
                       <DropdownMenuItem onClick={() => handleSortChange("internship")}>
@@ -1020,6 +1055,8 @@ export default function Rankings() {
                       <DropdownMenuItem onClick={() => handleSortChange("work_study")}>
                         En alternance
                       </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -1122,6 +1159,8 @@ export default function Rankings() {
                                   <DropdownMenuItem onClick={() => handleSortChange("correctionPoints")}>
                                     Correction points
                                   </DropdownMenuItem>
+                                  {hasCorrectionStats && (
+                                    <>
                                   <DropdownMenuItem onClick={() => handleSortChange("nb_corrections")}>
                                     Number of corrections
                                   </DropdownMenuItem>
@@ -1131,9 +1170,13 @@ export default function Rankings() {
                                   >
                                     Correction ratio
                                   </DropdownMenuItem>
+                                    </>
+                                  )}
                                 </DropdownMenuSubContent>
                               </DropdownMenuSub>
                               
+                              {hasLogtimeData && (
+                                <>
                               <DropdownMenuSeparator />
                               
                               <DropdownMenuSub>
@@ -1245,7 +1288,11 @@ export default function Rankings() {
                                   </DropdownMenuItem>
                                 </DropdownMenuSubContent>
                               </DropdownMenuSub>
+                                </>
+                              )}
                               
+                              {hasWorkData && (
+                                <>
                               <DropdownMenuSeparator />
                               
                               <DropdownMenuItem onClick={() => handleSortChange("internship")}>
@@ -1254,6 +1301,8 @@ export default function Rankings() {
                               <DropdownMenuItem onClick={() => handleSortChange("work_study")}>
                                 En alternance
                               </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
