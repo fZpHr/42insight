@@ -1753,7 +1753,7 @@ export default function Rankings() {
                       {selectedLogtime.totalHours}h
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      {selectedLogtime.totalDays} days
+                      {selectedLogtime.totalDays ?? selectedLogtime.activeDays} days
                     </div>
                   </Card>
                   
@@ -1772,9 +1772,11 @@ export default function Rankings() {
                     <div className="text-xl font-bold">
                       {selectedLogtime.totalSessions}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {selectedLogtime.sessions.perDay}/day avg
-                    </div>
+                    {selectedLogtime.sessions && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {selectedLogtime.sessions.perDay}/day avg
+                      </div>
+                    )}
                   </Card>
                   
                   <Card className="p-3">
@@ -1782,9 +1784,11 @@ export default function Rankings() {
                     <div className="text-xl font-bold text-primary">
                       {selectedLogtime.averageDailyHours}h
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {selectedLogtime.averageDailyMinutes} min
-                    </div>
+                    {selectedLogtime.averageDailyMinutes && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {selectedLogtime.averageDailyMinutes} min
+                      </div>
+                    )}
                   </Card>
                 </div>
               </div>
@@ -1871,6 +1875,7 @@ export default function Rankings() {
               </div>
 
               {/* Top 5 Days */}
+              {selectedLogtime.topDays && (
               <div>
                 <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Top 5 Days</h3>
                 <div className="grid grid-cols-1 gap-2">
@@ -1894,8 +1899,10 @@ export default function Rankings() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Top Hosts */}
+              {selectedLogtime.topHosts?.length && (
               <div>
                 <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Favorite Workstations</h3>
                 <div className="grid grid-cols-1 gap-2">
@@ -1915,8 +1922,10 @@ export default function Rankings() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Time Preferences */}
+              {selectedLogtime.timePreferences && (
               <div>
                 <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Time Preferences</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1958,6 +1967,7 @@ export default function Rankings() {
                   <span className="text-muted-foreground">Profile: <span className="font-semibold text-primary capitalize">{selectedLogtime.profile}</span></span>
                 </div>
               </div>
+              )}
 
               {/* Weekday vs Weekend */}
               <div>
@@ -2010,6 +2020,7 @@ export default function Rankings() {
               </div>
 
               {/* Session Stats */}
+              {selectedLogtime.sessions && (
               <div>
                 <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Session Statistics</h3>
                 <div className="grid grid-cols-3 gap-3">
@@ -2029,12 +2040,13 @@ export default function Rankings() {
                   </Card>
                 </div>
               </div>
+              )}
 
               {/* Footer */}
               <div className="text-xs text-muted-foreground text-center pt-4 border-t">
                 Period: {new Date(selectedLogtime.firstDay).toLocaleDateString('fr-FR')} → {new Date(selectedLogtime.lastDay).toLocaleDateString('fr-FR')} ({selectedLogtime.daysSinceFirst} days)
                 <br />
-                Last updated: {new Date(selectedLogtime.lastUpdated).toLocaleDateString('fr-FR', {
+                Last updated: {new Date(selectedLogtime.lastUpdated ?? selectedLogtime.computedAt).toLocaleDateString('fr-FR', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
