@@ -23,7 +23,7 @@ export const copy = {
     why:
       "I am trying to make the site run on its own, with no external resources: no database, no background jobs. Everything is read live from the 42 API, which is why it now needs your key.",
     quota:
-      "With your key you browse on your own budget: 1200 requests an hour that nobody else draws from.",
+      "With your key you browse on your own budget: 1200 requests an hour.",
     transparency:
       "Nothing happens behind your back. The counter in the top left shows how many requests are in flight, and opening it lists every call made on your key: which endpoint, what it answered, how long it took.",
     storageBefore:
@@ -79,7 +79,7 @@ export const copy = {
     why:
       "J'essaie de rendre le site autonome, sans ressource externe, ni base de données, ni tâche de fond à faire tourner. Tout est lu en direct depuis l'API 42, et c'est pour ça qu'il faut maintenant votre clé.",
     quota:
-      "Avec votre clé, vous naviguez sur votre propre budget : 1200 requêtes par heure que personne d'autre n'entame.",
+      "Avec votre clé, vous naviguez sur votre propre budget : 1200 requêtes par heure.",
     transparency:
       "Rien ne se passe dans votre dos. Le compteur en haut à gauche indique combien de requêtes sont en cours ; en l'ouvrant, vous voyez chaque appel parti sur votre clé : quel endpoint, ce qu'il a répondu, et le temps qu'il a pris.",
     storageBefore:
