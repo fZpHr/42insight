@@ -63,10 +63,15 @@ export async function POST(request: Request) {
     const result = NextResponse.json({ ok: true });
     const secure = process.env.NODE_ENV === "production";
 
+    // lax, not strict. Signing in ends with the browser coming back from
+    // api.intra.42.fr, and a strict cookie is withheld on a cross-site
+    // navigation like that -- so the first page after login saw no key and
+    // sent people to connect one they already had. lax still withholds it
+    // from cross-site subrequests and POSTs, which is what matters here.
     result.cookies.set(CREDENTIALS_COOKIE, sealed, {
       httpOnly: true,
       secure,
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
       maxAge: CREDENTIALS_MAX_AGE,
     });
@@ -74,7 +79,7 @@ export async function POST(request: Request) {
     result.cookies.set(KEY_PRESENT_COOKIE, "1", {
       httpOnly: false,
       secure,
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
       maxAge: CREDENTIALS_MAX_AGE,
     });

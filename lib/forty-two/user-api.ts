@@ -24,10 +24,12 @@ import { recordHeaders, recordRequest } from "@/lib/forty-two/quota";
  * server can mint a fresh token whenever the old one lapses, so the key is
  * entered once and keeps working.
  *
- * The cookie is encrypted with JWT_SECRET, is httpOnly (page scripts cannot
- * read it) and sameSite=strict (it does not travel to other sites). The secret
- * never reaches this server in readable form again, and nothing is written to
- * disk anywhere -- there is no database here to write to.
+ * The cookie is encrypted with JWT_SECRET and httpOnly, so page scripts cannot
+ * read it. It is sameSite=lax rather than strict: signing in returns the
+ * browser from api.intra.42.fr, and a strict cookie would be withheld on that
+ * navigation, so the first page after login would ask for a key already
+ * connected. The secret never reaches this server in readable form again, and
+ * nothing is written to disk anywhere -- there is no database here.
  *
  * Access tokens are cached in server memory, keyed by a hash of the
  * credentials, so a visitor costs one token exchange every couple of hours
