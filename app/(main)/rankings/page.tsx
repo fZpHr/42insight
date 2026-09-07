@@ -178,6 +178,17 @@ const loginTimeCategories = {
  */
 const NO_CORRECTION_DATA = 420;
 
+/**
+ * Off for now.
+ *
+ * The route and the merge below both work and are covered by their own commit;
+ * what is unsettled is the price. Every evaluation a campus has on record is
+ * some 450 pages and several minutes of a visitor's key, and that is a call to
+ * make deliberately rather than to ship because the code happens to run. Flip
+ * this back to true to bring the button, and the column, back.
+ */
+const CORRECTION_RATIOS_ENABLED = false;
+
 const fetchCampusStudents = (campus: string): Promise<Student[]> =>
   fetchJson<Student[]>(`/api/campus/${campus}/students`);
 
@@ -1123,7 +1134,8 @@ export default function Rankings() {
               {/* Actions, not filters: they were crowding the search bar out
                   of the toolbar. Their own line, labelled for what they are. */}
               {effectiveCampus !== "Global" &&
-                (!hasLogtimeData || !hasCorrectionStats) && (
+                (!hasLogtimeData ||
+                  (CORRECTION_RATIOS_ENABLED && !hasCorrectionStats)) && (
                   <div className="hidden w-full items-center gap-2 border-t pt-2 sm:flex">
                     <span className="shrink-0 text-xs text-muted-foreground">
                       Optional data, fetched on your key:
@@ -1135,7 +1147,7 @@ export default function Rankings() {
                           onBuilt={reloadLogtimeIndex}
                         />
                       )}
-                      {!hasCorrectionStats && (
+                      {CORRECTION_RATIOS_ENABLED && !hasCorrectionStats && (
                         <Button
                           variant="outline"
                           size="sm"
