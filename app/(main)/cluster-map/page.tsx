@@ -114,7 +114,6 @@ export default function ClusterMap() {
     queryFn: () => fetchStudents(effectiveCampus),
     enabled: status === "authenticated" && !!effectiveCampus,
     staleTime: 5 * 60 * 1000,
-    refetchOnMount: 'always',
   });
 
   const {

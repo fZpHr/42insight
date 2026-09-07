@@ -85,7 +85,6 @@ export default function EventsPage() {
     queryFn: () => getCampusEvents(effectiveCampus!),
     staleTime: 10 * 60 * 1000,
     enabled: !!effectiveCampus,
-    refetchOnMount: 'always',
   });
 
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {

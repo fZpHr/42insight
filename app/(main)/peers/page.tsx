@@ -56,7 +56,6 @@ export default function PeersPage() {
         queryKey: ['peersData', effectiveCampus],
         queryFn: () => fetchPeersData(effectiveCampus),
         staleTime: 30 * 60 * 1000,
-        refetchOnMount: 'always',
     });
 
 

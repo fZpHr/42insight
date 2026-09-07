@@ -27,9 +27,16 @@ import { hasApiKey } from "@/lib/api-client";
  * estimate. That is why it sits in the header rather than behind a menu.
  */
 
-const POLL_MS = 30000;
+/**
+ * The counter changes when requests are made, and requests are made when a
+ * page fetches -- which this component already hears about through
+ * useIsFetching. A timer on top of that is redundant, and 717 calls to
+ * /api/quota in one session is what redundant looks like. It stays only as a
+ * slow correction for traffic this tab did not cause.
+ */
+const POLL_MS = 120000;
 /** Never re-read the quota more than this often, whatever triggers it. */
-const MIN_REFRESH_MS = 5000;
+const MIN_REFRESH_MS = 10000;
 
 interface QuotaLine {
   keyId: string;

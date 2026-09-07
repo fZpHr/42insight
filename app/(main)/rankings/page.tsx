@@ -283,7 +283,6 @@ export default function Rankings() {
     },
     enabled: !!(selectedCampus || user?.campus),
     staleTime: 10 * 60 * 1000,
-    refetchOnMount: 'always',
   });
 
   const effectiveCampus = selectedCampus || user?.campus || "";

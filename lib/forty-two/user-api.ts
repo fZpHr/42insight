@@ -47,8 +47,13 @@ export const LEGACY_TOKEN_COOKIE = "byok_token";
 /** Long enough that connecting a key feels permanent. */
 export const CREDENTIALS_MAX_AGE = 60 * 60 * 24 * 30;
 
-/** 42 allows two requests per second per application. */
-const REQUEST_SPACING_MS = 500;
+/**
+ * 42 allows two requests per second per application. Pacing at exactly 500ms
+ * sits on the limit, and anything that nudges two requests into the same second
+ * -- scheduling jitter, a slow event loop -- earns a 429 and a retry that costs
+ * more than the wait saved. A little headroom is cheaper.
+ */
+const REQUEST_SPACING_MS = 600;
 
 export interface Credentials {
   clientId: string;

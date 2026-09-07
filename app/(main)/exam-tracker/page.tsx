@@ -87,7 +87,6 @@ export default function ExamTracker() {
         },
         enabled: isExamDay(), 
         refetchInterval: isExamDay() ? 600000 : false, 
-        refetchOnMount: 'always',
     })
 
 

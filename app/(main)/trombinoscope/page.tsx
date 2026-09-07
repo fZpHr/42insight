@@ -67,7 +67,6 @@ export default function Trombinoscope() {
     queryFn: () => fetchCampusStudents(effectiveCampus),
     enabled: !!effectiveCampus,
     staleTime: 10 * 60 * 1000,
-    refetchOnMount: 'always',
   });
 
   const filteredStudents = students

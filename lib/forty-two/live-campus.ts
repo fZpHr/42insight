@@ -40,7 +40,9 @@ export const POOL_CURSUS_ID = 9;
  */
 export const NO_CORRECTION_DATA = 420;
 
-const STUDENTS_TTL = 300;
+// Longer than the pages' own staleTime, so a client refetch lands on a warm
+// cache instead of starting another page walk.
+const STUDENTS_TTL = 900;
 const POOL_TTL = 900;
 
 const studentsCacheKey = (campus: string) => `students:${campus}`;
