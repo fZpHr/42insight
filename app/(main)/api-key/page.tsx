@@ -190,6 +190,20 @@ export default function ApiKeyPage() {
                 <li>Copy its UID and secret below.</li>
               </ol>
 
+              <p className="text-sm text-muted-foreground">
+                Already registered an application?{" "}
+                <a
+                  href="https://profile.intra.42.fr/oauth/applications"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  Find it in your existing apps
+                  <ExternalLink className="h-3 w-3" />
+                </a>{" "}
+                and reuse its credentials — there is no need to create another.
+              </p>
+
               <div className="space-y-3">
                 <div className="space-y-1.5">
                   <label htmlFor="client-id" className="text-sm font-medium">Client ID (UID)</label>
