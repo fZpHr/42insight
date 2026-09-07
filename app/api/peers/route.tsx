@@ -2,11 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
-import {
-  CAMPUS_IDS,
-  getCampusStudents,
-  redis,
-} from "@/lib/forty-two/live-campus";
+import { cachedOnce } from "@/lib/memory-cache";
+import { CAMPUS_IDS, getCampusStudents } from "@/lib/forty-two/live-campus";
 import type { Project, ProjectSubscriber } from "@/types";
 
 /**
@@ -19,7 +16,7 @@ import type { Project, ProjectSubscriber } from "@/types";
  */
 
 const CACHE_TTL = 600;
-const CACHE_KEY = "peers:v2";
+const CACHE_KEY = "peers";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -28,13 +25,7 @@ export async function GET() {
   }
 
   try {
-    const cached = await redis.get<Project[]>(CACHE_KEY);
-    if (cached) return NextResponse.json(cached);
-  } catch (error) {
-    console.error("[peers] cache read failed:", error);
-  }
-
-  try {
+    const result = await cachedOnce(CACHE_KEY, CACHE_TTL, async () => {
     const projects = new Map<number, Project>();
     const photos = new Map<number, string>();
 
@@ -75,15 +66,8 @@ export async function GET() {
       }
     }
 
-    const result = [...projects.values()];
-
-    if (result.length > 0) {
-      try {
-        await redis.set(CACHE_KEY, result, { ex: CACHE_TTL });
-      } catch (error) {
-        console.error("[peers] cache write failed:", error);
-      }
-    }
+      return [...projects.values()];
+    });
 
     return NextResponse.json(result);
   } catch (error: any) {

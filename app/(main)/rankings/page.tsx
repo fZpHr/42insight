@@ -17,7 +17,7 @@ import {
   AlertCircle,
   Clock,
 } from "lucide-react";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +75,7 @@ import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
 import { fetchJson } from "@/lib/api-client";
+import { readLogtimeIndex, withLogtime, type LogtimeIndex } from "@/lib/logtime-store";
 
 const sortOptions: StudentSortOption[] = [
   { value: "level", label: "Level", key: "level" },
@@ -230,7 +231,7 @@ export default function Rankings() {
   ];
 
   const {
-    data: students,
+    data: rawStudents,
     isLoading,
     error,
     isSuccess,
@@ -286,6 +287,24 @@ export default function Rankings() {
   });
 
   const effectiveCampus = selectedCampus || user?.campus || "";
+
+  // Logtime lives in this browser, not on the server: it costs one 42 request
+  // per student, so whoever wants it builds it with their own key. Merging is
+  // therefore a client-side step over whatever the API returned.
+  const [logtimeIndex, setLogtimeIndex] = useState<LogtimeIndex | null>(null);
+
+  const reloadLogtimeIndex = useCallback(() => {
+    setLogtimeIndex(readLogtimeIndex(effectiveCampus));
+  }, [effectiveCampus]);
+
+  useEffect(() => {
+    reloadLogtimeIndex();
+  }, [reloadLogtimeIndex]);
+
+  const students = useMemo(
+    () => withLogtime(rawStudents ?? [], logtimeIndex),
+    [rawStudents, logtimeIndex],
+  );
 
   const hasCorrectionStats = useMemo(
     () =>
@@ -788,14 +807,7 @@ export default function Rankings() {
 
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return (
-      <LoadingScreen
-        message="Loading rankings..."
-        progressScope={
-          effectiveCampus && effectiveCampus !== "Global"
-            ? `campus:${effectiveCampus}`
-            : undefined
-        }
-      />
+      <LoadingScreen message="Loading rankings..." />
     );
   }
 
@@ -1075,7 +1087,10 @@ export default function Rankings() {
                   </span>
                 </Button>
                 {!hasLogtimeData && effectiveCampus !== "Global" && (
-                  <LogtimeIndexBuilder campus={effectiveCampus} />
+                  <LogtimeIndexBuilder
+                    campus={effectiveCampus}
+                    onBuilt={reloadLogtimeIndex}
+                  />
                 )}
               </div>
 

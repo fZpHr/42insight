@@ -4,7 +4,6 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import {
   CAMPUS_IDS,
   getEnrichedCampusStudents,
-  getLogtimeMeta,
 } from "@/lib/forty-two/live-campus";
 
 export async function GET(
@@ -22,16 +21,7 @@ export async function GET(
   }
 
   try {
-    const [students, logtimeMeta] = await Promise.all([
-      getEnrichedCampusStudents(campus_name),
-      getLogtimeMeta(campus_name),
-    ]);
-
-    return NextResponse.json(students, {
-      headers: logtimeMeta
-        ? { "X-Logtime-Index-Updated": logtimeMeta.updatedAt }
-        : undefined,
-    });
+    return NextResponse.json(await getEnrichedCampusStudents(campus_name));
   } catch (error: any) {
 
     console.error(`[campus] failed to build ${campus_name}:`, error.message);

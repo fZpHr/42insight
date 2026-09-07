@@ -1,7 +1,6 @@
 import type { Student } from "@/types";
-import { redis } from "@/lib/redis";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
-import { clearProgress, setProgress } from "@/lib/forty-two/progress";
+import { cachedOnce } from "@/lib/memory-cache";
 
 /**
  * Live campus data, straight from the 42 API, on the site's own keys.
@@ -9,13 +8,13 @@ import { clearProgress, setProgress } from "@/lib/forty-two/progress";
  * This replaces the refresh-42 cron jobs: nothing here reads a database.
  *
  * A whole campus arrives in one paginated call -- a dozen or so requests, not
- * one per student -- which is what keeps it in tier 1. The result is cached and
- * shared, so the cost is a page walk every few minutes however many people are
- * looking, and no visitor needs a key of their own to read it.
+ * one per student -- which is what makes it affordable to fetch on demand and
+ * keep in memory for a few minutes. No visitor needs a key of their own to
+ * read it, and the server keeps nothing between restarts.
  *
  * The one thing that does not fit that shape is logtime: it needs a request per
- * student, so it is built in tier 2 by visitors who bring their own key, and
- * merged in here from the shared index.
+ * student, which no page load can afford. It is built by a visitor's own key
+ * and stored in their browser, never here.
  */
 
 export const CAMPUS_IDS: { [key: string]: number } = {
@@ -35,15 +34,7 @@ export const NO_CORRECTION_DATA = 420;
 const STUDENTS_TTL = 300;
 const POOL_TTL = 900;
 
-export const studentsCacheKey = (campus: string) => `rankings:v2:${campus}`;
-export const logtimeIndexKey = (campus: string) => `logtime:v1:${campus}`;
-export const logtimeMetaKey = (campus: string) => `logtime:v1:${campus}:meta`;
-
-export interface LogtimeIndexMeta {
-  updatedAt: string;
-  builtBy: string;
-  covered: number;
-}
+const studentsCacheKey = (campus: string) => `students:${campus}`;
 
 /**
  * The piscine promotion, which pool-data.js carried as a hardcoded line edited
@@ -100,91 +91,23 @@ export const getCampusStudents = async (
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
-  const cacheKey = studentsCacheKey(campusName);
-
-  try {
-    const cached = await redis.get<Student[]>(cacheKey);
-    if (cached) return cached;
-  } catch (error) {
-    console.error("[live-campus] cache read failed:", error);
-  }
-
-  const cursusUsers = await apiRateLimiter.fetchAllPages(
-    `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
-    {
-      onProgress: (done, total) =>
-        setProgress(`campus:${campusName}`, {
-          phase: `Fetching ${campusName} students from the 42 API`,
-          done,
-          total,
-        }),
-    },
-  );
-
-  await clearProgress(`campus:${campusName}`);
-
-  const students = cursusUsers
-    .filter((cursusUser) => cursusUser.user && !cursusUser.user["staff?"])
-    .map((cursusUser) => toStudent(cursusUser, campusName));
-
-  if (students.length > 0) {
-    try {
-      await redis.set(cacheKey, students, { ex: STUDENTS_TTL });
-    } catch (error) {
-      console.error("[live-campus] cache write failed:", error);
-    }
-  }
-
-  return students;
-};
-
-export const getLogtimeIndex = async (
-  campusName: string,
-): Promise<Record<string, any>> => {
-  try {
-    // A hash rather than one JSON blob, so chunks of a build append to the
-    // index instead of racing each other through a read-modify-write.
-    const index = await redis.hgetall<Record<string, any>>(
-      logtimeIndexKey(campusName),
+  return cachedOnce(studentsCacheKey(campusName), STUDENTS_TTL, async () => {
+    const cursusUsers = await apiRateLimiter.fetchAllPages(
+      `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
     );
-    return index ?? {};
-  } catch (error) {
-    console.error("[live-campus] logtime index read failed:", error);
-    return {};
-  }
-};
 
-export const getLogtimeMeta = async (
-  campusName: string,
-): Promise<LogtimeIndexMeta | null> => {
-  try {
-    return await redis.get<LogtimeIndexMeta>(logtimeMetaKey(campusName));
-  } catch (error) {
-    console.error("[live-campus] logtime meta read failed:", error);
-    return null;
-  }
-};
-
-export const getEnrichedCampusStudents = async (
-  campusName: string,
-): Promise<Student[]> => {
-  const [students, logtimeIndex] = await Promise.all([
-    getCampusStudents(campusName),
-    getLogtimeIndex(campusName),
-  ]);
-
-  if (Object.keys(logtimeIndex).length === 0) return students;
-
-  return students.map((student) => {
-    const logtime = logtimeIndex[String(student.id)];
-    if (!logtime) return student;
-
-    return {
-      ...student,
-      activityData: { logtime } as unknown as Student["activityData"],
-    };
+    return cursusUsers
+      .filter((cursusUser) => cursusUser.user && !cursusUser.user["staff?"])
+      .map((cursusUser) => toStudent(cursusUser, campusName));
   });
 };
+
+/**
+ * Kept as the name the routes read through. Logtime used to be merged in here
+ * from a shared index; it now lives in the visitor's browser, so the merge
+ * happens there and this is the campus as the 42 API gives it.
+ */
+export const getEnrichedCampusStudents = getCampusStudents;
 
 export const getPoolUsers = async (
   campusName: string,
@@ -194,28 +117,12 @@ export const getPoolUsers = async (
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
-  const cacheKey = `pool:v2:${campusName}:${month}:${year}`;
+  const cacheKey = `pool:${campusName}:${month}:${year}`;
 
-  try {
-    const cached = await redis.get<any[]>(cacheKey);
-    if (cached) return cached;
-  } catch (error) {
-    console.error("[live-campus] pool cache read failed:", error);
-  }
-
+  return cachedOnce(cacheKey, POOL_TTL, async () => {
   const cursusUsers = await apiRateLimiter.fetchAllPages(
     `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${POOL_CURSUS_ID}`,
-    {
-      onProgress: (done, total) =>
-        setProgress(`pool:${campusName}`, {
-          phase: `Fetching the ${campusName} piscine from the 42 API`,
-          done,
-          total,
-        }),
-    },
   );
-
-  await clearProgress(`pool:${campusName}`);
 
   const poolUsers = cursusUsers
     .filter((cursusUser) => {
@@ -250,15 +157,6 @@ export const getPoolUsers = async (
       };
     });
 
-  if (poolUsers.length > 0) {
-    try {
-      await redis.set(cacheKey, poolUsers, { ex: POOL_TTL });
-    } catch (error) {
-      console.error("[live-campus] pool cache write failed:", error);
-    }
-  }
-
-  return poolUsers;
+    return poolUsers;
+  });
 };
-
-export { redis };

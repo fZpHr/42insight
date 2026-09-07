@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
-import { cached } from "@/lib/forty-two/cache";
+import { cached } from "@/lib/memory-cache";
 
 /** A student's coalition: two 42 requests, on the site keys. */
 

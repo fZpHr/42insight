@@ -1,9 +1,16 @@
-import { Redis } from "@upstash/redis";
-
-const redis = new Redis({
-  url: process.env.REDIS_URL!,
-  token: process.env.REDIS_PASSWORD!,
-});
+/**
+ * Per-visitor throttling, in the server's own memory.
+ *
+ * It used to be a Redis sorted set, shared across instances. Nothing here is
+ * shared any more: the site runs on the 42 credentials alone, so a platform
+ * running several instances throttles per instance, and a determined caller
+ * gets roughly one budget per instance rather than one overall.
+ *
+ * That is weaker, and it is enough, because it is not what protects the 42
+ * quota. The key pool does that: every outbound request is paced server-side
+ * whoever asked for it. This only stops one visitor from making the site
+ * pointlessly busy.
+ */
 
 export interface RateLimitResult {
   success: boolean;
@@ -12,64 +19,60 @@ export interface RateLimitResult {
   reset: number;
 }
 
-/**
- * Rate limiter using sliding window algorithm
- * @param identifier - Unique identifier (IP, user ID, etc.)
- * @param limit - Maximum number of requests
- * @param window - Time window in seconds
- */
+/** identifier -> request timestamps inside the current window. */
+const hits: Map<string, number[]> = ((globalThis as any).__42insightRateLimit ??=
+  new Map<string, number[]>());
+
+const MAX_IDENTIFIERS = 5000;
+
 export async function rateLimit(
   identifier: string,
   limit: number = 30,
-  window: number = 60
+  window: number = 60,
 ): Promise<RateLimitResult> {
-  try {
-    const key = `rate_limit:${identifier}`;
-    const now = Date.now();
-    const windowStart = now - window * 1000;
+  const now = Date.now();
+  const windowStart = now - window * 1000;
 
-    await redis.zremrangebyscore(key, 0, windowStart);
+  // Bounded: an instance that has seen a lot of visitors drops the oldest
+  // rather than growing forever. Map iterates in insertion order.
+  if (hits.size > MAX_IDENTIFIERS) {
+    const oldest = hits.keys().next();
+    if (!oldest.done) hits.delete(oldest.value);
+  }
 
-    const requestCount = await redis.zcard(key);
+  const recent = (hits.get(identifier) ?? []).filter(
+    (timestamp) => timestamp > windowStart,
+  );
 
-    if (requestCount >= limit) {
-      const oldestRequest = await redis.zrange(key, 0, 0, { withScores: true });
-      const resetTime = oldestRequest[1] 
-        ? Math.ceil((Number(oldestRequest[1]) + window * 1000) / 1000)
-        : Math.ceil((now + window * 1000) / 1000);
-
-      return {
-        success: false,
-        limit,
-        remaining: 0,
-        reset: resetTime,
-      };
-    }
-
-    await redis.zadd(key, { score: now, member: `${now}` });
-
-    await redis.expire(key, window);
-
+  if (recent.length >= limit) {
+    hits.set(identifier, recent);
     return {
-      success: true,
+      success: false,
       limit,
-      remaining: limit - (requestCount + 1),
-      reset: Math.ceil((now + window * 1000) / 1000),
-    };
-  } catch (error) {
-    console.error("Rate limit error:", error);
-    return {
-      success: true,
-      limit,
-      remaining: limit,
-      reset: Math.ceil((Date.now() + window * 1000) / 1000),
+      remaining: 0,
+      reset: Math.ceil((recent[0] + window * 1000) / 1000),
     };
   }
+
+  recent.push(now);
+  hits.set(identifier, recent);
+
+  return {
+    success: true,
+    limit,
+    remaining: limit - recent.length,
+    reset: Math.ceil((now + window * 1000) / 1000),
+  };
 }
 
-/**
- * Get the client IP address from the request
- */
+/** How many requests an identifier has made in the current window. */
+export function rateLimitCount(identifier: string, window: number = 60): number {
+  const windowStart = Date.now() - window * 1000;
+  return (hits.get(identifier) ?? []).filter(
+    (timestamp) => timestamp > windowStart,
+  ).length;
+}
+
 export function getClientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
@@ -82,10 +85,9 @@ export function getClientIp(request: Request): string {
   return "unknown";
 }
 
-/**
- * Create rate limit response headers
- */
-export function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
+export function getRateLimitHeaders(
+  result: RateLimitResult,
+): Record<string, string> {
   return {
     "X-RateLimit-Limit": result.limit.toString(),
     "X-RateLimit-Remaining": result.remaining.toString(),

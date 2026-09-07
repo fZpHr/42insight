@@ -130,7 +130,6 @@ export const config = {
     "/api/campus/:path*",
     "/api/locations/:path*",
     "/api/byok/:path*",
-    "/api/progress/:path*",
     "/api/staff/:path*",
     "/api/quota/:path*",
     "/api/events/:path*",

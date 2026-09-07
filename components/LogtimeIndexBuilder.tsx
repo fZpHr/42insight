@@ -1,30 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Clock, KeyRound, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ApiKeyDialog } from "@/components/ApiKeyDialog";
 import { hasApiKey } from "@/lib/api-client";
+import { mergeLogtimeChunk, readLogtimeIndex } from "@/lib/logtime-store";
 
 /**
- * Builds the shared campus logtime index with the visitor's own key.
+ * Builds the campus logtime index into this browser, with the visitor's key.
  *
- * Logtime needs one API call per student, so it is the one dataset that cannot
- * ride along with a campus-wide request. Whoever runs the build pays for it on
- * their own quota, and everyone on the campus reads the result afterwards.
+ * Logtime needs one API call per student, which is more than the site's hourly
+ * budget and more than any page load can wait for -- and the server keeps
+ * nothing between requests, so there is nowhere to put it even if it could be
+ * fetched. The visitor's own quota pays for it and their own browser holds it.
  */
 
 const CHUNK_SIZE = 40;
 
 interface Props {
   campus: string;
-  indexUpdatedAt?: string | null;
+  /** Called after a successful build so the page can re-read the index. */
+  onBuilt?: () => void;
 }
 
 interface ChunkResult {
+  entries: Record<string, any>;
   processed: number;
   total: number;
   failed: number;
@@ -33,10 +36,10 @@ interface ChunkResult {
   error?: string;
 }
 
-export function LogtimeIndexBuilder({ campus, indexUpdatedAt }: Props) {
-  const queryClient = useQueryClient();
+export function LogtimeIndexBuilder({ campus, onBuilt }: Props) {
   const [keyPresent, setKeyPresent] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [builtAt, setBuiltAt] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
@@ -44,6 +47,10 @@ export function LogtimeIndexBuilder({ campus, indexUpdatedAt }: Props) {
   useEffect(() => {
     setKeyPresent(hasApiKey());
   }, [dialogOpen]);
+
+  useEffect(() => {
+    setBuiltAt(readLogtimeIndex(campus)?.builtAt ?? null);
+  }, [campus]);
 
   const buildIndex = async () => {
     if (!campus) return;
@@ -73,12 +80,20 @@ export function LogtimeIndexBuilder({ campus, indexUpdatedAt }: Props) {
           return;
         }
 
+        if (!mergeLogtimeChunk(campus, data.entries)) {
+          toast.error(
+            "This browser refused to store the index — it may be full or in private mode.",
+          );
+          return;
+        }
+
         setProgress({ done: data.processed, total: data.total });
         offset = data.nextOffset;
       }
 
-      await queryClient.invalidateQueries({ queryKey: ["campus-students"] });
-      toast.success("Logtime index built. Every sort is available campus-wide.");
+      setBuiltAt(readLogtimeIndex(campus)?.builtAt ?? null);
+      onBuilt?.();
+      toast.success("Logtime index built. The logtime sorts are available.");
     } catch {
       toast.error("The build was interrupted");
     } finally {
@@ -121,9 +136,9 @@ export function LogtimeIndexBuilder({ campus, indexUpdatedAt }: Props) {
           </Button>
         )}
 
-        {indexUpdatedAt && progress === null && (
+        {builtAt && progress === null && (
           <span className="text-xs text-muted-foreground">
-            Index updated {new Date(indexUpdatedAt).toLocaleDateString()}
+            Built {new Date(builtAt).toLocaleDateString()}, in this browser
           </span>
         )}
       </div>

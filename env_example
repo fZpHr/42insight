@@ -1,3 +1,8 @@
+# The only thing the site needs to run.
+#
+# No database, no Redis, no cron, no runner. Everything is read from the 42 API
+# on demand and cached in the server's own memory.
+
 # Sign-in. next-auth uses CLIENT_ID1, so it is kept out of the data pool as
 # soon as a second key exists: browsing must never be able to lock people out
 # of logging in.
@@ -5,18 +10,18 @@ CLIENT_ID1=
 CLIENT_SECRET1=
 
 # Extra 42 applications for data. Each one adds 2 requests/second and
-# 1200/hour to the shared budget the site fetches with. CLIENT_ID2 through
-# CLIENT_ID6 are read; two or more is the comfortable setting.
+# 1200/hour to the budget the site fetches with. CLIENT_ID2 through CLIENT_ID6
+# are read. With only CLIENT_ID1 configured the site still works, sharing that
+# one key between browsing and signing in.
 CLIENT_ID2=
 CLIENT_SECRET2=
-
-# Upstash. Every campus-wide answer is cached here, which is what keeps the
-# shared budget affordable, and the logtime index students build lives here too.
-REDIS_URL=
-REDIS_PASSWORD=
 
 JWT_SECRET=
 
 # The piscine the site reports on. Used to be a hardcoded line in the cron repo.
 POOL_MONTH=september
 POOL_YEAR=
+
+# Optional: the repository the changelog panel reads its commits from.
+# Defaults to fZpHr/42insight.
+GITHUB_REPO=

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
-import { cached } from "@/lib/forty-two/cache";
+import { cached } from "@/lib/memory-cache";
 import { CAMPUS_IDS } from "@/lib/forty-two/live-campus";
 
 /**

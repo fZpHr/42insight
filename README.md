@@ -23,29 +23,36 @@ All of the Old Features from our existing website have been moved to one website
 
 ## Where the data comes from
 
-Everything is read live from the 42 API. There is no database of students to
-keep in sync and no cron jobs refreshing it, which is what makes the site
-runnable by anyone who clones it: a `.env` and it works.
+Everything is read live from the 42 API. There is no database, no Redis, no
+cron and no runner: clone the repo, fill in a `.env` with your 42 credentials,
+and it runs. The cache is the server's own memory.
 
 Requests are split by what they cost:
 
 **On the site's own keys.** A whole campus arrives in one paginated call -- a
-dozen or so requests -- so rankings, the trombinoscope, the piscine, find-peers,
-events, the cluster map and every dashboard run on application keys configured
-in `.env`, behind a shared cache. The cost is a page walk every few minutes,
-whatever the number of visitors. Configure `CLIENT_ID2`/`CLIENT_SECRET2` and
-beyond to widen that budget; `CLIENT_ID1` is left to next-auth so browsing can
-never lock anyone out of signing in.
+dozen or so requests, however many students there are -- so rankings, the
+trombinoscope, the piscine, find-peers, events, the cluster map and every
+dashboard are fetched on demand and held for a few minutes. Configure
+`CLIENT_ID2`/`CLIENT_SECRET2` and beyond to widen that budget; `CLIENT_ID1` is
+left to next-auth so browsing can never lock anyone out of signing in.
 
-**On the visitor's own key.** Logtime needs one request per student, which no
-shared budget survives. A student who registers their own 42 application (intra
-→ Settings → API) can build the campus logtime index from the rankings page; the
-result is cached and read by everyone, with or without a key of their own. The
-API console prefers a personal key too, since an arbitrary query is the one cost
-nobody can predict.
+**In your own browser.** Logtime costs one request per student, which is more
+than an hour of the site's budget and more than any page load can wait for --
+and the server keeps nothing between requests, so there would be nowhere to put
+it. A student who wants the logtime sorts registers their own 42 application
+(intra -> Settings -> API), spends a few minutes of their own quota once from
+the rankings page, and the index is stored in their browser.
 
-`/api/quota` reports what the site keys have left this hour, as 42 last
-reported it, for staff and admins.
+`/api/quota` reports the rate-limit headers the 42 API answered with, for staff
+and admins.
+
+### What this costs
+
+Data that has to be accumulated rather than fetched cannot exist without
+somewhere to accumulate it. These were built by the retired cron jobs and are
+not available: correction OK/KO ratios, the peer relation graph, hours per
+workstation on the cluster map, piscine exam grades, and the live exam tracker.
+Sorts that depend on them are hidden rather than ranking everyone on zeroes.
 
 ## Tech-Stack
 
@@ -54,8 +61,7 @@ reported it, for staff and admins.
 - State Management: Zustand (only for RNCP Simulator)
 - Tanstack: TanStack Query (React Query)
 - Authentication: next-auth (FortyTwo Oauth2Provider)
-- Data: the 42 API, read live
-- Caching: Redis (Upstash)
+- Data: the 42 API, read live; no database, no external store
 - Deployment: Vercel
 
 ## Contributions

@@ -141,10 +141,7 @@ export default function Trombinoscope() {
 
   if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
     return (
-      <LoadingScreen
-        message="Loading trombinoscope..."
-        progressScope={effectiveCampus ? `campus:${effectiveCampus}` : undefined}
-      />
+      <LoadingScreen message="Loading trombinoscope..." />
     );
   }
 
