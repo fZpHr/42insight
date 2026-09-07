@@ -27,8 +27,8 @@ export const copy = {
     transparency:
       "Nothing happens behind your back. The counter in the top left shows how many requests are in flight, and opening it lists every call made on your key: which endpoint, what it answered, how long it took.",
     storageBefore:
-      "Your credentials are exchanged for a token and sealed into an encrypted cookie. I store nothing: the project is open source, ",
-    storageLink: "see for yourself",
+      "Your credentials are exchanged for a token and sealed into an encrypted cookie. I store nothing, the project is open source ",
+    storageLink: "if you want to check",
     storageAfter: ".",
     step1Before: "Open ",
     step1Link: "Settings → API → Register a new app",
@@ -83,8 +83,8 @@ export const copy = {
     transparency:
       "Rien ne se passe dans votre dos. Le compteur en haut à gauche indique combien de requêtes sont en cours ; en l'ouvrant, vous voyez chaque appel parti sur votre clé : quel endpoint, ce qu'il a répondu, et le temps qu'il a pris.",
     storageBefore:
-      "Vos identifiants sont échangés contre un jeton, puis scellés dans un cookie chiffré. Je ne stocke rien : le projet est open source, ",
-    storageLink: "vous pouvez le vérifier",
+      "Vos identifiants sont échangés contre un jeton, puis scellés dans un cookie chiffré. Je ne stocke rien, le projet est open source ",
+    storageLink: "si vous voulez vérifier",
     storageAfter: ".",
     step1Before: "Ouvrez ",
     step1Link: "Settings → API → Register a new app",
