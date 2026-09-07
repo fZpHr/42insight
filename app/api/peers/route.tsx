@@ -4,7 +4,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { cachedOnce } from "@/lib/memory-cache";
-import { CAMPUS_IDS, getCampusStudents } from "@/lib/forty-two/live-campus";
+import { CAMPUS_IDS, CURSUS_ID, getCampusStudents } from "@/lib/forty-two/live-campus";
 import type { Project, ProjectSubscriber } from "@/types";
 
 /**
@@ -37,8 +37,12 @@ export async function GET() {
       const students = await getCampusStudents(campusName, api).catch(() => []);
       for (const student of students) photos.set(student.id, student.photoUrl);
 
+      // filter[campus], not filter[campus_id]: the latter is not a filterable
+      // attribute on projects_users and 42 answers 400. Written without the
+      // filter[] wrapper it is accepted and silently ignored, which returns
+      // every in-progress project on the network -- worse than the error.
       const projectUsers = await api.fetchAllPages(
-        `/projects_users?filter[campus_id]=${campusId}&filter[status]=in_progress`,
+        `/projects_users?filter[campus]=${campusId}&filter[cursus]=${CURSUS_ID}&filter[status]=in_progress`,
         { maxPages: 30 },
       );
 
