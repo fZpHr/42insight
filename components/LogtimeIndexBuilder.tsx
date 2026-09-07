@@ -75,7 +75,7 @@ export function LogtimeIndexBuilder({ campus, onBuilt }: Props) {
 
         if (!mergeLogtimeChunk(campus, data.entries)) {
           toast.error(
-            "This browser refused to store the index — it may be full or in private mode.",
+            "This browser refused to store the index. It may be full, or in private mode.",
           );
           return;
         }

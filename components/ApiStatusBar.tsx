@@ -144,7 +144,7 @@ export function ApiStatusBar() {
           title={
             keyPresent
               ? "What your 42 key is fetching, and what is left this hour."
-              : "No 42 key connected — pages have nothing to load."
+              : "No 42 key connected. Pages have nothing to load."
           }
           className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs transition-colors hover:bg-muted"
         >

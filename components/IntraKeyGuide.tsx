@@ -54,10 +54,6 @@ export function IntraKeyGuide({ language }: { language: Language }) {
             </p>
           </div>
         </div>
-
-        <div className="mt-4 border-t border-zinc-800 pt-2 text-[10px] text-zinc-600">
-          {t.guideIgnore}
-        </div>
       </div>
 
       <figcaption className="text-xs text-muted-foreground">
