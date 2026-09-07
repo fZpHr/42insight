@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { hasApiKey } from "@/lib/api-client";
+import { IntraKeyGuide } from "@/components/IntraKeyGuide";
 import {
   LANGUAGE_STORAGE_KEY,
   copy,
@@ -225,6 +226,8 @@ export default function ApiKeyPage() {
                 </li>
                 <li>{t.step3}</li>
               </ol>
+
+              <IntraKeyGuide language={language} />
 
               <p className="text-sm text-muted-foreground">
                 {t.existingBefore}

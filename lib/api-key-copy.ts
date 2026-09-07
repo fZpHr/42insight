@@ -43,6 +43,15 @@ export const copy = {
     reportedAt: (time: string) => ` at ${time}`,
     notUsedYet:
       "Not used yet on this server, so this is the full budget.",
+    guideCreatedBy: "Created by you",
+    guideUid: "this is your Client ID",
+    guideSecret: "this is your Client secret",
+    guideValidUntil:
+      "Valid until a date shown here — 42 rotates it, and you will need to reconnect your key when it does.",
+    guideIgnore:
+      "Leave \"Revoke OAuth Grant\" and \"Replace now\" alone: the first cuts the app off, the second invalidates the secret you are about to copy.",
+    guideCaption:
+      "On the intra, your application page looks roughly like this. Copy the two fields marked below.",
     forget: "Forget my key",
     replace: "Replace it",
     connected: "Key connected. The rest of the site is open.",
@@ -82,6 +91,15 @@ export const copy = {
     reportedAt: (time: string) => ` à ${time}`,
     notUsedYet:
       "Pas encore utilisée sur ce serveur : c'est le budget complet.",
+    guideCreatedBy: "Created by you",
+    guideUid: "c'est votre Client ID",
+    guideSecret: "c'est votre Client secret",
+    guideValidUntil:
+      "Une date de validité est affichée ici — 42 fait tourner le secret, et il faudra reconnecter votre clé à ce moment-là.",
+    guideIgnore:
+      "Ne touchez pas à « Revoke OAuth Grant » ni à « Replace now » : le premier coupe l'application, le second invalide le secret que vous vous apprêtez à copier.",
+    guideCaption:
+      "Sur l'intra, la page de votre application ressemble à ceci. Copiez les deux champs indiqués ci-dessous.",
     forget: "Oublier ma clé",
     replace: "La remplacer",
     connected: "Clé connectée. Le reste du site est ouvert.",
