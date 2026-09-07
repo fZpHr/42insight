@@ -1118,11 +1118,17 @@ export default function Rankings() {
                     {sortDirection === "asc" ? "Asc" : "Desc"}
                   </span>
                 </Button>
-                {/* Both optional builds share one scrolling strip, so the
-                    toolbar keeps its height whatever is on offer. */}
-                {effectiveCampus !== "Global" &&
-                  (!hasLogtimeData || !hasCorrectionStats) && (
-                    <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-md border bg-muted/30 p-1">
+              </div>
+
+              {/* Actions, not filters: they were crowding the search bar out
+                  of the toolbar. Their own line, labelled for what they are. */}
+              {effectiveCampus !== "Global" &&
+                (!hasLogtimeData || !hasCorrectionStats) && (
+                  <div className="hidden w-full items-center gap-2 border-t pt-2 sm:flex">
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      Optional data, fetched on your key:
+                    </span>
+                    <div className="flex items-center gap-2 overflow-x-auto">
                       {!hasLogtimeData && (
                         <LogtimeIndexBuilder
                           campus={effectiveCampus}
@@ -1144,8 +1150,8 @@ export default function Rankings() {
                         </Button>
                       )}
                     </div>
-                  )}
-              </div>
+                  </div>
+                )}
 
               {/* Mobile view - show controls in accordion */}
               <div className="sm:hidden w-full">

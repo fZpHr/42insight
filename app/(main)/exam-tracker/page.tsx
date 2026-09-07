@@ -4,6 +4,7 @@ import * as React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -45,18 +46,18 @@ export default function ExamTracker() {
     const { selectedCampus } = useCampus();
     const effectiveCampus = selectedCampus || session?.user?.campus;
     const { friends, toggleFriend, isFriend } = useExamFriends();
+    // Nothing is fetched until it is asked for: an exam sweep costs a few
+    // pages on the visitor's own key.
+    const [wantExam, setWantExam] = React.useState(false);
     const [showTimeoutError, setShowTimeoutError] = React.useState(false);
 
 
-    const isExamDay = () => {
-        const today = new Date();
-        const dayOfWeek = today.getDay(); 
-        return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
-    };
-
-
+    // There used to be an isExamDay() here that returned true on Wednesday,
+    // Thursday and Friday. It contradicted the schedule printed on this very
+    // page (Nice sits rank exams on Tuesday and Thursday) and it guessed at
+    // something the API knows: the route asks the campus for its exams.
     React.useEffect(() => {
-        if (!isExamDay()) return; 
+        if (!wantExam) return;
         
         const timer = setTimeout(() => {
             setShowTimeoutError(true);
@@ -67,10 +68,6 @@ export default function ExamTracker() {
     const { data: students = [], isLoading, error, isSuccess, isFetching } = useQuery({
         queryKey: ['current_exam'],
         queryFn: async () => {
-
-            if (!isExamDay()) {
-                return [];
-            }
 
             const response = await fetch("/api/current_exam");
             if (!response.ok) {
@@ -85,8 +82,8 @@ export default function ExamTracker() {
                     .sort((a: ExamStudent, b: ExamStudent) => b.grade - a.grade)
                 : data;
         },
-        enabled: isExamDay(), 
-        refetchInterval: isExamDay() ? 600000 : false, 
+        enabled: wantExam,
+        refetchInterval: wantExam ? 600000 : false,
     })
 
 
@@ -159,36 +156,27 @@ export default function ExamTracker() {
     }
 
 
-    if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess && isExamDay())) {
+    if ((isLoading || isFetching) && !isSuccess) {
         return <LoadingScreen message="Loading exam tracker..." />;
     }
 
 
-    if (!isExamDay()) {
+    if (!wantExam) {
         return (
             <div className="max-w-7xl mx-auto px-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                            Exam Tracker
-                            <span title="In development" className="ml-2 text-yellow-500 flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-1">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span className="text-xs font-semibold">In development</span>
-                            </span>
-                        </CardTitle>
+                        <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
+                        <p className="text-muted-foreground">
+                            Live marks for the exam being sat right now, read from
+                            the 42 API on your own key.
+                        </p>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
                         {scheduleInfo}
-                        <Alert>
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>No Exam Today</AlertTitle>
-                            <AlertDescription>
-                                Exams are typically scheduled on <strong>Wednesday</strong>, <strong>Thursday</strong>, and <strong>Friday</strong>.
-                                Check back on these days to track ongoing exams.
-                            </AlertDescription>
-                        </Alert>
+                        <Button onClick={() => setWantExam(true)} className="gap-2">
+                            Load exam results
+                        </Button>
                     </CardContent>
                 </Card>
             </div>
@@ -208,7 +196,9 @@ export default function ExamTracker() {
                             <span className="text-xs font-semibold">In development</span>
                         </span>
                     </CardTitle>
-                    <p className="text-muted-foreground">Data is updated every 10 min</p>
+                    <p className="text-muted-foreground">
+                        Refreshed every 10 minutes while this page is open.
+                    </p>
                 </CardHeader>
                 <CardContent>
                     {/* Message d'erreur après timeout */}
