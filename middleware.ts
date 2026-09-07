@@ -170,6 +170,7 @@ export const config = {
     "/api/byok/:path*",
     "/api/staff/:path*",
     "/api/quota/:path*",
+    "/api/activity/:path*",
     "/api/events/:path*",
     "/api/changelog/:path*",
     "/api/cluster-hosts/:path*",

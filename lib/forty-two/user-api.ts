@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { EncryptJWT, jwtDecrypt } from "jose";
 import { recordHeaders, recordRequest } from "@/lib/forty-two/quota";
+import { recordCall } from "@/lib/forty-two/activity";
 
 /**
  * Calls the 42 API with the visitor's own application key.
@@ -202,6 +203,7 @@ export class UserApi {
     await reserveSlot(this.keyId);
     recordRequest(this.keyId);
 
+    const startedAt = Date.now();
     const response = await fetch(`https://api.intra.42.fr/v2${path}`, {
       ...init,
       headers: {
@@ -211,6 +213,7 @@ export class UserApi {
     });
 
     recordHeaders(this.keyId, response);
+    recordCall(this.keyId, path, response.status, Date.now() - startedAt);
     return response;
   }
 

@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useIsFetching } from "@tanstack/react-query";
 import { KeyRound, Loader2 } from "lucide-react";
 import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { hasApiKey } from "@/lib/api-client";
 
 /**
@@ -34,10 +39,32 @@ interface QuotaLine {
   source?: "42" | "counted";
 }
 
+interface ApiCall {
+  path: string;
+  status: number;
+  durationMs: number;
+  at: string;
+}
+
+/** "/cursus_users?filter[campus_id]=41&…" -> "cursus_users · campus 41" */
+const readable = (path: string): string => {
+  const [endpoint, query = ""] = path.replace(/^\//, "").split("?");
+  const filters = [...query.matchAll(/(?:filter|range)\[([a-z_]+)\]=([^&]*)/g)]
+    .filter(([, name]) => name !== "cursus_id" && name !== "cursus")
+    .map(([, name, value]) => `${name.replace(/_id$/, "")} ${decodeURIComponent(value).slice(0, 14)}`)
+    .slice(0, 2);
+  const page = query.match(/page\[number\]=(\d+)/);
+
+  return [endpoint, ...filters, page ? `page ${page[1]}` : ""]
+    .filter(Boolean)
+    .join(" · ");
+};
+
 export function ApiStatusBar() {
   const fetching = useIsFetching();
   const [keyPresent, setKeyPresent] = useState(false);
   const [personal, setPersonal] = useState<QuotaLine | null>(null);
+  const [calls, setCalls] = useState<ApiCall[] | null>(null);
   const lastRefresh = useRef(0);
   const wasFetching = useRef(false);
 
@@ -95,15 +122,25 @@ export function ApiStatusBar() {
         />
       )}
 
-      <Link
-        href="/api-key"
-        title={
-          keyPresent
-            ? "Your 42 key's remaining budget this hour, as reported by the 42 API. Click to manage it."
-            : "No 42 key connected — pages have nothing to load. Click to connect one."
-        }
-        className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs transition-colors hover:bg-muted"
+      <DropdownMenu
+        onOpenChange={(open) => {
+          if (!open) return;
+          // Only when someone asks: this is a diagnostic, not a dashboard.
+          setCalls(null);
+          fetch("/api/activity")
+            .then((response) => (response.ok ? response.json() : null))
+            .then((data) => setCalls(data?.calls ?? []))
+            .catch(() => setCalls([]));
+        }}
       >
+        <DropdownMenuTrigger
+          title={
+            keyPresent
+              ? "What your 42 key is fetching, and what is left this hour."
+              : "No 42 key connected — pages have nothing to load."
+          }
+          className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs transition-colors hover:bg-muted"
+        >
         {fetching > 0 ? (
           <>
             <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
@@ -128,7 +165,51 @@ export function ApiStatusBar() {
             )}
           </>
         )}
-      </Link>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="start" className="w-[26rem] p-0">
+          <div className="flex items-baseline justify-between border-b px-3 py-2">
+            <span className="text-xs font-medium">Recent 42 API calls</span>
+            <Link
+              href="/api-key"
+              className="text-xs text-primary hover:underline"
+            >
+              {keyPresent ? "Manage my key" : "Connect a key"}
+            </Link>
+          </div>
+
+          {calls === null ? (
+            <p className="px-3 py-4 text-xs text-muted-foreground">Reading…</p>
+          ) : calls.length === 0 ? (
+            <p className="px-3 py-4 text-xs text-muted-foreground">
+              Nothing fetched yet on this server.
+            </p>
+          ) : (
+            <ul className="max-h-80 overflow-y-auto py-1">
+              {calls.map((call, index) => (
+                <li
+                  key={`${call.at}-${index}`}
+                  className="flex items-baseline gap-2 px-3 py-1 text-xs"
+                >
+                  <span
+                    className={`tabular-nums ${
+                      call.status >= 400 ? "text-destructive" : "text-muted-foreground"
+                    }`}
+                  >
+                    {call.status}
+                  </span>
+                  <span className="flex-1 truncate font-mono" title={call.path}>
+                    {readable(call.path)}
+                  </span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {call.durationMs}ms
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }
