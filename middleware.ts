@@ -2,6 +2,26 @@ import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
 import { rateLimit, getClientIp, getRateLimitHeaders } from "@/lib/rate-limit"
 
+/** The page where a visitor connects their own 42 application. */
+const API_KEY_PAGE = "/api-key"
+
+/**
+ * Pages that need data, and therefore a key. Everything else -- the key page
+ * itself, useful links, contribute -- stays reachable without one.
+ */
+const keyRequiredRoutes = [
+  "/dashboard",
+  "/rankings",
+  "/trombinoscope",
+  "/cluster-map",
+  "/peers",
+  "/events",
+  "/exam-tracker",
+  "/rncp-simulator",
+  "/query",
+  "/piscine",
+]
+
 const poolRestrictedRoutes = [
   "/query",
   "/rankings",
@@ -66,6 +86,18 @@ export default withAuth(
       }
     }
 
+    // No key, no data: send the visitor to the one page that can fix that,
+    // rather than letting every page discover it separately and ask again.
+    // The cookie is the sealed credentials set by /api/byok/token.
+    const hasKey = Boolean(req.cookies.get("byok_credentials")?.value)
+    const needsKey = keyRequiredRoutes.some(
+      (route) => pathname === route || pathname.startsWith(route + "/"),
+    )
+
+    if (needsKey && !hasKey) {
+      return NextResponse.redirect(new URL(API_KEY_PAGE, req.url))
+    }
+
     if (token?.role === "pisciner") {
       const isRestrictedRoute = poolRestrictedRoutes.some(route => 
         pathname.startsWith(route)
@@ -116,6 +148,7 @@ export default withAuth(
 
 export const config = { 
   matcher: [
+    "/api-key/:path*",
     "/dashboard/:path*", 
     "/trombinoscope/:path*", 
     "/query/:path*",

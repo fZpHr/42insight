@@ -18,8 +18,6 @@ import ReactConfetti from "react-confetti"
 import { useSession } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
-import { ApiKeyGate } from "@/components/ApiKeyGate"
-import { isKeyRequired } from "@/lib/api-client"
 import { Loader2, GraduationCap, Trophy, Award } from "lucide-react"
 
 function getManualProjectsKey(session: any) {
@@ -216,68 +214,6 @@ export default function RNCPSimulator() {
   }, [isDataProcessed, manualProjects, setProjectMark, toggleCoalitionBonus, coalitionProjects])
 
   const isLoading = !hydrated || isIntraLoading || areEventsLoading || !isDataProcessed
-
-  if (isKeyRequired(intraError)) {
-    return <ApiKeyGate what="The RNCP simulator" />
-  }
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex flex-col items-center justify-center gap-8 p-8 rounded-lg bg-card border">
-          <div className="relative">
-            {/* Animated rotating circles */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-32 h-32 border-4 border-primary/20 rounded-full animate-pulse"></div>
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center animate-spin">
-              <div className="w-24 h-24 border-4 border-transparent border-t-primary rounded-full"></div>
-            </div>
-            
-            {/* Center icon with animation */}
-            <div className="relative flex items-center justify-center w-32 h-32">
-              <div className="absolute animate-ping">
-                <GraduationCap className="w-12 h-12 text-primary/40" />
-              </div>
-              <GraduationCap className="w-12 h-12 text-primary" />
-            </div>
-          </div>
-
-          {/* Animated text */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <h2 className="text-xl font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Loading RNCP Simulator
-              </h2>
-            </div>
-            
-            {/* Loading steps */}
-            <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 animate-pulse">
-                <Trophy className="w-4 h-4" />
-                <span className={isIntraLoading ? "text-primary" : "text-muted-foreground/50"}>
-                  {isIntraLoading ? "Fetching projects..." : "✓ Projects loaded"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 animate-pulse [animation-delay:150ms]">
-                <Award className="w-4 h-4" />
-                <span className={areEventsLoading ? "text-primary" : "text-muted-foreground/50"}>
-                  {areEventsLoading ? "Loading events..." : "✓ Events loaded"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 animate-pulse [animation-delay:300ms]">
-                <GraduationCap className="w-4 h-4" />
-                <span className={!isDataProcessed ? "text-primary" : "text-muted-foreground/50"}>
-                  {!isDataProcessed ? "Calculating RNCP titles..." : "✓ Calculations complete"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">

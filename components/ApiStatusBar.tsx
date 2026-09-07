@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useIsFetching } from "@tanstack/react-query";
 import { KeyRound, Loader2 } from "lucide-react";
-import { ApiKeyDialog } from "@/components/ApiKeyDialog";
+import Link from "next/link";
 import { hasApiKey } from "@/lib/api-client";
 
 /**
@@ -38,7 +38,6 @@ export function ApiStatusBar() {
   const fetching = useIsFetching();
   const [keyPresent, setKeyPresent] = useState(false);
   const [personal, setPersonal] = useState<QuotaLine | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const lastRefresh = useRef(0);
   const wasFetching = useRef(false);
 
@@ -96,9 +95,8 @@ export function ApiStatusBar() {
         />
       )}
 
-      <button
-        type="button"
-        onClick={() => setDialogOpen(true)}
+      <Link
+        href="/api-key"
         title={
           keyPresent
             ? "Your 42 key's remaining budget this hour, as reported by the 42 API. Click to manage it."
@@ -130,9 +128,7 @@ export function ApiStatusBar() {
             )}
           </>
         )}
-      </button>
-
-      <ApiKeyDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      </Link>
     </>
   );
 }

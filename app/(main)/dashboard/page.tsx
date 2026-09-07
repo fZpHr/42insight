@@ -31,8 +31,6 @@ import {
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { useSession, signOut } from "next-auth/react";
 import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
-import { ApiKeyGate } from "@/components/ApiKeyGate";
-import { isKeyRequired } from "@/lib/api-client";
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 import { Changelog } from "@/components/Changelog";
 import { CoalitionInfo } from "@/components/CoalitionInfo";
@@ -404,11 +402,6 @@ export default function Dashboard() {
   }
 
   // Before the loading branch: without a key the data never arrives, so
-  // isPageLoading stays true forever and the dashboard spins for good.
-  if (isKeyRequired(intraError)) {
-    return <ApiKeyGate what="Your dashboard" />;
-  }
-
   if (isPageLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6">

@@ -7,7 +7,6 @@ import { StudentCard } from "@/components/trombi-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { fetchJson, isKeyRequired } from "@/lib/api-client";
-import { ApiKeyGate } from "@/components/ApiKeyGate";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, EyeClosed, Star, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -88,10 +87,6 @@ export default function Trombinoscope() {
       console.error("Error fetching students:", error);
     }
   }, [error]);
-
-  if (isKeyRequired(error)) {
-    return <ApiKeyGate what="The piscine trombinoscope" />;
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-3">

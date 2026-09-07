@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { Copy, Loader2 } from "lucide-react";
 import { addToLocalStorage, getFromLocalStorage } from "@/utils/localStorage";
 import { useSession } from "next-auth/react";
-import { ApiKeyGate } from "@/components/ApiKeyGate";
 import { hasApiKey } from "@/lib/api-client";
 
 export default function Query() {
@@ -93,10 +92,6 @@ export default function Query() {
       return [];
     }
   };
-
-  if (keyPresent === false) {
-    return <ApiKeyGate what="The API console" />;
-  }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard

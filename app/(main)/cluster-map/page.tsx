@@ -22,7 +22,6 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { ApiKeyGate } from "@/components/ApiKeyGate";
 import { isKeyRequired, KeyRequiredError } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -318,10 +317,6 @@ export default function ClusterMap() {
 
 
 
-
-  if (isKeyRequired(error)) {
-    return <ApiKeyGate what="The cluster map" />;
-  }
 
   if (!showTimeoutError && (status === "loading" || !effectiveCampus || (isLoading || isFetching) && !isSuccess)) {
     return <LoadingScreen message="Loading cluster map..." />;

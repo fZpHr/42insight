@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Clock, KeyRound, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ApiKeyDialog } from "@/components/ApiKeyDialog";
-import { hasApiKey } from "@/lib/api-client";
 import { mergeLogtimeChunk, readLogtimeIndex } from "@/lib/logtime-store";
 
 /**
@@ -37,16 +36,11 @@ interface ChunkResult {
 }
 
 export function LogtimeIndexBuilder({ campus, onBuilt }: Props) {
-  const [keyPresent, setKeyPresent] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const router = useRouter();
   const [builtAt, setBuiltAt] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
-
-  useEffect(() => {
-    setKeyPresent(hasApiKey());
-  }, [dialogOpen]);
 
   useEffect(() => {
     setBuiltAt(readLogtimeIndex(campus)?.builtAt ?? null);
@@ -69,9 +63,8 @@ export function LogtimeIndexBuilder({ campus, onBuilt }: Props) {
         const data: ChunkResult = await response.json();
 
         if (response.status === 428 || response.status === 401) {
-          setKeyPresent(false);
           toast.error("Your key is missing or expired. Connect it again.");
-          setDialogOpen(true);
+          router.push("/api-key");
           return;
         }
 
@@ -109,32 +102,20 @@ export function LogtimeIndexBuilder({ campus, onBuilt }: Props) {
   return (
     <div className="flex flex-col gap-2 w-full sm:w-auto">
       <div className="flex items-center gap-2">
-        {keyPresent ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={buildIndex}
-            disabled={progress !== null}
-            className="gap-2"
-          >
-            {progress !== null ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Clock className="h-4 w-4" />
-            )}
-            {progress !== null ? "Building…" : "Build logtime index"}
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setDialogOpen(true)}
-            className="gap-2"
-          >
-            <KeyRound className="h-4 w-4" />
-            Unlock logtime
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={buildIndex}
+          disabled={progress !== null}
+          className="gap-2"
+        >
+          {progress !== null ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Clock className="h-4 w-4" />
+          )}
+          {progress !== null ? "Building…" : "Build logtime index"}
+        </Button>
 
         {builtAt && progress === null && (
           <span className="text-xs text-muted-foreground">
@@ -152,7 +133,6 @@ export function LogtimeIndexBuilder({ campus, onBuilt }: Props) {
         </div>
       )}
 
-      <ApiKeyDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
   );
 }
