@@ -77,7 +77,7 @@ export const copy = {
     subtitle:
       "42Insight lit tout en direct depuis l'API 42, avec votre clé.",
     why:
-      "J'essaie de rendre le site autonome, sans ressource externe : ni base de données, ni tâche de fond à faire tourner. Tout est lu en direct depuis l'API 42, et c'est pour ça qu'il faut maintenant votre clé.",
+      "J'essaie de rendre le site autonome, sans ressource externe, ni base de données, ni tâche de fond à faire tourner. Tout est lu en direct depuis l'API 42, et c'est pour ça qu'il faut maintenant votre clé.",
     quota:
       "Avec votre clé, vous naviguez sur votre propre budget : 1200 requêtes par heure que personne d'autre n'entame.",
     transparency:
