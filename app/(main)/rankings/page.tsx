@@ -73,6 +73,7 @@ import {
 } from "@/components/ui/dialog"
 import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
 
 const sortOptions: StudentSortOption[] = [
   { value: "level", label: "Level", key: "level" },
@@ -178,7 +179,7 @@ const NO_CORRECTION_DATA = 420;
 const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
   try {
 
-    const response = await fetch(`/api/rankings/${campus}`);
+    const response = await fetch(`/api/campus/${campus}/students`);
     if (!response.ok) {
       throw new Error("Failed to fetch students");
     }
@@ -293,6 +294,8 @@ export default function Rankings() {
     staleTime: 10 * 60 * 1000,
     refetchOnMount: 'always',
   });
+
+  const effectiveCampus = selectedCampus || user?.campus || "";
 
   const hasCorrectionStats = useMemo(
     () =>
@@ -1072,6 +1075,9 @@ export default function Rankings() {
                     {sortDirection === "asc" ? "Asc" : "Desc"}
                   </span>
                 </Button>
+                {!hasLogtimeData && effectiveCampus !== "Global" && (
+                  <LogtimeIndexBuilder campus={effectiveCampus} />
+                )}
               </div>
 
               {/* Mobile view - show controls in accordion */}

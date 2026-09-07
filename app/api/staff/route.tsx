@@ -1,71 +1,79 @@
-import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import {
+  CAMPUS_IDS,
+  currentPool,
+  getCampusStudents,
+  getPoolUsers,
+} from "@/lib/forty-two/live-campus";
 
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
-        return NextResponse.json(
-            { error: 'Unauthorized' },
-            { status: 401 }
-        )
-    }
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    try {
-        const user = session.user
-        if (user.role != "admin" && user.role != "staff") {
-            return NextResponse.json({ error: 'Staff or Admin access required' }, { status: 403 })
-        }
+  const user = session.user;
+  if (user.role != "admin" && user.role != "staff") {
+    return NextResponse.json(
+      { error: "Staff or Admin access required" },
+      { status: 403 },
+    );
+  }
 
+  const { searchParams } = new URL(request.url);
+  const campus = searchParams.get("campus") || user.campus;
 
-        const { searchParams } = new URL(request.url)
-        const campus = searchParams.get('campus') || user.campus
-        
-        if (!campus) {
-            return NextResponse.json({ error: 'Campus not found' }, { status: 404 })
-        }
-        const [
-            totalStudents,
-            activePoolUsers,
-            averageLevel,
-            studentsAtRisk,
-            topPerformers
-        ] = await Promise.all([
-            prisma.student.count({ where: { campus: campus } }),
-            prisma.poolUser.count(), 
-            prisma.student.aggregate({
-                _avg: { level: true },
-                where: { campus: campus }
-            }),
-            prisma.student.count({
-                where: {
-                    campus: campus,
-                    blackholeTimer: {
-                        lte: 30 
-                    }
-                }
-            }),
-            prisma.student.findMany({
-                orderBy: { level: 'desc' },
-                take: 10,
-                select: { name: true, level: true, campus: true },
-                where: { campus: campus }
-            })
-        ])
+  if (!campus || !CAMPUS_IDS[campus]) {
+    return NextResponse.json({ error: "Campus not found" }, { status: 404 });
+  }
 
-        return NextResponse.json({
-            totalStudents,
-            activePoolUsers,
-            averageLevel: averageLevel._avg.level || 0,
-            studentsAtRisk,
-            topPerformers,
-            blackHoleSoon: studentsAtRisk,
-            inactiveStudents: totalStudents - activePoolUsers
-        })
+  try {
+    const pool = currentPool();
+    const [students, poolUsers] = await Promise.all([
+      getCampusStudents(campus),
+      getPoolUsers(campus, pool.month, pool.year).catch(() => []),
+    ]);
 
-    } catch (error) {
-        console.error('Error fetching campus stats:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-    }
+    const totalStudents = students.length;
+    const activePoolUsers = poolUsers.length;
+
+    const averageLevel =
+      totalStudents > 0
+        ? students.reduce((sum, student) => sum + student.level, 0) /
+          totalStudents
+        : 0;
+
+    // blackholeTimer is days remaining, and 0 means no blackhole at all
+    // (validated or alumni), so those must not count as at risk.
+    const studentsAtRisk = students.filter(
+      (student) => student.blackholeTimer > 0 && student.blackholeTimer <= 30,
+    ).length;
+
+    const topPerformers = [...students]
+      .sort((a, b) => b.level - a.level)
+      .slice(0, 10)
+      .map((student) => ({
+        name: student.name,
+        level: student.level,
+        campus: student.campus,
+      }));
+
+    return NextResponse.json({
+      totalStudents,
+      activePoolUsers,
+      averageLevel,
+      studentsAtRisk,
+      topPerformers,
+      blackHoleSoon: studentsAtRisk,
+      inactiveStudents: totalStudents - activePoolUsers,
+    });
+  } catch (error: any) {
+    console.error("Error fetching campus stats:", error.message);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
 }

@@ -30,7 +30,7 @@ export function PiscineStats({ campus }: PiscineStatsProps) {
   const { data: students, isLoading, isSuccess, isFetching } = useQuery<Student[]>({
     queryKey: ["piscine-stats", campus],
     queryFn: async () => {
-      const response = await fetch(`/api/users/campus/${campus}`);
+      const response = await fetch(`/api/campus/${campus}/students`);
       if (!response.ok) {
         throw new Error("Failed to fetch students");
       }
