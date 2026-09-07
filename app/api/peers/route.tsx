@@ -18,6 +18,17 @@ import type { Project, ProjectSubscriber } from "@/types";
  */
 
 const CACHE_TTL = 600;
+
+/**
+ * How far back a registration still counts as someone to pair with.
+ *
+ * 42's "in_progress" means registered and never closed, not being worked on:
+ * one student on this campus has Born2beroot open since May 2021, alongside
+ * fourteen other projects. Without a window the page lists five-year-old
+ * abandonments as peers. Six months keeps anyone plausibly still at it --
+ * 2329 open registrations at Nice, 635 of them touched since.
+ */
+const ACTIVE_WINDOW_DAYS = 180;
 const CACHE_KEY = "peers";
 
 export async function GET(request: Request) {
@@ -60,9 +71,14 @@ export async function GET(request: Request) {
       // filter[project_id] takes a list, and narrowing it to the projects this
       // page actually lists takes Nice from 2329 rows to 820: nine pages
       // instead of twenty-four, for exactly the same screen.
+      const since = new Date(
+        Date.now() - ACTIVE_WINDOW_DAYS * 86_400_000,
+      ).toISOString();
+
       const projectUsers = await api.fetchAllPages(
         `/projects_users?filter[campus]=${campusId}&filter[cursus]=${CURSUS_ID}` +
-          `&filter[status]=in_progress&filter[project_id]=${PEER_PROJECT_IDS.join(",")}`,
+          `&filter[status]=in_progress&filter[project_id]=${PEER_PROJECT_IDS.join(",")}` +
+          `&range[updated_at]=${since},${new Date().toISOString()}`,
         { maxPages: 15 },
       );
 
@@ -88,6 +104,7 @@ export async function GET(request: Request) {
           validated: projectUser["validated?"] ?? null,
           status: projectUser.status,
           campus: campusName,
+          updatedAt: projectUser.updated_at ?? null,
         };
 
         projects.get(project.id)!.subscribers.push(subscriber);

@@ -86,7 +86,12 @@ export default function PeersPage() {
         filteredSubscribers = project.subscribers?.filter(sub =>
             effectiveCampus ? sub.campus?.toLowerCase() === effectiveCampus.toLowerCase() : true
         );
-        return { ...project, subscribers: filteredSubscribers };
+        return {
+            ...project,
+            subscribers: filteredSubscribers?.slice().sort((a, b) =>
+                (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
+            ),
+        };
     })?.filter(project => project.subscribers && project.subscribers.length > 0) ?? [];
 
     const sortedProjects = filteredProjects?.slice().sort((a, b) => {
@@ -100,6 +105,19 @@ export default function PeersPage() {
         if (orderB !== -1) return 1;
         return 0;
     });
+
+    // Every row here is "in_progress", so printing that said nothing. How long
+    // it has been open does: 42 keeps a registration open until it is closed,
+    // and a project untouched for months is not someone to go and pair with.
+    const sinceLabel = (updatedAt: string | null) => {
+        if (!updatedAt) return "in progress";
+        const days = Math.floor((Date.now() - new Date(updatedAt).getTime()) / 86400000);
+        if (days <= 0) return "started today";
+        if (days === 1) return "started yesterday";
+        if (days < 31) return `started ${days} days ago`;
+        const months = Math.round(days / 30);
+        return `started ${months} month${months > 1 ? "s" : ""} ago`;
+    };
 
     const handleLoginClick = (login: string) => {
         window.open(`https://profile.intra.42.fr/users/${login}`, '_blank');
@@ -203,7 +221,7 @@ export default function PeersPage() {
                                                             {subscriber.login}
                                                         </span>
                                                         <span className="text-sm text-muted-foreground mt-1">
-                                                            {subscriber.status}
+                                                            {sinceLabel(subscriber.updatedAt)}
                                                         </span>
                                                     </div>
                                                 </div>
