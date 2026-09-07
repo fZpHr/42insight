@@ -5,6 +5,7 @@ import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { cachedOnce } from "@/lib/memory-cache";
 import { CAMPUS_IDS, CURSUS_ID, getCampusStudents } from "@/lib/forty-two/live-campus";
+import { PEER_PROJECT_IDS } from "@/lib/forty-two/peer-projects";
 import type { Project, ProjectSubscriber } from "@/types";
 
 /**
@@ -55,9 +56,14 @@ export async function GET(request: Request) {
       // attribute on projects_users and 42 answers 400. Written without the
       // filter[] wrapper it is accepted and silently ignored, which returns
       // every in-progress project on the network -- worse than the error.
+      //
+      // filter[project_id] takes a list, and narrowing it to the projects this
+      // page actually lists takes Nice from 2329 rows to 820: nine pages
+      // instead of twenty-four, for exactly the same screen.
       const projectUsers = await api.fetchAllPages(
-        `/projects_users?filter[campus]=${campusId}&filter[cursus]=${CURSUS_ID}&filter[status]=in_progress`,
-        { maxPages: 30 },
+        `/projects_users?filter[campus]=${campusId}&filter[cursus]=${CURSUS_ID}` +
+          `&filter[status]=in_progress&filter[project_id]=${PEER_PROJECT_IDS.join(",")}`,
+        { maxPages: 15 },
       );
 
       for (const projectUser of projectUsers) {
