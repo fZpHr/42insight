@@ -4,12 +4,15 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
 
 /**
- * What the site keys have left this hour, as 42 last reported it.
+ * Whatever 42 says about the budget on each site key.
  *
- * Whether a page is affordable on the shared keys is a question with a real
- * answer, and 42 puts it in the headers of every response. This reads back what
- * the limiter recorded, so the tiering can be checked against traffic instead
- * of estimated.
+ * The documented limits are 2 requests/second and 1200/hour per application,
+ * but the public apidoc does not say which headers report what is *left*. So
+ * this reports the rate-limit headers the API actually answered with, under
+ * their real names, rather than a number invented from a guessed header.
+ *
+ * Read it once against a live key to find out what 42 sends; the limiter can
+ * then act on it instead of only pacing at two requests a second.
  *
  * Each serverless instance holds its own keys and its own counters, so a single
  * call shows one instance's view. Trends matter here, not a single reading.

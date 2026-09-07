@@ -11,9 +11,14 @@
  * the visitor registers themselves (see lib/forty-two/user-api.ts).
  *
  * 42 meters per application: 2 requests/second and 1200/hour for each
- * client_id. CLIENT_ID1 is what next-auth signs people in with, so it is left
- * out of the data pool as soon as a second key exists -- a burst of browsing
- * must never be able to lock anyone out of logging in.
+ * client_id (https://api.intra.42.fr/apidoc/guides/getting_started).
+ * CLIENT_ID1 is what next-auth signs people in with, so it is left out of the
+ * data pool as soon as a second key exists -- a burst of browsing must never be
+ * able to lock anyone out of logging in.
+ *
+ * Only the per-second half is enforced here. The hourly budget is not tracked,
+ * because nothing in a request tells us how much of it is left; see recordQuota
+ * below for what is actually observable.
  */
 
 /** next-auth signs people in with CLIENT_ID1. */
@@ -29,8 +34,16 @@ interface QueuedRequest {
 /** What 42 reports about the budget left on a key, from its response headers. */
 export interface TokenQuota {
   index: number;
-  hourlyRemaining: number | null;
-  hourlyLimit: number | null;
+  /**
+   * Every rate-limit-ish header 42 answered with, verbatim.
+   *
+   * The documented limits are 2 requests/second and 1200/hour per application,
+   * but the headers carrying what is *left* are not in the public apidoc -- so
+   * guessing their names would produce a quota page that reads null forever and
+   * looks like plenty of headroom. Whatever arrives is recorded under its real
+   * name instead, and the shape can be pinned down once it has been seen.
+   */
+  headers: Record<string, string>;
   observedAt: number | null;
 }
 
@@ -90,12 +103,7 @@ class ApiRateLimiter {
         if (!token) continue;
         this.tokens.push(token);
         this.tokenLabels.push(i);
-        this.quotas.push({
-          index: i,
-          hourlyRemaining: null,
-          hourlyLimit: null,
-          observedAt: null,
-        });
+        this.quotas.push({ index: i, headers: {}, observedAt: null });
       }
 
       if (this.tokens.length === 0) {
@@ -146,24 +154,22 @@ class ApiRateLimiter {
   }
 
   /**
-   * 42 answers every request with what is left on the key. Recording it is the
-   * only way to know whether a page is affordable without guessing.
+   * Keeps whatever 42 says about the budget, without assuming what it is
+   * called. Anything mentioning a limit or a quota is kept as-is, so reading
+   * /api/quota once against a real key is enough to learn the real names.
    */
   private recordQuota(slot: number, response: Response) {
-    const remaining = response.headers.get("x-hourly-ratelimit-remaining");
-    const limit = response.headers.get("x-hourly-ratelimit-limit");
-    if (remaining === null && limit === null) return;
-
     const quota = this.quotas[slot];
-    quota.hourlyRemaining = remaining === null ? quota.hourlyRemaining : Number(remaining);
-    quota.hourlyLimit = limit === null ? quota.hourlyLimit : Number(limit);
-    quota.observedAt = Date.now();
+    let seen = false;
 
-    if (quota.hourlyRemaining !== null && quota.hourlyRemaining < 100) {
-      console.warn(
-        `[API Rate Limiter] key ${quota.index} down to ${quota.hourlyRemaining} requests this hour`,
-      );
-    }
+    response.headers.forEach((value, name) => {
+      if (/(ratelimit|rate-limit|quota|retry-after)/i.test(name)) {
+        quota.headers[name] = value;
+        seen = true;
+      }
+    });
+
+    if (seen) quota.observedAt = Date.now();
   }
 
   async fetch(path: string, options: RequestInit = {}): Promise<Response> {
