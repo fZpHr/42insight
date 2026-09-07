@@ -1,6 +1,11 @@
 import type { Student } from "@/types";
 import type { FortyTwoApi } from "@/lib/forty-two/api";
 import { cachedOnce } from "@/lib/memory-cache";
+import {
+  WORK_APPRENTICESHIP,
+  WORK_PROJECT_IDS,
+  classifyWorkProject,
+} from "@/lib/forty-two/work-projects";
 
 /**
  * Live campus data, straight from the 42 API, on the site's own keys.
@@ -97,14 +102,56 @@ export const getCampusStudents = async (
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
   return cachedOnce(studentsCacheKey(campusName), STUDENTS_TTL, async () => {
-    const cursusUsers = await api.fetchAllPages(
-      `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
-    );
+    const [cursusUsers, work] = await Promise.all([
+      api.fetchAllPages(
+        `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
+      ),
+      getWorkStatus(campusId, api),
+    ]);
 
     return cursusUsers
       .filter((cursusUser) => cursusUser.user && !cursusUser.user["staff?"])
-      .map((cursusUser) => toStudent(cursusUser, campusName));
+      .map((cursusUser) => {
+        const student = toStudent(cursusUser, campusName);
+        student.work = work.get(student.id) ?? 0;
+        return student;
+      });
   });
+};
+
+/**
+ * Who is on an internship or an apprenticeship, as a student id -> work code.
+ *
+ * Four pages for a whole campus, so it rides along with the campus build
+ * rather than being a page of its own. A failure here costs the two sorts that
+ * depend on it, not the rankings.
+ */
+const getWorkStatus = async (
+  campusId: number,
+  api: FortyTwoApi,
+): Promise<Map<number, number>> => {
+  const work = new Map<number, number>();
+
+  try {
+    const rows = await api.fetchAllPages(
+      `/projects_users?filter[campus]=${campusId}&filter[cursus]=${CURSUS_ID}` +
+        `&filter[status]=in_progress&filter[project_id]=${WORK_PROJECT_IDS.join(",")}`,
+      { maxPages: 8 },
+    );
+
+    for (const row of rows) {
+      const kind = classifyWorkProject(row.project?.name ?? "");
+      if (!kind || !row.user?.id) continue;
+      // Apprenticeship wins: its company evaluations are separate projects, so
+      // one student legitimately shows up under several of these.
+      const existing = work.get(row.user.id) ?? 0;
+      work.set(row.user.id, Math.max(existing, kind === WORK_APPRENTICESHIP ? 2 : 1));
+    }
+  } catch (error: any) {
+    console.error("[live-campus] work status failed:", error.message);
+  }
+
+  return work;
 };
 
 /**
