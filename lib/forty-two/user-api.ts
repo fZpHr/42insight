@@ -166,12 +166,30 @@ export const exchangeForToken = async (
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * When the next request on a given key may leave, shared across every client
+ * built for it.
+ *
+ * Pacing used to live on the instance, and a page builds several -- the
+ * dashboard alone asks four routes at once. Each paced itself to two requests
+ * a second, so together they went four times faster than 42 allows and earned
+ * 429s. The slot is reserved synchronously, before any await, so two callers
+ * cannot claim the same one.
+ */
+const nextSlotAt: Map<string, number> = ((globalThis as any).__42insightPacing ??=
+  new Map<string, number>());
+
+const reserveSlot = async (keyId: string): Promise<void> => {
+  const now = Date.now();
+  const at = Math.max(now, nextSlotAt.get(keyId) ?? 0);
+  nextSlotAt.set(keyId, at + REQUEST_SPACING_MS);
+  if (at > now) await sleep(at - now);
+};
+
+/**
  * A 42 API client bound to one visitor's key, pacing its own requests so a
  * multi-page walk stays inside the per-application rate limit.
  */
 export class UserApi {
-  private lastRequestAt = 0;
-
   constructor(
     private readonly token: string,
     /** The 42 application being metered, which is what quota is counted per. */
@@ -179,12 +197,7 @@ export class UserApi {
   ) {}
 
   async fetch(path: string, init: RequestInit = {}): Promise<Response> {
-    const elapsed = Date.now() - this.lastRequestAt;
-    if (elapsed < REQUEST_SPACING_MS) {
-      await sleep(REQUEST_SPACING_MS - elapsed);
-    }
-    this.lastRequestAt = Date.now();
-
+    await reserveSlot(this.keyId);
     recordRequest(this.keyId);
 
     const response = await fetch(`https://api.intra.42.fr/v2${path}`, {

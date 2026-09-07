@@ -34,9 +34,14 @@ export async function GET(
   try {
     const { login } = await params;
 
-    // The campus is not part of the request, so look through the cached
-    // campuses rather than making the caller supply one.
-    for (const campus of Object.keys(CAMPUS_IDS)) {
+    // Look at the caller's own campus first. Each miss costs a full page walk
+    // through a campus -- ten seconds or so on a cold cache -- and the answer
+    // is almost always in the first one tried.
+    const ordered = Object.keys(CAMPUS_IDS).sort((a, b) =>
+      a === session.user.campus ? -1 : b === session.user.campus ? 1 : 0,
+    );
+
+    for (const campus of ordered) {
       const students = await getCampusStudents(campus, api);
       if (students.some((student) => student.name === login)) {
         return NextResponse.json({ rank: rankByLevel(students, login) });
@@ -44,7 +49,7 @@ export async function GET(
     }
 
     const pool = currentPool();
-    for (const campus of Object.keys(CAMPUS_IDS)) {
+    for (const campus of ordered) {
       const poolUsers = await getPoolUsers(campus, pool.month, pool.year, api);
       if (poolUsers.some((poolUser) => poolUser.name === login)) {
         return NextResponse.json({ rank: rankByLevel(poolUsers, login) });

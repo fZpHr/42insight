@@ -356,10 +356,10 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-    if (!intraLoading && userIntraInfo && !rankLoading) {
+    if (!intraLoading && userIntraInfo) {
       setIsDataReady(true);
     }
-  }, [intraLoading, userIntraInfo, rankLoading]);
+  }, [intraLoading, userIntraInfo]);
 
   const currentCursus = useMemo(() => {
     return (
@@ -388,14 +388,18 @@ export default function Dashboard() {
       },
       {
         title: "Rank",
-        value: campusRank || "N/A",
+        value: campusRank ?? (rankLoading ? "…" : "N/A"),
         icon: Users,
       },
     ],
     [currentCursus, userIntraInfo, campusRank],
   );
 
-  const isPageLoading = loading || status === "loading" || intraLoading || rankLoading || !isDataReady;
+  // The rank is one number among a dozen, but computing it means walking the
+  // whole campus -- twenty-five seconds on a cold cache. Waiting for it held
+  // the entire dashboard hostage to its most expensive query, so it now fills
+  // in when it arrives.
+  const isPageLoading = loading || status === "loading" || intraLoading || !isDataReady;
 
   if (status === "unauthenticated") {
     return <LoadingDashboard />;
