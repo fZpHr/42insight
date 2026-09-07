@@ -39,7 +39,7 @@ export async function GET(
       `coalitions:v1:${campus}:${login}`,
       CACHE_TTL,
       async () => {
-        const userResponse = await api.fetch(`/users/${login}`);
+        const userResponse = await api.fetch(`/users/${encodeURIComponent(login)}`);
         if (!userResponse.ok) {
           throw new Error(`42 API responded ${userResponse.status}`);
         }

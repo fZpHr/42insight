@@ -20,6 +20,23 @@ const nextConfig: NextConfig = {
             value: "DENY",
           },
           {
+            // Deliberately narrow. script-src and style-src are left out
+            // because Next injects inline bootstrap code, and locking those
+            // down needs per-request nonces rather than a header constant --
+            // a change worth making on purpose, not as a side effect. What is
+            // here costs nothing and closes the cheap attacks: no <base>
+            // rewriting, no form posting to another origin, no plugins, and
+            // framing refused a second time for browsers that prefer CSP to
+            // X-Frame-Options.
+            key: "Content-Security-Policy",
+            value: [
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+              "object-src 'none'",
+            ].join("; "),
+          },
+          {
             key: "X-Content-Type-Options",
             value: "nosniff",
           },

@@ -31,7 +31,7 @@ export async function GET(
 
   try {
     const user = await cached(`intra:v1:${login}`, CACHE_TTL, async () => {
-      const response = await api.fetch(`/users/${login}`);
+      const response = await api.fetch(`/users/${encodeURIComponent(login)}`);
 
       if (!response.ok) {
         throw new Error(`42 API responded ${response.status}`);

@@ -91,7 +91,19 @@ export const authOptions: NextAuthOptions = {
 
         return token;
       } catch (error) {
-        console.error("Error refreshing access token", error);
+        // The error object from a failed refresh carries 42's response
+        // body, which on some failures echoes the token back. Only the
+        // message is logged.
+        // 42 answers a failed refresh with {error, error_description} and,
+        // on some failures, echoes the token back alongside them. Only the
+        // OAuth error code is logged: enough to diagnose, nothing to leak.
+        const code =
+          error && typeof error === "object" && "error" in error
+            ? String((error as { error: unknown }).error)
+            : error instanceof Error
+              ? error.message
+              : "unknown error";
+        console.error("Error refreshing access token:", code);
 
         token.error = "RefreshAccessTokenError";
         return token;

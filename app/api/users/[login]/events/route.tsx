@@ -27,7 +27,7 @@ export async function GET(
       `user-events:v1:${login}`,
       CACHE_TTL,
       async () => {
-        const userResponse = await api.fetch(`/users/${login}`);
+        const userResponse = await api.fetch(`/users/${encodeURIComponent(login)}`);
 
         if (!userResponse.ok) {
           throw new Error(`42 API responded ${userResponse.status}`);
