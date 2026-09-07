@@ -2,20 +2,38 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { DOCUMENTED_HOURLY_LIMIT, usageFor } from "@/lib/forty-two/quota";
+import { readCredentials } from "@/lib/forty-two/user-api";
+
+/** One line for the site keys taken together, for visitors who are not staff. */
+const sharedSummary = async () => {
+  const quotas = await apiRateLimiter.getQuotas();
+
+  return [
+    {
+      keyId: `${quotas.length} shared key${quotas.length === 1 ? "" : "s"}`,
+      used: quotas.reduce((sum, quota) => sum + quota.used, 0),
+      remaining: quotas.reduce((sum, quota) => sum + quota.remaining, 0),
+      limit: quotas.length * DOCUMENTED_HOURLY_LIMIT,
+      resetAt: null,
+      headers: {},
+    },
+  ];
+};
 
 /**
- * Whatever 42 says about the budget on each site key.
+ * How much of the hourly budget is left, on the visitor's key and on the
+ * site's.
  *
- * The documented limits are 2 requests/second and 1200/hour per application,
- * but the public apidoc does not say which headers report what is *left*. So
- * this reports the rate-limit headers the API actually answered with, under
- * their real names, rather than a number invented from a guessed header.
+ * 42 allows 1200 requests an hour per application. Both figures are this
+ * server instance's own count, so on a platform running several instances they
+ * are a floor rather than a total. The browser keeps the accurate number for a
+ * visitor's personal key by adding up the per-response call counts, which the
+ * instances cannot see between them.
  *
- * Read it once against a live key to find out what 42 sends; the limiter can
- * then act on it instead of only pacing at two requests a second.
- *
- * Each serverless instance holds its own keys and its own counters, so a single
- * call shows one instance's view. Trends matter here, not a single reading.
+ * `headers` carries any rate-limit header the 42 API actually answered with.
+ * The public apidoc documents none, so nothing is assumed -- but if something
+ * shows up there it beats counting, and this is where it will appear.
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -23,15 +41,19 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (session.user.role !== "admin" && session.user.role !== "staff") {
-    return NextResponse.json(
-      { error: "Staff or Admin access required" },
-      { status: 403 },
-    );
-  }
+  const credentials = await readCredentials();
+  const isStaff =
+    session.user.role === "admin" || session.user.role === "staff";
 
   return NextResponse.json({
-    keys: apiRateLimiter.getQuotas(),
-    queued: apiRateLimiter.getQueueSize(),
+    limit: DOCUMENTED_HOURLY_LIMIT,
+    personal: credentials
+      ? { present: true, ...usageFor(credentials.clientId), keyId: "your key" }
+      : { present: false },
+    // Everyone sees how loaded the shared keys are: it is the reason to
+    // connect a key of your own. Only staff see them broken down per key.
+    shared: isStaff
+      ? await apiRateLimiter.getQuotas()
+      : await sharedSummary(),
   });
 }

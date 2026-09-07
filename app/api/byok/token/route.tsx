@@ -1,23 +1,28 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { KEY_PRESENT_COOKIE, TOKEN_COOKIE } from "@/lib/forty-two/user-api";
+import {
+  CREDENTIALS_COOKIE,
+  CREDENTIALS_MAX_AGE,
+  KEY_PRESENT_COOKIE,
+  LEGACY_TOKEN_COOKIE,
+  exchangeForToken,
+  sealCredentials,
+} from "@/lib/forty-two/user-api";
 
 /**
- * Exchanges a student's own 42 application credentials for an access token.
+ * Connects a student's own 42 application to their session.
  *
- * The browser cannot call api.intra.42.fr itself -- there are no CORS headers on
- * it, which is the reason /api/proxy exists -- so the secret has to cross the
- * wire once. It is used for this exchange and then dropped: nothing is written
- * to a database, a cache, or a log.
+ * The credentials are checked against 42 once, then sealed into an encrypted
+ * httpOnly cookie that lasts a month. Storing the credentials rather than the
+ * access token is what makes the key stick: a token lapses after about two
+ * hours, which is why the key used to have to be pasted in again every session.
  *
- * The token comes back as an httpOnly cookie so every later request carries it
- * without any call site passing it around, and page scripts cannot read it. A
- * second, readable cookie exists only so the interface knows a key is set.
+ * The browser cannot talk to api.intra.42.fr itself -- it sends no CORS
+ * headers, which is why /api/proxy exists -- so the secret crosses the wire
+ * once. It is never written to a database, a cache or a log; there is no
+ * database here to write it to.
  */
-
-const FALLBACK_TTL = 7200;
-
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -29,8 +34,8 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    clientId = body.client_id;
-    clientSecret = body.client_secret;
+    clientId = String(body.client_id ?? "").trim();
+    clientSecret = String(body.client_secret ?? "").trim();
   } catch {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
@@ -43,43 +48,39 @@ export async function POST(request: Request) {
   }
 
   try {
-    const response = await fetch("https://api.intra.42.fr/oauth/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
-    });
+    // Proves the credentials work before committing them to a cookie, and
+    // warms the token cache so the next page load does not pay for it.
+    const token = await exchangeForToken({ clientId, clientSecret });
 
-    if (!response.ok) {
+    if (!token) {
       return NextResponse.json(
         { error: "42 rejected those credentials" },
         { status: 401 },
       );
     }
 
-    const data = await response.json();
-    const maxAge = Number(data.expires_in) || FALLBACK_TTL;
+    const sealed = await sealCredentials({ clientId, clientSecret });
+    const result = NextResponse.json({ ok: true });
+    const secure = process.env.NODE_ENV === "production";
 
-    const result = NextResponse.json({ ok: true, expires_in: maxAge });
-
-    result.cookies.set(TOKEN_COOKIE, data.access_token, {
+    result.cookies.set(CREDENTIALS_COOKIE, sealed, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure,
       sameSite: "strict",
       path: "/",
-      maxAge,
+      maxAge: CREDENTIALS_MAX_AGE,
     });
 
     result.cookies.set(KEY_PRESENT_COOKIE, "1", {
       httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
+      secure,
       sameSite: "strict",
       path: "/",
-      maxAge,
+      maxAge: CREDENTIALS_MAX_AGE,
     });
+
+    // Left over from when the token itself was the cookie.
+    result.cookies.delete(LEGACY_TOKEN_COOKIE);
 
     return result;
   } catch (error: any) {
@@ -94,7 +95,8 @@ export async function POST(request: Request) {
 /** Forgets the visitor's key. */
 export async function DELETE() {
   const result = NextResponse.json({ ok: true });
-  result.cookies.delete(TOKEN_COOKIE);
+  result.cookies.delete(CREDENTIALS_COOKIE);
   result.cookies.delete(KEY_PRESENT_COOKIE);
+  result.cookies.delete(LEGACY_TOKEN_COOKIE);
   return result;
 }

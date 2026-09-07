@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { getApi } from "@/lib/forty-two/api";
 import { cached } from "@/lib/memory-cache";
 import { CAMPUS_IDS } from "@/lib/forty-two/live-campus";
 
@@ -25,6 +25,8 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { api } = await getApi();
+
   const { campus_name } = await params;
   const campusId = CAMPUS_IDS[campus_name];
   if (!campusId) {
@@ -36,7 +38,7 @@ export async function GET(
       `locations:v1:${campus_name}`,
       CACHE_TTL,
       () =>
-        apiRateLimiter.fetchAllPages(
+        api.fetchAllPages(
           `/campus/${campusId}/locations?filter[active]=true`,
           { maxPages: 10 },
         ),

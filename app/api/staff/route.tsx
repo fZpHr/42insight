@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
+import { getApi } from "@/lib/forty-two/api";
 import {
   CAMPUS_IDS,
   currentPool,
@@ -13,6 +14,8 @@ export async function GET(request: Request) {
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { api } = await getApi();
 
   const user = session.user;
   if (user.role != "admin" && user.role != "staff") {
@@ -33,8 +36,8 @@ export async function GET(request: Request) {
     const pool = currentPool();
 
     const [students, poolUsers] = await Promise.all([
-      getCampusStudents(campus),
-      getPoolUsers(campus, pool.month, pool.year).catch(() => []),
+      getCampusStudents(campus, api),
+      getPoolUsers(campus, pool.month, pool.year, api).catch(() => []),
     ]);
 
     const totalStudents = students.length;

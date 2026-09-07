@@ -1,3 +1,5 @@
+import { recordResponse } from "@/lib/quota-store";
+
 /**
  * Client helpers for talking to this app's API.
  */
@@ -18,6 +20,9 @@ export const hasApiKey = (): boolean => {
 
 export const fetchJson = async <T>(url: string): Promise<T> => {
   const response = await fetch(url);
+  // Responses say what they spent on the visitor's own key, so the running
+  // total stays right across server instances.
+  recordResponse(response);
 
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);

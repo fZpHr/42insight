@@ -1,5 +1,6 @@
 import type { Student } from "@/types";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import type { FortyTwoApi } from "@/lib/forty-two/api";
 import { cachedOnce } from "@/lib/memory-cache";
 
 /**
@@ -15,6 +16,11 @@ import { cachedOnce } from "@/lib/memory-cache";
  * The one thing that does not fit that shape is logtime: it needs a request per
  * student, which no page load can afford. It is built by a visitor's own key
  * and stored in their browser, never here.
+ *
+ * Whichever key a visitor is browsing on does the fetching -- their own when
+ * they have connected one, the site's otherwise -- and either way the result
+ * lands in the same shared cache, so a page one visitor pays to load is free
+ * for the next.
  */
 
 export const CAMPUS_IDS: { [key: string]: number } = {
@@ -87,12 +93,13 @@ const toStudent = (cursusUser: any, campusName: string): Student => {
  */
 export const getCampusStudents = async (
   campusName: string,
+  api: FortyTwoApi = apiRateLimiter,
 ): Promise<Student[]> => {
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
   return cachedOnce(studentsCacheKey(campusName), STUDENTS_TTL, async () => {
-    const cursusUsers = await apiRateLimiter.fetchAllPages(
+    const cursusUsers = await api.fetchAllPages(
       `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
     );
 
@@ -113,6 +120,7 @@ export const getPoolUsers = async (
   campusName: string,
   month: string,
   year: string,
+  api: FortyTwoApi = apiRateLimiter,
 ): Promise<any[]> => {
   const campusId = CAMPUS_IDS[campusName];
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
@@ -120,7 +128,7 @@ export const getPoolUsers = async (
   const cacheKey = `pool:${campusName}:${month}:${year}`;
 
   return cachedOnce(cacheKey, POOL_TTL, async () => {
-  const cursusUsers = await apiRateLimiter.fetchAllPages(
+  const cursusUsers = await api.fetchAllPages(
     `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${POOL_CURSUS_ID}`,
   );
 

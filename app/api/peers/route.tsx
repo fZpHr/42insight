@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { getApi } from "@/lib/forty-two/api";
 import { cachedOnce } from "@/lib/memory-cache";
 import { CAMPUS_IDS, getCampusStudents } from "@/lib/forty-two/live-campus";
 import type { Project, ProjectSubscriber } from "@/types";
@@ -24,16 +24,18 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { api } = await getApi();
+
   try {
     const result = await cachedOnce(CACHE_KEY, CACHE_TTL, async () => {
     const projects = new Map<number, Project>();
     const photos = new Map<number, string>();
 
     for (const [campusName, campusId] of Object.entries(CAMPUS_IDS)) {
-      const students = await getCampusStudents(campusName).catch(() => []);
+      const students = await getCampusStudents(campusName, api).catch(() => []);
       for (const student of students) photos.set(student.id, student.photoUrl);
 
-      const projectUsers = await apiRateLimiter.fetchAllPages(
+      const projectUsers = await api.fetchAllPages(
         `/projects_users?filter[campus_id]=${campusId}&filter[status]=in_progress`,
         { maxPages: 30 },
       );

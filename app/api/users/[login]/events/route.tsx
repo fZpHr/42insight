@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { getApi } from "@/lib/forty-two/api";
 import { cached } from "@/lib/memory-cache";
 
 /** The events one student attended: two 42 requests, on the site keys. */
@@ -18,12 +18,14 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { api } = await getApi();
+
   try {
     const events = await cached(
       `user-events:v1:${login}`,
       CACHE_TTL,
       async () => {
-        const userResponse = await apiRateLimiter.fetch(`/users/${login}`);
+        const userResponse = await api.fetch(`/users/${login}`);
 
         if (!userResponse.ok) {
           throw new Error(`42 API responded ${userResponse.status}`);
@@ -31,7 +33,7 @@ export async function GET(
 
         const user = await userResponse.json();
 
-        return apiRateLimiter.fetchAllPages(`/users/${user.id}/events`, {
+        return api.fetchAllPages(`/users/${user.id}/events`, {
           maxPages: 5,
         });
       },

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
+import { getApi } from "@/lib/forty-two/api";
 import {
   CAMPUS_IDS,
   getEnrichedCampusStudents,
@@ -12,11 +13,13 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { api } = await getApi();
+
   try {
     const perCampus: Awaited<ReturnType<typeof getEnrichedCampusStudents>>[] = [];
 
     for (const campus of Object.keys(CAMPUS_IDS)) {
-      perCampus.push(await getEnrichedCampusStudents(campus));
+      perCampus.push(await getEnrichedCampusStudents(campus, api));
     }
 
     return NextResponse.json(perCampus.flat());

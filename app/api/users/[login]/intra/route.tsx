@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getApi } from "@/lib/forty-two/api";
 import { getServerSession } from "next-auth";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
 import { cached } from "@/lib/memory-cache";
 
 /**
@@ -25,9 +25,11 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { api } = await getApi();
+
   try {
     const user = await cached(`intra:v1:${login}`, CACHE_TTL, async () => {
-      const response = await apiRateLimiter.fetch(`/users/${login}`);
+      const response = await api.fetch(`/users/${login}`);
 
       if (!response.ok) {
         throw new Error(`42 API responded ${response.status}`);
@@ -35,7 +37,7 @@ export async function GET(
 
       const profile = await response.json();
 
-      profile.projects_users = await apiRateLimiter.fetchAllPages(
+      profile.projects_users = await api.fetchAllPages(
         `/users/${profile.id}/projects_users`,
         { maxPages: 5 },
       );

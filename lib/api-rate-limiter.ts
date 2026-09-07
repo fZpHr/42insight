@@ -16,10 +16,12 @@
  * data pool as soon as a second key exists -- a burst of browsing must never be
  * able to lock anyone out of logging in.
  *
- * Only the per-second half is enforced here. The hourly budget is not tracked,
- * because nothing in a request tells us how much of it is left; see recordQuota
- * below for what is actually observable.
+ * Only the per-second half is enforced here. The hourly half is counted rather
+ * than enforced, in lib/forty-two/quota.ts, and reported by /api/quota.
  */
+
+import { recordHeaders, recordRequest, usageFor } from "@/lib/forty-two/quota";
+import type { KeyUsage } from "@/lib/forty-two/quota";
 
 /** next-auth signs people in with CLIENT_ID1. */
 const OAUTH_KEY_INDEX = 1;
@@ -29,22 +31,6 @@ interface QueuedRequest {
   resolve: (value: Response) => void;
   reject: (reason?: any) => void;
   retries: number;
-}
-
-/** What 42 reports about the budget left on a key, from its response headers. */
-export interface TokenQuota {
-  index: number;
-  /**
-   * Every rate-limit-ish header 42 answered with, verbatim.
-   *
-   * The documented limits are 2 requests/second and 1200/hour per application,
-   * but the headers carrying what is *left* are not in the public apidoc -- so
-   * guessing their names would produce a quota page that reads null forever and
-   * looks like plenty of headroom. Whatever arrives is recorded under its real
-   * name instead, and the shape can be pinned down once it has been seen.
-   */
-  headers: Record<string, string>;
-  observedAt: number | null;
 }
 
 class ApiRateLimiter {
@@ -57,7 +43,8 @@ class ApiRateLimiter {
 
   private tokens: string[] = [];
   private tokenLabels: number[] = [];
-  private quotas: TokenQuota[] = [];
+  /** The client_id each token belongs to: what 42 actually meters. */
+  private clientIds: string[] = [];
   private currentTokenIndex = 0;
   private initPromise: Promise<void> | null = null;
 
@@ -103,7 +90,7 @@ class ApiRateLimiter {
         if (!token) continue;
         this.tokens.push(token);
         this.tokenLabels.push(i);
-        this.quotas.push({ index: i, headers: {}, observedAt: null });
+        this.clientIds.push(process.env[`CLIENT_ID${i}`]!);
       }
 
       if (this.tokens.length === 0) {
@@ -153,31 +140,16 @@ class ApiRateLimiter {
     return slot;
   }
 
-  /**
-   * Keeps whatever 42 says about the budget, without assuming what it is
-   * called. Anything mentioning a limit or a quota is kept as-is, so reading
-   * /api/quota once against a real key is enough to learn the real names.
-   */
-  private recordQuota(slot: number, response: Response) {
-    const quota = this.quotas[slot];
-    let seen = false;
-
-    response.headers.forEach((value, name) => {
-      if (/(ratelimit|rate-limit|quota|retry-after)/i.test(name)) {
-        quota.headers[name] = value;
-        seen = true;
-      }
-    });
-
-    if (seen) quota.observedAt = Date.now();
-  }
-
   async fetch(path: string, options: RequestInit = {}): Promise<Response> {
     await this.initTokens();
 
     return new Promise((resolve, reject) => {
       const execute = async (): Promise<Response> => {
         const slot = this.nextTokenSlot();
+        const clientId = this.clientIds[slot];
+
+        recordRequest(clientId);
+
         const response = await fetch(`https://api.intra.42.fr/v2${path}`, {
           ...options,
           headers: {
@@ -185,7 +157,8 @@ class ApiRateLimiter {
             Authorization: `Bearer ${this.tokens[slot]}`,
           },
         });
-        this.recordQuota(slot, response);
+
+        recordHeaders(clientId, response);
         return response;
       };
 
@@ -308,9 +281,20 @@ class ApiRateLimiter {
     return this.queue.length;
   }
 
-  /** What every data key has left this hour, as last seen by 42. */
-  getQuotas(): TokenQuota[] {
-    return this.quotas.map((quota) => ({ ...quota }));
+  /**
+   * What each data key has spent this hour, as counted by this instance.
+   *
+   * The client_id is not returned: it is a credential, and the label is enough
+   * to tell the keys apart.
+   */
+  async getQuotas(): Promise<Array<KeyUsage & { label: number }>> {
+    await this.initTokens();
+
+    return this.clientIds.map((clientId, slot) => ({
+      ...usageFor(clientId),
+      keyId: `key ${this.tokenLabels[slot]}`,
+      label: this.tokenLabels[slot],
+    }));
   }
 
 

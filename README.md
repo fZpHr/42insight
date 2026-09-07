@@ -36,15 +36,28 @@ dashboard are fetched on demand and held for a few minutes. Configure
 `CLIENT_ID2`/`CLIENT_SECRET2` and beyond to widen that budget; `CLIENT_ID1` is
 left to next-auth so browsing can never lock anyone out of signing in.
 
-**In your own browser.** Logtime costs one request per student, which is more
-than an hour of the site's budget and more than any page load can wait for --
-and the server keeps nothing between requests, so there would be nowhere to put
-it. A student who wants the logtime sorts registers their own 42 application
-(intra -> Settings -> API), spends a few minutes of their own quota once from
-the rankings page, and the index is stored in their browser.
+**On your own key, if you connect one.** 42 meters per application, so everyone
+browsing on the site's keys shares one paced queue and waits behind each other
+at busy moments. A student who registers their own 42 application (intra ->
+Settings -> API) and connects it from the sidebar gets a lane of their own:
+1200 requests an hour nobody else is drawing from. Their key also fills the
+shared cache, so a page they pay to load is free for the next visitor.
 
-`/api/quota` reports the rate-limit headers the 42 API answered with, for staff
-and admins.
+The credentials are sealed into an encrypted httpOnly cookie that lasts a
+month, so the key is entered once rather than every session -- what is stored
+is the credentials, not the two-hour access token, which is what lets the
+server mint a fresh token without asking again.
+
+Logtime is the one thing that needs a key. It costs one request per student,
+more than an hour of any single budget and more than a page load can wait for,
+and the server keeps nothing between requests. Build it from the rankings page
+and it is stored in your browser.
+
+**Seeing what is left.** The sidebar's key dialog shows how much of the hourly
+budget your key and the shared keys have spent, and `/api/quota` returns the
+same figures. The browser keeps the accurate count for a personal key by adding
+up what each response reports spending; the server's own count is per instance,
+so for the shared keys it is a floor rather than a total.
 
 ### What this costs
 

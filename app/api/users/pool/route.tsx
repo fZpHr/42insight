@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { getApi } from "@/lib/forty-two/api";
 import {
   CAMPUS_IDS,
   currentPool,
@@ -13,6 +14,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { api } = await getApi();
+
   try {
     const { searchParams } = new URL(request.url);
     const pool = currentPool();
@@ -22,7 +25,7 @@ export async function GET(request: Request) {
     const poolUsers: any[] = [];
 
     for (const campus of Object.keys(CAMPUS_IDS)) {
-      poolUsers.push(...(await getPoolUsers(campus, month, year)));
+      poolUsers.push(...(await getPoolUsers(campus, month, year, api)));
     }
 
     return NextResponse.json(poolUsers);

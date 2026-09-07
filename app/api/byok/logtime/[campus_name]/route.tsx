@@ -7,6 +7,7 @@ import {
   getUserApi,
   keyRequiredResponse,
   MissingUserKeyError,
+  withCallCount,
 } from "@/lib/forty-two/user-api";
 
 /**
@@ -61,7 +62,7 @@ export async function POST(
     const api = await getUserApi();
     if (!api) return keyRequiredResponse();
 
-    const students = await getCampusStudents(campus_name);
+    const students = await getCampusStudents(campus_name, api);
     const chunk = students.slice(offset, offset + limit);
 
     const entries: Record<string, unknown> = {};
@@ -92,14 +93,17 @@ export async function POST(
     const processed = offset + chunk.length;
     const done = processed >= students.length;
 
-    return NextResponse.json({
-      entries,
-      processed,
-      total: students.length,
-      failed,
-      nextOffset: done ? null : processed,
-      done,
-    });
+    return withCallCount(
+      NextResponse.json({
+        entries,
+        processed,
+        total: students.length,
+        failed,
+        nextOffset: done ? null : processed,
+        done,
+      }),
+      api,
+    );
   } catch (error: any) {
     if (error instanceof MissingUserKeyError) return keyRequiredResponse();
 

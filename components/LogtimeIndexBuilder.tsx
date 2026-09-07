@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { ApiKeyDialog } from "@/components/ApiKeyDialog";
 import { hasApiKey } from "@/lib/api-client";
 import { mergeLogtimeChunk, readLogtimeIndex } from "@/lib/logtime-store";
+import { recordResponse } from "@/lib/quota-store";
 
 /**
  * Builds the campus logtime index into this browser, with the visitor's key.
@@ -66,6 +67,7 @@ export function LogtimeIndexBuilder({ campus, onBuilt }: Props) {
           body: JSON.stringify({ offset, limit: CHUNK_SIZE }),
         });
 
+        recordResponse(response);
         const data: ChunkResult = await response.json();
 
         if (response.status === 428 || response.status === 401) {

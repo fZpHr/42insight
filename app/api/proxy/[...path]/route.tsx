@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
 import { apiRateLimiter } from "@/lib/api-rate-limiter";
-import { getUserApi } from "@/lib/forty-two/user-api";
+import { getUserApi, withCallCount } from "@/lib/forty-two/user-api";
 
 /**
  * The API console: an arbitrary read against the 42 API, chosen by the visitor.
@@ -59,7 +59,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(await proxyResponse.json());
+    return withCallCount(
+      NextResponse.json(await proxyResponse.json()),
+      userApi,
+    );
   } catch (error) {
     console.error("Proxy error:", error);
     return NextResponse.json(

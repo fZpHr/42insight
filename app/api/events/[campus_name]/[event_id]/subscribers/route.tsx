@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { getApi } from "@/lib/forty-two/api";
 import { cached } from "@/lib/memory-cache";
 import { CAMPUS_IDS } from "@/lib/forty-two/live-campus";
 
@@ -18,6 +18,8 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { api } = await getApi();
+
   const { campus_name, event_id } = await params;
 
   if (!CAMPUS_IDS[campus_name]) {
@@ -29,7 +31,7 @@ export async function GET(
       `event-subscribers:v1:${event_id}`,
       CACHE_TTL,
       async () => {
-        const response = await apiRateLimiter.fetch(
+        const response = await api.fetch(
           `/events/${event_id}/events_users?page[size]=100&page[number]=1`,
         );
 

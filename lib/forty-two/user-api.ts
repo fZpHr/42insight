@@ -1,28 +1,56 @@
+import { createHash } from "crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { EncryptJWT, jwtDecrypt } from "jose";
+import { recordHeaders, recordRequest } from "@/lib/forty-two/quota";
 
 /**
  * Calls the 42 API with the visitor's own application key.
  *
- * This is tier 2. Tier 1 -- everything the site keys can serve, see
- * lib/api-rate-limiter.ts -- covers a request whose cost is a page walk per
- * campus. What lands here is the work that costs one request per student, which
- * no shared quota survives: the campus logtime index, above all. Whoever holds
- * the key pays for the build, and the result is cached for everyone.
+ * 42 meters per application, so everyone browsing on the site's keys shares one
+ * queue: at busy moments a page waits behind other people's requests. A visitor
+ * who registers their own 42 application gets a lane of their own -- their
+ * requests are paced against their budget only, and their browsing no longer
+ * competes with anyone else's.
  *
- * A key is never required to read the site. The API console also prefers it
- * when present, since an arbitrary query is the one cost nobody can predict.
+ * A key is optional. Without one the site works exactly as before, on the
+ * shared keys.
  *
- * The token lives in an httpOnly cookie set by /api/byok/token, so it rides
- * along with every same-origin request without any call site having to pass it,
- * and page scripts cannot read it.
+ * What is stored, and where
+ * ------------------------
+ * The credentials, encrypted, in an httpOnly cookie. Not the access token: that
+ * expires after about two hours, and storing it was why a visitor had to paste
+ * their key in again every session. Holding the credentials instead means the
+ * server can mint a fresh token whenever the old one lapses, so the key is
+ * entered once and keeps working.
+ *
+ * The cookie is encrypted with JWT_SECRET, is httpOnly (page scripts cannot
+ * read it) and sameSite=strict (it does not travel to other sites). The secret
+ * never reaches this server in readable form again, and nothing is written to
+ * disk anywhere -- there is no database here to write to.
+ *
+ * Access tokens are cached in server memory, keyed by a hash of the
+ * credentials, so a visitor costs one token exchange every couple of hours
+ * rather than one per request.
  */
 
-export const TOKEN_COOKIE = "byok_token";
+/** Encrypted {clientId, clientSecret}. */
+export const CREDENTIALS_COOKIE = "byok_credentials";
+/** Readable by the page, so the interface knows a key is set. */
 export const KEY_PRESENT_COOKIE = "byok_key_present";
+/** Set by the previous design, which stored the token itself. */
+export const LEGACY_TOKEN_COOKIE = "byok_token";
+
+/** Long enough that connecting a key feels permanent. */
+export const CREDENTIALS_MAX_AGE = 60 * 60 * 24 * 30;
 
 /** 42 allows two requests per second per application. */
 const REQUEST_SPACING_MS = 500;
+
+export interface Credentials {
+  clientId: string;
+  clientSecret: string;
+}
 
 export class MissingUserKeyError extends Error {
   constructor() {
@@ -36,26 +64,121 @@ export const keyRequiredResponse = () =>
     {
       error: "key_required",
       message:
-        "This build runs on your own 42 API key. Connect one to start it.",
+        "This runs on your own 42 API key. Connect one to start it.",
     },
     { status: 428 },
   );
 
-export const getUserToken = async (): Promise<string | null> => {
+const encryptionKey = (): Uint8Array => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET is required to store a 42 key");
+  return new Uint8Array(createHash("sha256").update(secret).digest());
+};
+
+export const sealCredentials = async (
+  credentials: Credentials,
+): Promise<string> =>
+  new EncryptJWT({ ...credentials })
+    .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
+    .setIssuedAt()
+    .setExpirationTime(`${CREDENTIALS_MAX_AGE}s`)
+    .encrypt(encryptionKey());
+
+const openCredentials = async (
+  sealed: string,
+): Promise<Credentials | null> => {
+  try {
+    const { payload } = await jwtDecrypt(sealed, encryptionKey());
+    const clientId = payload.clientId as string;
+    const clientSecret = payload.clientSecret as string;
+    return clientId && clientSecret ? { clientId, clientSecret } : null;
+  } catch {
+    // Expired, tampered with, or sealed under a different JWT_SECRET.
+    return null;
+  }
+};
+
+export const readCredentials = async (): Promise<Credentials | null> => {
   const store = await cookies();
-  return store.get(TOKEN_COOKIE)?.value ?? null;
+  const sealed = store.get(CREDENTIALS_COOKIE)?.value;
+  return sealed ? openCredentials(sealed) : null;
+};
+
+interface CachedToken {
+  token: string;
+  expiresAt: number;
+}
+
+const tokenCache: Map<string, CachedToken> = ((globalThis as any)
+  .__42insightUserTokens ??= new Map<string, CachedToken>());
+
+const MAX_CACHED_TOKENS = 500;
+
+const fingerprint = (credentials: Credentials): string =>
+  createHash("sha256")
+    .update(`${credentials.clientId}:${credentials.clientSecret}`)
+    .digest("hex");
+
+/**
+ * Exchanges credentials for an access token, reusing the cached one until it is
+ * close enough to expiry to be worth replacing.
+ */
+export const exchangeForToken = async (
+  credentials: Credentials,
+): Promise<string | null> => {
+  const id = fingerprint(credentials);
+  const cached = tokenCache.get(id);
+
+  // A minute of headroom, so a token cannot lapse mid page walk.
+  if (cached && cached.expiresAt - 60_000 > Date.now()) return cached.token;
+
+  const response = await fetch("https://api.intra.42.fr/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
+    }),
+  });
+
+  if (!response.ok) {
+    tokenCache.delete(id);
+    return null;
+  }
+
+  const data = await response.json();
+  if (!data.access_token) return null;
+
+  if (tokenCache.size >= MAX_CACHED_TOKENS) {
+    const oldest = tokenCache.keys().next();
+    if (!oldest.done) tokenCache.delete(oldest.value);
+  }
+
+  tokenCache.set(id, {
+    token: data.access_token,
+    expiresAt: Date.now() + (Number(data.expires_in) || 7200) * 1000,
+  });
+
+  return data.access_token;
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * A 42 API client bound to one visitor's token, pacing its own requests so a
+ * A 42 API client bound to one visitor's key, pacing its own requests so a
  * multi-page walk stays inside the per-application rate limit.
  */
 export class UserApi {
   private lastRequestAt = 0;
+  /** Requests sent through this instance, for the response's call count. */
+  public calls = 0;
 
-  constructor(private readonly token: string) {}
+  constructor(
+    private readonly token: string,
+    /** The 42 application being metered, which is what quota is counted per. */
+    public readonly keyId: string,
+  ) {}
 
   async fetch(path: string, init: RequestInit = {}): Promise<Response> {
     const elapsed = Date.now() - this.lastRequestAt;
@@ -64,13 +187,19 @@ export class UserApi {
     }
     this.lastRequestAt = Date.now();
 
-    return fetch(`https://api.intra.42.fr/v2${path}`, {
+    this.calls++;
+    recordRequest(this.keyId);
+
+    const response = await fetch(`https://api.intra.42.fr/v2${path}`, {
       ...init,
       headers: {
         ...init.headers,
         Authorization: `Bearer ${this.token}`,
       },
     });
+
+    recordHeaders(this.keyId, response);
+    return response;
   }
 
   /**
@@ -124,10 +253,32 @@ export class UserApi {
 }
 
 /**
- * Resolves the caller's API client, or null when they have not configured a
- * key. Routes turn that null into keyRequiredResponse() so the page can prompt.
+ * The caller's own API client, or null when they have not connected a key.
+ *
+ * Minting the token is transparent: a visitor whose access token lapsed is not
+ * asked for anything, because what is stored is the credentials.
  */
 export const getUserApi = async (): Promise<UserApi | null> => {
-  const token = await getUserToken();
-  return token ? new UserApi(token) : null;
+  const credentials = await readCredentials();
+  if (!credentials) return null;
+
+  const token = await exchangeForToken(credentials);
+  if (!token) return null;
+
+  return new UserApi(token, credentials.clientId);
+};
+
+/**
+ * Tells the browser how many 42 requests this response spent on the visitor's
+ * key, so it can keep a running total that survives being served by a
+ * different server instance next time.
+ */
+export const withCallCount = <T extends NextResponse>(
+  response: T,
+  api: UserApi | null,
+): T => {
+  if (api && api.calls > 0) {
+    response.headers.set("X-42-Calls", String(api.calls));
+  }
+  return response;
 };

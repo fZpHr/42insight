@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { getApi } from "@/lib/forty-two/api";
 import {
   CAMPUS_IDS,
   getEnrichedCampusStudents,
@@ -15,11 +16,13 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { api } = await getApi();
+
   try {
     const { login } = await params;
 
     for (const campus of Object.keys(CAMPUS_IDS)) {
-      const students = await getEnrichedCampusStudents(campus);
+      const students = await getEnrichedCampusStudents(campus, api);
       const student = students.find((candidate) => candidate.name === login);
       if (student) return NextResponse.json(student);
     }

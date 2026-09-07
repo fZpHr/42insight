@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getApi } from "@/lib/forty-two/api";
 import { getServerSession } from "next-auth";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
 import { cached } from "@/lib/memory-cache";
 
 /** A student's coalition: two 42 requests, on the site keys. */
@@ -26,6 +26,8 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { api } = await getApi();
+
   const campus = session.user?.campus || "";
 
   try {
@@ -35,14 +37,14 @@ export async function GET(
       `coalitions:v1:${campus}:${login}`,
       CACHE_TTL,
       async () => {
-        const userResponse = await apiRateLimiter.fetch(`/users/${login}`);
+        const userResponse = await api.fetch(`/users/${login}`);
         if (!userResponse.ok) {
           throw new Error(`42 API responded ${userResponse.status}`);
         }
 
         const user = await userResponse.json();
 
-        const coalitionResponse = await apiRateLimiter.fetch(
+        const coalitionResponse = await api.fetch(
           `/users/${user.id}/coalitions`,
         );
         if (!coalitionResponse.ok) {
