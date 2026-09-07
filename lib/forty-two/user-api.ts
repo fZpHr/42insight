@@ -58,6 +58,8 @@ const REQUEST_SPACING_MS = 600;
 export interface Credentials {
   clientId: string;
   clientSecret: string;
+  /** When the sealed cookie stops being accepted, from the token's own claim. */
+  expiresAt?: string;
 }
 
 export class MissingUserKeyError extends Error {
@@ -99,7 +101,17 @@ const openCredentials = async (
     const { payload } = await jwtDecrypt(sealed, encryptionKey());
     const clientId = payload.clientId as string;
     const clientSecret = payload.clientSecret as string;
-    return clientId && clientSecret ? { clientId, clientSecret } : null;
+    if (!clientId || !clientSecret) return null;
+
+    return {
+      clientId,
+      clientSecret,
+      // Read back rather than recomputed: this is the date the server will
+      // actually enforce, which is the only one worth showing anyone.
+      expiresAt: payload.exp
+        ? new Date(payload.exp * 1000).toISOString()
+        : undefined,
+    };
   } catch {
     // Expired, tampered with, or sealed under a different JWT_SECRET.
     return null;

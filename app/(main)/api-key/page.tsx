@@ -38,6 +38,7 @@ import {
  */
 
 interface Quota {
+  expiresAt?: string | null;
   used: number;
   remaining: number;
   limit: number;
@@ -207,6 +208,20 @@ export default function ApiKeyPage() {
                       : t.notUsedYet}
                   </p>
                 </div>
+              )}
+
+              {quota?.expiresAt && (
+                <p className="text-sm">
+                  {t.connectedUntil(
+                    new Date(quota.expiresAt).toLocaleDateString(
+                      language === "fr" ? "fr-FR" : "en-GB",
+                      { day: "numeric", month: "long", year: "numeric" },
+                    ),
+                  )}{" "}
+                  <span className="text-muted-foreground">
+                    {t.connectedUntilNote}
+                  </span>
+                </p>
               )}
 
               <div className="flex flex-wrap gap-2">

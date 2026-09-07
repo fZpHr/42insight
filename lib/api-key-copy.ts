@@ -65,6 +65,9 @@ export const copy = {
     activityEmpty: "Nothing fetched yet on this server.",
     activityCaption:
       "Once your key is connected, click your quota and you can see everything the site has asked the 42 API for, on your key.",
+    connectedUntil: (date: string) => `Connected until ${date}.`,
+    connectedUntilNote:
+      "Read from the cookie itself, not from a promise made here.",
     forget: "Forget my key",
     replace: "Replace it",
     connected: "Key connected. The rest of the site is open.",
@@ -123,6 +126,9 @@ export const copy = {
     activityEmpty: "Nothing fetched yet on this server.",
     activityCaption:
       "Une fois votre clé connectée, vous pouvez cliquer sur votre quota et voir tout ce que le site a demandé à l'API 42 avec votre clé.",
+    connectedUntil: (date: string) => `Connectée jusqu'au ${date}.`,
+    connectedUntilNote:
+      "Lu dans le cookie lui-même, pas dans une promesse affichée ici.",
     forget: "Oublier ma clé",
     replace: "La remplacer",
     connected: "Clé connectée. Le reste du site est ouvert.",

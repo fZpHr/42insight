@@ -28,7 +28,12 @@ export async function GET() {
   return NextResponse.json({
     limit: DOCUMENTED_HOURLY_LIMIT,
     personal: credentials
-      ? { present: true, ...usageFor(credentials.clientId), keyId: "your key" }
+      ? {
+          present: true,
+          ...usageFor(credentials.clientId),
+          keyId: "your key",
+          expiresAt: credentials.expiresAt ?? null,
+        }
       : { present: false },
   });
 }
