@@ -16,6 +16,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { hasApiKey } from "@/lib/api-client";
+import {
+  LANGUAGE_STORAGE_KEY,
+  copy,
+  detectLanguage,
+  type Language,
+} from "@/lib/api-key-copy";
 
 /**
  * Where a visitor connects their own 42 application.
@@ -44,6 +50,22 @@ export default function ApiKeyPage() {
   const [saving, setSaving] = useState(false);
   const [keyPresent, setKeyPresent] = useState<boolean | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
+  const [language, setLanguage] = useState<Language>("fr");
+
+  // After mount: navigator and localStorage do not exist on the server, and a
+  // guess here would render the wrong language for a moment.
+  useEffect(() => setLanguage(detectLanguage()), []);
+
+  const t = copy[language];
+
+  const chooseLanguage = (next: Language) => {
+    setLanguage(next);
+    try {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
+    } catch {
+      // Not remembering it is a smaller failure than not honouring it.
+    }
+  };
 
   const refresh = () => {
     setKeyPresent(hasApiKey());
@@ -71,18 +93,18 @@ export default function ApiKeyPage() {
 
       const data = await response.json();
       if (!response.ok) {
-        toast.error(data.error ?? "Could not authenticate those credentials");
+        toast.error(data.error ?? t.rejected);
         return;
       }
 
       setClientId("");
       setClientSecret("");
-      toast.success("Key connected. The rest of the site is open.");
+      toast.success(t.connected);
       await queryClient.invalidateQueries();
       refresh();
       router.push("/dashboard");
     } catch {
-      toast.error("Could not reach the server");
+      toast.error(t.unreachable);
     } finally {
       setSaving(false);
     }
@@ -94,9 +116,9 @@ export default function ApiKeyPage() {
       await queryClient.invalidateQueries();
       setQuota(null);
       setKeyPresent(false);
-      toast.success("Key forgotten.");
+      toast.success(t.forgotten);
     } catch {
-      toast.error("Could not reach the server");
+      toast.error(t.unreachable);
     }
   };
 
@@ -113,29 +135,35 @@ export default function ApiKeyPage() {
             </div>
             <div>
               <CardTitle>
-                {keyPresent ? "Your 42 API key" : "Connect your 42 API key"}
+                {keyPresent ? t.titleConnected : t.titleConnect}
               </CardTitle>
-              <CardDescription>
-                42Insight reads everything live from the 42 API, on your key.
-              </CardDescription>
+              <CardDescription>{t.subtitle}</CardDescription>
+            </div>
+
+            <div className="ml-auto flex shrink-0 overflow-hidden rounded-md border text-xs">
+              {(["fr", "en"] as const).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => chooseLanguage(code)}
+                  aria-pressed={language === code}
+                  className={`px-2 py-1 transition-colors ${
+                    language === code
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {code.toUpperCase()}
+                </button>
+              ))}
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-5">
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p>
-              The site&apos;s own 42 application is reserved for signing people
-              in. 42 meters per application, so if pages were fetched on it too,
-              a busy afternoon would spend the budget logging in depends on —
-              and nobody could sign in until the hour rolled over. Your key is
-              yours alone: 1200 requests an hour that nobody else draws from.
-            </p>
-            <p>
-              Your credentials are exchanged for a token and sealed into an
-              encrypted, httpOnly cookie that lasts a month. They are never
-              written to a database or a log — there is no database here.
-            </p>
+            <p>{t.why}</p>
+            <p>{t.storage}</p>
           </div>
 
           {keyPresent ? (
@@ -143,30 +171,32 @@ export default function ApiKeyPage() {
               {quota && (
                 <div className="space-y-1">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-sm font-medium">This hour</span>
+                    <span className="text-sm font-medium">{t.thisHour}</span>
                     <span className="text-sm tabular-nums text-muted-foreground">
-                      {quota.remaining} / {quota.limit} left
+                      {quota.remaining} / {quota.limit} {t.left}
                     </span>
                   </div>
                   <Progress value={percentageUsed} className="h-2" />
                   <p className="text-xs text-muted-foreground">
                     {quota.source === "42"
-                      ? `Reported by the 42 API${
+                      ? t.reportedBy(
                           quota.observedAt
-                            ? ` at ${new Date(quota.observedAt).toLocaleTimeString()}`
-                            : ""
-                        }.`
-                      : "Not used yet on this server, so this is the full budget."}
+                            ? t.reportedAt(
+                                new Date(quota.observedAt).toLocaleTimeString(),
+                              )
+                            : "",
+                        )
+                      : t.notUsedYet}
                   </p>
                 </div>
               )}
 
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={forget}>
-                  Forget my key
+                  {t.forget}
                 </Button>
                 <Button variant="secondary" onClick={() => setKeyPresent(false)}>
-                  Replace it
+                  {t.replace}
                 </Button>
               </div>
             </>
@@ -174,39 +204,45 @@ export default function ApiKeyPage() {
             <>
               <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
                 <li>
-                  Open{" "}
+                  {t.step1Before}
                   <a
                     href="https://profile.intra.42.fr/oauth/applications/new"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-primary hover:underline"
                   >
-                    Settings → API → Register a new app
+                    {t.step1Link}
                     <ExternalLink className="h-3 w-3" />
-                  </a>{" "}
-                  on the intra.
+                  </a>
+                  {t.step1After}
                 </li>
-                <li>Give it any name; no redirect URI is needed.</li>
-                <li>Copy its UID and secret below.</li>
+                <li>
+                  {t.step2Before}
+                  <code className="rounded bg-muted px-1 py-0.5 text-foreground">
+                    {t.step2Code}
+                  </code>
+                  {t.step2After}
+                </li>
+                <li>{t.step3}</li>
               </ol>
 
               <p className="text-sm text-muted-foreground">
-                Already registered an application?{" "}
+                {t.existingBefore}
                 <a
                   href="https://profile.intra.42.fr/oauth/applications"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-primary hover:underline"
                 >
-                  Find it in your existing apps
+                  {t.existingLink}
                   <ExternalLink className="h-3 w-3" />
-                </a>{" "}
-                and reuse its credentials — there is no need to create another.
+                </a>
+                {t.existingAfter}
               </p>
 
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <label htmlFor="client-id" className="text-sm font-medium">Client ID (UID)</label>
+                  <label htmlFor="client-id" className="text-sm font-medium">{t.clientId}</label>
                   <Input
                     id="client-id"
                     value={clientId}
@@ -216,7 +252,7 @@ export default function ApiKeyPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="client-secret" className="text-sm font-medium">Client secret</label>
+                  <label htmlFor="client-secret" className="text-sm font-medium">{t.clientSecret}</label>
                   <Input
                     id="client-secret"
                     type="password"
@@ -234,7 +270,7 @@ export default function ApiKeyPage() {
                 className="w-full gap-2"
               >
                 <KeyRound className="h-4 w-4" />
-                {saving ? "Checking with 42…" : "Connect my key"}
+                {saving ? t.checking : t.connect}
               </Button>
             </>
           )}
