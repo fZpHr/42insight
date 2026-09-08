@@ -37,9 +37,5 @@ declare module "next-auth/jwt" {
     wallet?: number;
     level?: number;
     role?: string;
-    accessToken?: string;
-    accessTokenExpires?: number;
-    refreshToken?: string;
-    error?: string;
   }
 }

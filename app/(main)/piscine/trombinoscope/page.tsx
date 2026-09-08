@@ -6,8 +6,9 @@ import { motion } from "framer-motion";
 import { StudentCard } from "@/components/trombi-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, EyeClosed, Star, Gamepad2 } from "lucide-react";
+import { Eye, EyeClosed, Star, Gamepad2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -21,18 +22,8 @@ const INITIAL_LOAD = 20;
 const LOAD_MORE = 10;
 
 
-const fetchPoolStudents = async (): Promise<PoolUser[]> => {
-  try {
-    const response = await fetch("/api/users/pool");
-    if (!response.ok) {
-      throw new Error("Failed to fetch pool students");
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching pool students:", error);
-    return [];
-  }
-};
+const fetchPoolStudents = (): Promise<PoolUser[]> =>
+  fetchJson<PoolUser[]>("/api/users/pool");
 
 export default function Trombinoscope() {
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
@@ -44,6 +35,8 @@ export default function Trombinoscope() {
     data: students = [],
     isLoading,
     error,
+    isFetching,
+    refetch,
   } = useQuery({
     queryKey: ["students"],
     queryFn: () => fetchPoolStudents(),
@@ -84,7 +77,8 @@ export default function Trombinoscope() {
   }, [students]);
 
   useEffect(() => {
-    if (error) {
+    // A missing key is not a failure; the page shows the prompt instead.
+    if (error && !isKeyRequired(error)) {
       toast.error(
         error instanceof Error ? error.message : "Failed to load students",
         {
@@ -103,6 +97,24 @@ export default function Trombinoscope() {
           {filteredStudents.length} students
         </p>
         <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  aria-label="Refresh students"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Refresh</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <div className="flex items-center gap-2">
             <TooltipProvider>
               <Tooltip>

@@ -1,14 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components//ui/card"
 import { Badge } from "@/components//ui/badge"
 import { Button } from "@/components//ui/button"
-import { Github, Clock, Construction } from 'lucide-react'
+import { Github, Construction } from 'lucide-react'
 
 export default function Contribute() {
   const roadmapItems = [
     { title: "Resolve all skill issues", "status": "∞" },
     { title: "Export All Old Features", status: "Completed" },
     { title: "More stats(activity,..)", status: "Completed" },
-    { title: "Our Find peers", status: "In Progress" },
+    { title: "Our Find peers", status: "Completed" },
     { title: "Exam tracker", status: "Completed" },
     { title: "Responsive Design", status: "Completed" },
     { title: "RGPD Compliance", status: "Planned" },
@@ -57,34 +57,6 @@ export default function Contribute() {
         </Button>
           </div>
         </div>
-      </Card>
-
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>
-            <Clock className="mr-2 h-4 w-4 inline" />Data Update Frequency</CardTitle>
-          <CardDescription>How often our data sources are refreshed throughout the day</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-3">
-            <li className="flex items-center justify-between">
-              <span>Student Profiles</span>
-              <Badge variant="secondary">Every 30mins</Badge>
-            </li>
-            <li className="flex items-center justify-between">
-              <span>Activity data</span>
-              <Badge variant="secondary">Every day</Badge>
-            </li>
-            <li className="flex items-center justify-between">
-              <span>Corrections data</span>
-              <Badge variant="secondary">Every hours</Badge>
-            </li>
-            <li className="flex items-center justify-between">
-              <span>Exams</span>
-              <Badge variant="secondary">Every 10mins</Badge>
-            </li>
-          </ul>
-        </CardContent>
       </Card>
 
       <Card className="shadow-lg">

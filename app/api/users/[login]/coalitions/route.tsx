@@ -1,91 +1,75 @@
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getApi } from "@/lib/forty-two/api";
+import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { getServerSession } from "next-auth";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { cached } from "@/lib/memory-cache";
 
-const coalitionCache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_TTL = 30 * 60 * 1000; 
+/** A student's coalition: two 42 requests, on the visitor's key. */
+
+const CACHE_TTL = 1800;
+
+const COALITIONS_BY_CAMPUS: { [campus: string]: string[] } = {
+  Nice: ["Corrino", "Atreides", "Harkonnen"],
+  Angouleme: ["Analyst", "Architect", "Seeker"],
+};
+
+const DEFAULT_COALITIONS = ["Alliance", "Assembly", "Federation", "Order"];
 
 export async function GET(
-  request: Request,
+  _request: Request,
   context: { params: Promise<{ login: string }> },
 ) {
-  const params = await context.params;
-  const login = params.login;
+  const { login } = await context.params;
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const cached = coalitionCache.get(login);
-  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-    return NextResponse.json(cached.data);
-  }
+  const api = await getApi();
+  if (!api) return keyRequiredResponse();
+
+  const campus = session.user?.campus || "";
 
   try {
-    const userResponse = await apiRateLimiter.fetch(`/users/${login}`);
-    if (!userResponse.ok) {
-      if (userResponse.status === 429 && cached) {
-        console.warn(`[WARN] Rate limited fetching user ${login}. Serving stale cache.`);
-        return NextResponse.json(cached.data);
-      }
-      return NextResponse.json(
-        { error: `Failed to fetch user from 42 API: ${userResponse.statusText}` },
-        { status: userResponse.status },
-      );
-    }
+    // Keyed by campus as well: which of a student's coalitions is the relevant
+    // one depends on who is looking.
+    const result = await cached(
+      `coalitions:v1:${campus}:${login}`,
+      CACHE_TTL,
+      async () => {
+        const userResponse = await api.fetch(`/users/${encodeURIComponent(login)}`);
+        if (!userResponse.ok) {
+          throw new Error(`42 API responded ${userResponse.status}`);
+        }
 
-    const user = await userResponse.json();
+        const user = await userResponse.json();
 
-    const coalitionResponse = await apiRateLimiter.fetch(`/users/${user.id}/coalitions`);
+        const coalitionResponse = await api.fetch(
+          `/users/${user.id}/coalitions`,
+        );
+        if (!coalitionResponse.ok) {
+          throw new Error(`42 API responded ${coalitionResponse.status}`);
+        }
 
-    if (!coalitionResponse.ok) {
-      if (coalitionResponse.status === 429 && cached) {
-        return NextResponse.json(cached.data);
-      }
-      return NextResponse.json(
-        { error: `Failed to fetch coalition from 42 API: ${coalitionResponse.statusText}` },
-        { status: coalitionResponse.status },
-      );
-    }
+        const coalitions = await coalitionResponse.json();
+        const names = COALITIONS_BY_CAMPUS[campus] ?? DEFAULT_COALITIONS;
 
-    const coalitions = await coalitionResponse.json();
-    
-    const niceCoalitions = ['Corrino', 'Atreides', 'Harkonnen'];
-    const angoulemeCoalitions = ['Analyst', 'Architect', 'Seeker'];
-    const parisCoalitions = ['Alliance', 'Assembly', 'Federation', 'Order'];
-    
-    const campus = session.user?.campus || "";
-    let selectedCoalition;
-    
-    if (campus === "Nice") {
-      selectedCoalition = coalitions.find((c: any) => niceCoalitions.includes(c.name));
-    } else if (campus === "Angouleme") {
-      selectedCoalition = coalitions.find((c: any) => angoulemeCoalitions.includes(c.name));
-    } else {
-      selectedCoalition = coalitions.find((c: any) => parisCoalitions.includes(c.name));
-    }
-    
-    if (!selectedCoalition && coalitions.length > 0) {
-      selectedCoalition = coalitions[coalitions.length - 1];
-    }
+        const selected =
+          coalitions.find((coalition: any) => names.includes(coalition.name)) ??
+          coalitions[coalitions.length - 1];
 
-    const result = selectedCoalition ? [selectedCoalition] : [];
-    coalitionCache.set(login, { data: result, timestamp: Date.now() });
+        return selected ? [selected] : [];
+      },
+    );
 
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error(`[FATAL ERROR] in /api/users/${login}/coalitions:`, error.message);
+    console.error(`[coalitions] failed for ${login}:`, error.message);
     return NextResponse.json(
-      {
-        error: "Failed to fetch coalition due to an internal server error.",
-        details: error.message,
-      },
-      { status: 500 },
+      { error: "Failed to fetch coalition from the 42 API" },
+      { status: 502 },
     );
   }
 }

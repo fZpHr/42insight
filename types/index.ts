@@ -422,7 +422,8 @@ export interface ProjectSubscriber {
     validated: boolean | null;
     status: string;
     campus: string;
-
+    /** When 42 last changed this registration: the only clue to whether it is live. */
+    updatedAt: string | null;
 }
 
 export interface Project {

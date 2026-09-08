@@ -22,6 +22,7 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { isKeyRequired, KeyRequiredError } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -38,36 +39,22 @@ interface HostUsageData {
   [host: string]: HostUser[];
 }
 
+// The page walk happens server-side now, on the visitor's own key and behind
+// a shared cache, so every open tab reads one answer instead of paginating
+// its own.
 const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
   try {
-    const campusMapping: { [key: string]: number } = {
-      Angouleme: 31,
-      Nice: 41,
-    };
-    const campusId = campusMapping[campus || "null"];
-    if (!campusId) return [];
+    if (!campus) return [];
 
-    const allStudents: ClusterUser[] = [];
-    let page = 1;
-    let hasMore = true;
+    const response = await fetch(`/api/locations/${campus}`);
+    if (response.status === 428) throw new KeyRequiredError();
+    if (!response.ok) throw new Error("Failed to fetch students");
 
-    while (hasMore) {
-      if (page > 1) {
-        await new Promise(resolve => setTimeout(resolve, 2100));
-      }
-      
-      const response = await fetch(
-        `/api/proxy/campus/${campusId}/locations?&filter[active]=true&per_page=100&page=${page}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch students");
-      const data: ClusterUser[] = await response.json();
-      allStudents.push(...data);
-      hasMore = data.length === 100;
-      page++;
-    }
-
-    return allStudents;
+    return await response.json();
   } catch (e) {
+    // A missing key has to reach the caller, or the page waits forever on data
+    // that will never come instead of asking for one.
+    if (isKeyRequired(e)) throw e;
     console.error("Error fetching students:", e);
     return [];
   }
@@ -122,12 +109,12 @@ export default function ClusterMap() {
     refetch,
     isFetching,
     isSuccess,
+    error,
   } = useQuery<ClusterUser[]>({
     queryKey: ["students", effectiveCampus],
     queryFn: () => fetchStudents(effectiveCampus),
     enabled: status === "authenticated" && !!effectiveCampus,
     staleTime: 5 * 60 * 1000,
-    refetchOnMount: 'always',
   });
 
   const {
@@ -331,7 +318,12 @@ export default function ClusterMap() {
 
 
 
-  if (!showTimeoutError && (status === "loading" || !effectiveCampus || (isLoading || isFetching) && !isSuccess)) {
+  // Keep the loading screen for as long as the request is actually running.
+  // The timeout timer used to dismiss it at 15s while the fetch was still
+  // going, so a slow campus rendered every host as empty over a request that
+  // then arrived a moment later -- indistinguishable from nobody being logged
+  // in, and the only fix was pressing refresh yourself.
+  if (status === "loading" || !effectiveCampus || ((isLoading || isFetching) && !isSuccess)) {
     return <LoadingScreen message="Loading cluster map..." />;
   }
 

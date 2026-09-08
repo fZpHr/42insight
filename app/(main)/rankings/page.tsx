@@ -16,8 +16,9 @@ import {
   Briefcase,
   AlertCircle,
   Clock,
+  RefreshCw,
 } from "lucide-react";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,9 @@ import {
 } from "@/components/ui/dialog"
 import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
+import { fetchJson } from "@/lib/api-client";
+import { readLogtimeIndex, withLogtime, type LogtimeIndex } from "@/lib/logtime-store";
 
 const sortOptions: StudentSortOption[] = [
   { value: "level", label: "Level", key: "level" },
@@ -168,19 +172,26 @@ const loginTimeCategories = {
   }
 };
 
-const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
-  try {
+/**
+ * Metrics the 42 API cannot produce in a single request (correction OK/KO,
+ * logtime, internship status) come back empty from this route. The sorts that
+ * depend on them are hidden rather than ranking everyone on zeroes.
+ */
+const NO_CORRECTION_DATA = 420;
 
-    const response = await fetch(`/api/users/campus/${campus}`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch students");
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching students:", error);
-    throw error;
-  }
-};
+/**
+ * Off for now.
+ *
+ * The route and the merge below both work and are covered by their own commit;
+ * what is unsettled is the price. Every evaluation a campus has on record is
+ * some 450 pages and several minutes of a visitor's key, and that is a call to
+ * make deliberately rather than to ship because the code happens to run. Flip
+ * this back to true to bring the button, and the column, back.
+ */
+const CORRECTION_RATIOS_ENABLED = false;
+
+const fetchCampusStudents = (campus: string): Promise<Student[]> =>
+  fetchJson<Student[]>(`/api/campus/${campus}/students`);
 
 type SortDirection = "asc" | "desc";
 
@@ -232,11 +243,12 @@ export default function Rankings() {
   ];
 
   const {
-    data: students,
+    data: rawStudents,
     isLoading,
     error,
     isSuccess,
     isFetching,
+    refetch,
   } = useQuery({
     queryKey: ["campus-students", selectedCampus || user?.campus],
     queryFn: async () => {
@@ -284,8 +296,84 @@ export default function Rankings() {
     },
     enabled: !!(selectedCampus || user?.campus),
     staleTime: 10 * 60 * 1000,
-    refetchOnMount: 'always',
   });
+
+  const effectiveCampus = selectedCampus || user?.campus || "";
+
+  // Logtime lives in this browser, not on the server: it costs one 42 request
+  // per student, so whoever wants it builds it with their own key. Merging is
+  // therefore a client-side step over whatever the API returned.
+  const [logtimeIndex, setLogtimeIndex] = useState<LogtimeIndex | null>(null);
+
+  const reloadLogtimeIndex = useCallback(() => {
+    setLogtimeIndex(readLogtimeIndex(effectiveCampus));
+  }, [effectiveCampus]);
+
+  useEffect(() => {
+    reloadLogtimeIndex();
+  }, [reloadLogtimeIndex]);
+
+  // Asked for, never automatic. A year of corrections is a hundred pages and
+  // three minutes, and every request is paced against the same key -- so
+  // running it on arrival did not merely cost quota, it put every other page
+  // behind it in the queue. Pages that normally take 400ms took three seconds.
+  const [wantCorrections, setWantCorrections] = useState(false);
+
+  const { data: corrections, isFetching: correctionsLoading } = useQuery({
+    queryKey: ["campus-corrections", effectiveCampus],
+    queryFn: () =>
+      fetchJson<Record<string, { positive: number; negative: number; percentage: number }>>(
+        `/api/campus/${effectiveCampus}/corrections`,
+      ),
+    enabled: wantCorrections && !!effectiveCampus && effectiveCampus !== "Global",
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const students = useMemo(() => {
+    const withTime = withLogtime(rawStudents ?? [], logtimeIndex);
+    if (!corrections) return withTime;
+
+    return withTime.map((student: Student) => {
+      const tally = corrections[String(student.id)];
+      if (!tally) return student;
+
+      return {
+        ...student,
+        correctionPositive: tally.positive,
+        correctionNegative: tally.negative,
+        correctionTotal: tally.positive + tally.negative,
+        correctionPercentage: tally.percentage,
+      };
+    });
+  }, [rawStudents, logtimeIndex, corrections]);
+
+  // Built from the data, not written by hand: the list used to stop at 2025
+  // because someone had to remember to add a line every year, and nobody did.
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    for (const student of students ?? []) {
+      if (student.year) years.add(String(student.year));
+    }
+    return [...years].sort().reverse();
+  }, [students]);
+
+  const hasCorrectionStats = useMemo(
+    () =>
+      !!students?.some(
+        (student: Student) => student.correctionPercentage !== NO_CORRECTION_DATA,
+      ),
+    [students],
+  );
+
+  const hasLogtimeData = useMemo(
+    () => !!students?.some((student: Student) => student.activityData?.logtime),
+    [students],
+  );
+
+  const hasWorkData = useMemo(
+    () => !!students?.some((student: Student) => student.work > 0),
+    [students],
+  );
 
   const sortStudents = (
     students: Student[],
@@ -735,6 +823,20 @@ export default function Rankings() {
     }
   };
 
+  // Hooks must run on every render, so this sits above every early return
+  // below. It used to live after the error branch, which meant a failed load
+  // rendered fewer hooks than a successful one and React tore the page down.
+  const debouncedSearch = useMemo(
+    () =>
+      debounce(
+        (term: string) => {
+          setSearchTerm(term);
+        },
+        { wait: 400 },
+      ),
+    [],
+  );
+
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4">
@@ -756,20 +858,15 @@ export default function Rankings() {
     );
   }
 
-  const debouncedSearch = useMemo(
-    () =>
-      debounce(
-        (term: string) => {
-          setSearchTerm(term);
-        },
-        { wait: 400 },
-      ),
-    [],
-  );
-
-
-  if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
-    return <LoadingScreen message="Loading rankings..." />;
+  // !effectiveCampus matters as much as the fetch flags: the query is
+  // disabled until the session/campus context resolves, so isLoading and
+  // isFetching both read false in that window and the page fell through to
+  // an empty "0 students" render until a manual refetch (which ignores
+  // `enabled`) actually showed anything.
+  if (!effectiveCampus || ((isLoading || isFetching) && !isSuccess)) {
+    return (
+      <LoadingScreen message="Loading rankings..." />
+    );
   }
 
   return (
@@ -834,19 +931,11 @@ export default function Rankings() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Years</SelectItem>
-                      <SelectItem value="2025">2025</SelectItem>
-                      <SelectItem value="2024">2024</SelectItem>
-                      <SelectItem value="2023">2023</SelectItem>
-                      <SelectItem value="2022">2022</SelectItem>
-                      <SelectItem value="2021">2021</SelectItem>
-                      <SelectItem value="2020">2020</SelectItem>
-                      <SelectItem value="2019">2019</SelectItem>
-                      <SelectItem value="2018">2018</SelectItem>
-                      <SelectItem value="2017">2017</SelectItem>
-                      <SelectItem value="2016">2016</SelectItem>
-                      <SelectItem value="2015">2015</SelectItem>
-                      <SelectItem value="2014">2014</SelectItem>
-                      <SelectItem value="2013">2013</SelectItem>
+                      {availableYears.map((yr) => (
+                        <SelectItem key={yr} value={yr}>
+                          {yr}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -893,6 +982,8 @@ export default function Rankings() {
                           <DropdownMenuItem onClick={() => handleSortChange("correctionPoints")}>
                             Correction points
                           </DropdownMenuItem>
+                          {hasCorrectionStats && (
+                            <>
                           <DropdownMenuItem onClick={() => handleSortChange("nb_corrections")}>
                             Number of corrections
                           </DropdownMenuItem>
@@ -902,9 +993,13 @@ export default function Rankings() {
                           >
                             Correction ratio
                           </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                       
+                      {hasLogtimeData && (
+                        <>
                       <DropdownMenuSeparator />
                       
                       <DropdownMenuSub>
@@ -1011,7 +1106,11 @@ export default function Rankings() {
                           </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
+                        </>
+                      )}
                       
+                      {hasWorkData && (
+                        <>
                       <DropdownMenuSeparator />
                       
                       <DropdownMenuItem onClick={() => handleSortChange("internship")}>
@@ -1020,6 +1119,8 @@ export default function Rankings() {
                       <DropdownMenuItem onClick={() => handleSortChange("work_study")}>
                         En alternance
                       </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -1035,7 +1136,51 @@ export default function Rankings() {
                     {sortDirection === "asc" ? "Asc" : "Desc"}
                   </span>
                 </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  aria-label="Refresh rankings"
+                  className="shrink-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                </Button>
               </div>
+
+              {/* Actions, not filters: they were crowding the search bar out
+                  of the toolbar. Their own line, labelled for what they are. */}
+              {effectiveCampus !== "Global" &&
+                (!hasLogtimeData ||
+                  (CORRECTION_RATIOS_ENABLED && !hasCorrectionStats)) && (
+                  <div className="hidden w-full items-center gap-2 border-t pt-2 sm:flex">
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      Optional data, fetched on your key:
+                    </span>
+                    <div className="flex items-center gap-2 overflow-x-auto">
+                      {!hasLogtimeData && (
+                        <LogtimeIndexBuilder
+                          campus={effectiveCampus}
+                          onBuilt={reloadLogtimeIndex}
+                        />
+                      )}
+                      {CORRECTION_RATIOS_ENABLED && !hasCorrectionStats && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setWantCorrections(true)}
+                          disabled={correctionsLoading}
+                          className="shrink-0 gap-2"
+                          title="Every evaluation this campus has on record: several hundred requests on your key, and a few minutes."
+                        >
+                          {correctionsLoading
+                            ? "Reading evaluations…"
+                            : "Load correction ratios"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               {/* Mobile view - show controls in accordion */}
               <div className="sm:hidden w-full">
@@ -1060,19 +1205,11 @@ export default function Rankings() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">All Years</SelectItem>
-                              <SelectItem value="2025">2025</SelectItem>
-                              <SelectItem value="2024">2024</SelectItem>
-                              <SelectItem value="2023">2023</SelectItem>
-                              <SelectItem value="2022">2022</SelectItem>
-                              <SelectItem value="2021">2021</SelectItem>
-                              <SelectItem value="2020">2020</SelectItem>
-                              <SelectItem value="2019">2019</SelectItem>
-                              <SelectItem value="2018">2018</SelectItem>
-                              <SelectItem value="2017">2017</SelectItem>
-                              <SelectItem value="2016">2016</SelectItem>
-                              <SelectItem value="2015">2015</SelectItem>
-                              <SelectItem value="2014">2014</SelectItem>
-                              <SelectItem value="2013">2013</SelectItem>
+                              {availableYears.map((yr) => (
+                                <SelectItem key={yr} value={yr}>
+                                  {yr}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1122,6 +1259,8 @@ export default function Rankings() {
                                   <DropdownMenuItem onClick={() => handleSortChange("correctionPoints")}>
                                     Correction points
                                   </DropdownMenuItem>
+                                  {hasCorrectionStats && (
+                                    <>
                                   <DropdownMenuItem onClick={() => handleSortChange("nb_corrections")}>
                                     Number of corrections
                                   </DropdownMenuItem>
@@ -1131,9 +1270,13 @@ export default function Rankings() {
                                   >
                                     Correction ratio
                                   </DropdownMenuItem>
+                                    </>
+                                  )}
                                 </DropdownMenuSubContent>
                               </DropdownMenuSub>
                               
+                              {hasLogtimeData && (
+                                <>
                               <DropdownMenuSeparator />
                               
                               <DropdownMenuSub>
@@ -1245,7 +1388,11 @@ export default function Rankings() {
                                   </DropdownMenuItem>
                                 </DropdownMenuSubContent>
                               </DropdownMenuSub>
+                                </>
+                              )}
                               
+                              {hasWorkData && (
+                                <>
                               <DropdownMenuSeparator />
                               
                               <DropdownMenuItem onClick={() => handleSortChange("internship")}>
@@ -1254,6 +1401,8 @@ export default function Rankings() {
                               <DropdownMenuItem onClick={() => handleSortChange("work_study")}>
                                 En alternance
                               </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -1271,6 +1420,16 @@ export default function Rankings() {
                               ? "Ascending"
                               : "Descending"}
                           </span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => refetch()}
+                          disabled={isFetching}
+                          className="flex items-center gap-2 px-3 bg-transparent w-full"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                          <span>Refresh</span>
                         </Button>
                       </div>
                     </AccordionContent>
@@ -1688,7 +1847,7 @@ export default function Rankings() {
                       {selectedLogtime.totalHours}h
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      {selectedLogtime.totalDays} days
+                      {selectedLogtime.totalDays ?? selectedLogtime.activeDays} days
                     </div>
                   </Card>
                   
@@ -1707,9 +1866,11 @@ export default function Rankings() {
                     <div className="text-xl font-bold">
                       {selectedLogtime.totalSessions}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {selectedLogtime.sessions.perDay}/day avg
-                    </div>
+                    {selectedLogtime.sessions && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {selectedLogtime.sessions.perDay}/day avg
+                      </div>
+                    )}
                   </Card>
                   
                   <Card className="p-3">
@@ -1717,9 +1878,11 @@ export default function Rankings() {
                     <div className="text-xl font-bold text-primary">
                       {selectedLogtime.averageDailyHours}h
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {selectedLogtime.averageDailyMinutes} min
-                    </div>
+                    {selectedLogtime.averageDailyMinutes && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {selectedLogtime.averageDailyMinutes} min
+                      </div>
+                    )}
                   </Card>
                 </div>
               </div>
@@ -1806,6 +1969,7 @@ export default function Rankings() {
               </div>
 
               {/* Top 5 Days */}
+              {selectedLogtime.topDays && (
               <div>
                 <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Top 5 Days</h3>
                 <div className="grid grid-cols-1 gap-2">
@@ -1829,8 +1993,10 @@ export default function Rankings() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Top Hosts */}
+              {selectedLogtime.topHosts?.length && (
               <div>
                 <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Favorite Workstations</h3>
                 <div className="grid grid-cols-1 gap-2">
@@ -1850,8 +2016,10 @@ export default function Rankings() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Time Preferences */}
+              {selectedLogtime.timePreferences && (
               <div>
                 <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Time Preferences</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1893,6 +2061,7 @@ export default function Rankings() {
                   <span className="text-muted-foreground">Profile: <span className="font-semibold text-primary capitalize">{selectedLogtime.profile}</span></span>
                 </div>
               </div>
+              )}
 
               {/* Weekday vs Weekend */}
               <div>
@@ -1945,6 +2114,7 @@ export default function Rankings() {
               </div>
 
               {/* Session Stats */}
+              {selectedLogtime.sessions && (
               <div>
                 <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Session Statistics</h3>
                 <div className="grid grid-cols-3 gap-3">
@@ -1964,12 +2134,13 @@ export default function Rankings() {
                   </Card>
                 </div>
               </div>
+              )}
 
               {/* Footer */}
               <div className="text-xs text-muted-foreground text-center pt-4 border-t">
                 Period: {new Date(selectedLogtime.firstDay).toLocaleDateString('fr-FR')} → {new Date(selectedLogtime.lastDay).toLocaleDateString('fr-FR')} ({selectedLogtime.daysSinceFirst} days)
                 <br />
-                Last updated: {new Date(selectedLogtime.lastUpdated).toLocaleDateString('fr-FR', {
+                Last updated: {new Date(selectedLogtime.lastUpdated ?? selectedLogtime.computedAt).toLocaleDateString('fr-FR', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',

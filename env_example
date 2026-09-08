@@ -1,6 +1,16 @@
-DATABASE_URL=
-CLIENT_ID1=
-CLIENT_SECRET1=
-REDIS_URL=
-REDIS_PASSWORD=
+# Signs the session cookie, and encrypts the 42 credentials visitors connect.
+# Required: next-auth refuses to start in production without it.
 JWT_SECRET=
+
+# Where the site is reachable. Required by next-auth for cookies and CSRF,
+# even though sign-in itself no longer redirects anywhere external.
+# In local development: http://localhost:3000
+NEXTAUTH_URL=
+
+# The piscine the site reports on. Used to be a hardcoded line in the cron repo.
+POOL_MONTH=september
+POOL_YEAR=
+
+# Optional: the repository the changelog panel reads its commits from.
+# Defaults to fZpHr/42insight.
+GITHUB_REPO=

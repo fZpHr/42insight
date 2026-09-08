@@ -17,23 +17,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { SubscribersButton } from "@/components/SubscribersButton";
 import { FeedbackButton } from "@/components/FeedbackButton";
-import { MapPin, User, Calendar, AlertCircle } from "lucide-react";
+import { MapPin, User, Calendar, AlertCircle, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useCampus } from "@/contexts/CampusContext";
+import { fetchJson } from "@/lib/api-client";
 
-const getCampusEvents = async (campus_name: string) => {
-  try {
-    const response = await fetch(`/api/events/${campus_name}`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch campus events");
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching campus events:", error);
-    return [];
-  }
-};
+const getCampusEvents = async (campus_name: string) =>
+  fetchJson<any[]>(`/api/events/${campus_name}`);
 
 const getEventsFeedback = async (campus_name: string, event_id: string) => {
   try {
@@ -90,15 +80,15 @@ export default function EventsPage() {
     error,
     isSuccess,
     isFetching,
+    refetch,
   } = useQuery({
     queryKey: ["events", effectiveCampus],
     queryFn: () => getCampusEvents(effectiveCampus!),
     staleTime: 10 * 60 * 1000,
     enabled: !!effectiveCampus,
-    refetchOnMount: 'always',
   });
 
-  if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
+  if ((isLoading || isFetching) && !isSuccess) {
     return (
       <div className="container mx-auto px-2 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -159,12 +149,22 @@ export default function EventsPage() {
         </Alert>
       )}
       
-      <div className="pb-4">
+      <div className="flex items-center justify-between gap-3 pb-4">
         <TransparentBadge
           text="⚠️ Subscribing is not available yet"
           bgColor="bg-red-500/20"
           textColor="text-red-400"
         />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          aria-label="Refresh events"
+          className="shrink-0"
+        >
+          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

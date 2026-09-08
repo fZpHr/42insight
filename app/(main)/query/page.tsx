@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,18 @@ import { toast } from "sonner";
 import { Copy, Loader2 } from "lucide-react";
 import { addToLocalStorage, getFromLocalStorage } from "@/utils/localStorage";
 import { useSession } from "next-auth/react";
+import { hasApiKey } from "@/lib/api-client";
 
 export default function Query() {
   const { data: session } = useSession();
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  // Read after mount: document.cookie does not exist during the server render.
+  const [keyPresent, setKeyPresent] = useState<boolean | null>(null);
+  useEffect(() => {
+    setKeyPresent(hasApiKey());
+  }, []);
 
 
   const user = session?.user;
@@ -61,6 +67,9 @@ export default function Query() {
       }
       setIsLoading(true);
       const response = await fetch(`/api/proxy/${encodeURIComponent(query)}`);
+      if (response.status === 428) {
+        throw new Error("Connect your own 42 API key to run queries");
+      }
       if (!response.ok) {
         throw new Error("Failed to fetch query results");
       }
@@ -157,7 +166,8 @@ export default function Query() {
             <Button
               onClick={() => fetchQueryResults(query)}
               className="w-full"
-              disabled={isLoading || !query.trim()}
+              disabled={isLoading || !query.trim() || keyPresent === false}
+              title={keyPresent === false ? "Connect your 42 API key first" : undefined}
             >
               {isLoading ? (
                 <>
@@ -214,6 +224,7 @@ export default function Query() {
             </Card>
         )}
       </div>
+
     </div>
   );
 }

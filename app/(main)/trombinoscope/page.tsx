@@ -14,7 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, EyeClosed } from "lucide-react";
+import { Eye, EyeClosed, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -26,25 +26,15 @@ import { useSession } from "next-auth/react";
 import { Student } from "@/types";
 import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
 const INITIAL_LOAD = 20;
 const LOAD_MORE = 10;
 
-const fetchCampusStudents = async (campus: string): Promise<Student[]> => {
-  try {
-
-    const response = await fetch(`/api/users/campus/${campus}`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch students");
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching students:", error);
-    throw error;
-  }
-};
+const fetchCampusStudents = (campus: string): Promise<Student[]> =>
+  fetchJson<Student[]>(`/api/campus/${campus}/students`);
 
 export default function Trombinoscope() {
     const { data: session, status } = useSession();
@@ -72,12 +62,12 @@ export default function Trombinoscope() {
     error,
     isSuccess,
     isFetching,
+    refetch,
   } = useQuery({
     queryKey: ["students", effectiveCampus],
     queryFn: () => fetchCampusStudents(effectiveCampus),
     enabled: !!effectiveCampus,
     staleTime: 10 * 60 * 1000,
-    refetchOnMount: 'always',
   });
 
   const filteredStudents = students
@@ -121,7 +111,8 @@ export default function Trombinoscope() {
   }, [effectiveCampus]);
 
   useEffect(() => {
-    if (error) {
+    // A missing key is not a failure; the page shows the prompt instead.
+    if (error && !isKeyRequired(error)) {
       toast.error(
         error instanceof Error ? error.message : "Failed to load students",
         {
@@ -149,8 +140,19 @@ export default function Trombinoscope() {
   }
 
 
-  if (!showTimeoutError && ((isLoading || isFetching) && !isSuccess)) {
-    return <LoadingScreen message="Loading trombinoscope..." />;
+  // The loading screen stays for as long as the fetch does. It used to be
+  // dismissed by a 15s timer, so a campus that took longer rendered an empty
+  // page over a request that was still running.
+  //
+  // !effectiveCampus matters just as much: the query is disabled until the
+  // session/campus context resolves, so isLoading and isFetching are both
+  // false in that window -- without this check the page rendered "0
+  // students" for that instant, and only a manual refetch (which ignores
+  // `enabled`) ever displayed the real data.
+  if (!effectiveCampus || ((isLoading || isFetching) && !isSuccess)) {
+    return (
+      <LoadingScreen message="Loading trombinoscope..." />
+    );
   }
 
 
@@ -195,6 +197,24 @@ export default function Trombinoscope() {
           {filteredStudents.length} students
         </p>
         <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  aria-label="Refresh students"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Refresh</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

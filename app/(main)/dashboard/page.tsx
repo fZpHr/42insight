@@ -21,6 +21,7 @@ import {
   Wallet,
   ChevronUp,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import {
@@ -307,37 +308,38 @@ export default function Dashboard() {
   const {
     data: userIntraInfo,
     isLoading: intraLoading,
+    isFetching: intraFetching,
     error: intraError,
+    refetch: refetchIntra,
   } = useQuery({
     queryKey: ["userIntraInfo", user?.name],
     queryFn: () => fetchUserIntraInfo(user?.login || ""),
     enabled: !!user && !loading,
-    staleTime: 10 * 60 * 1000, 
-    retry: 2,
+    staleTime: 10 * 60 * 1000,
   });
 
-  const { data: staffInfo } = useQuery({
+  const { data: staffInfo, isFetching: staffFetching, refetch: refetchStaff } = useQuery({
     queryKey: ["staffInfo", effectiveCampus],
     queryFn: () => fetch(`/api/staff?campus=${effectiveCampus}`).then((res) => res.json()),
     enabled: !!user && !loading && (isStaff || isAdmin) && !!effectiveCampus,
-    staleTime: 10 * 60 * 1000, 
-    retry: 2,
+    staleTime: 10 * 60 * 1000,
   });
 
   const {
     data: campusRank,
     isLoading: rankLoading,
+    isFetching: rankFetching,
+    refetch: refetchRank,
   } = useQuery({
     queryKey: ["campusRank", user?.campus],
     queryFn: () => getCampusRank(user?.campus || "", user?.login || ""),
     enabled: !!user && !loading && !isStaff,
-    staleTime: 10 * 60 * 1000, 
-    retry: 2,
+    staleTime: 10 * 60 * 1000,
   });
 
   const setEvents = useFortyTwoStore(state => state.setEvents)
 
-  const { data: userEvents } = useQuery({
+  const { data: userEvents, isFetching: eventsFetching, refetch: refetchEvents } = useQuery({
     queryKey: ["userEvents", user?.login],
     queryFn: async () => {
       if (!user?.login) return [];
@@ -348,8 +350,15 @@ export default function Dashboard() {
     },
     enabled: !!user && !loading,
     staleTime: 10 * 60 * 1000,
-    retry: 2,
   })
+
+  const isRefreshing = intraFetching || staffFetching || rankFetching || eventsFetching;
+  const refreshDashboard = () => {
+    refetchIntra();
+    refetchRank();
+    refetchEvents();
+    if (isStaff || isAdmin) refetchStaff();
+  };
 
 
   useEffect(() => {
@@ -360,10 +369,10 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-    if (!intraLoading && userIntraInfo && !rankLoading) {
+    if (!intraLoading && userIntraInfo) {
       setIsDataReady(true);
     }
-  }, [intraLoading, userIntraInfo, rankLoading]);
+  }, [intraLoading, userIntraInfo]);
 
   const currentCursus = useMemo(() => {
     return (
@@ -392,19 +401,24 @@ export default function Dashboard() {
       },
       {
         title: "Rank",
-        value: campusRank || "N/A",
+        value: campusRank ?? (rankLoading ? "…" : "N/A"),
         icon: Users,
       },
     ],
     [currentCursus, userIntraInfo, campusRank],
   );
 
-  const isPageLoading = loading || status === "loading" || intraLoading || rankLoading || !isDataReady;
+  // The rank is one number among a dozen, but computing it means walking the
+  // whole campus -- twenty-five seconds on a cold cache. Waiting for it held
+  // the entire dashboard hostage to its most expensive query, so it now fills
+  // in when it arrives.
+  const isPageLoading = loading || status === "loading" || intraLoading || !isDataReady;
 
   if (status === "unauthenticated") {
     return <LoadingDashboard />;
   }
 
+  // Before the loading branch: without a key the data never arrives, so
   if (isPageLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
@@ -484,6 +498,7 @@ export default function Dashboard() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header Section */}
+      <div className="flex items-start justify-between gap-4">
       <div className="flex items-center space-x-4">
         <Avatar className="h-20 w-20 ring-2 ring-border">
           <AvatarImage
@@ -532,6 +547,17 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+      </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={refreshDashboard}
+          disabled={isRefreshing}
+          aria-label="Refresh dashboard"
+          className="shrink-0"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+        </Button>
       </div>
 
       {(isStaff || isAdmin) && staffInfo && (

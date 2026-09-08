@@ -1,5 +1,6 @@
 "use client";
 import { toast } from "sonner";
+import { fetchJson } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -12,6 +13,7 @@ import {
   ArrowDown,
   Target,
   Eye,
+  RefreshCw,
 } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,18 +44,8 @@ const sortOptions: SortOption[] = [
   },
 ];
 
-const fetchPoolStudents = async (): Promise<PoolUser[]> => {
-  try {
-    const response = await fetch("/api/users/pool");
-    if (!response.ok) {
-      throw new Error("Failed to fetch pool students");
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error fetching pool students:", error);
-    return [];
-  }
-};
+const fetchPoolStudents = (): Promise<PoolUser[]> =>
+  fetchJson<PoolUser[]>("/api/users/pool");
 
 
 export default function Piscine() {
@@ -68,6 +60,8 @@ export default function Piscine() {
     data: students,
     isLoading,
     error,
+    isFetching,
+    refetch,
   } = useQuery({
     queryKey: ["pool-students"],
     queryFn: async () => {
@@ -271,6 +265,16 @@ export default function Piscine() {
                 <span className="sm:inline">
                   {sortDirection === "asc" ? "Asc" : "Desc"}
                 </span>
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                aria-label="Refresh rankings"
+                className="shrink-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
               </Button>
             </div>
           </div>

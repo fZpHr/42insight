@@ -1,68 +1,52 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { getApi } from "@/lib/forty-two/api";
+import { keyRequiredResponse } from "@/lib/forty-two/user-api";
+import { cached } from "@/lib/memory-cache";
 
+/** The events one student attended: two 42 requests, on the visitor's key. */
 
-const eventsCache = new Map<string, { events: any[], timestamp: number }>();
-const CACHE_TTL = 10 * 60 * 1000; 
+const CACHE_TTL = 600;
 
 export async function GET(
-  request: Request,
+  _request: Request,
   context: { params: Promise<{ login: string }> },
 ) {
-  const params = await context.params;
-  const login = params.login;
+  const { login } = await context.params;
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-
-  const cached = eventsCache.get(login);
-  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-    return NextResponse.json({ events: cached.events });
-  }
+  const api = await getApi();
+  if (!api) return keyRequiredResponse();
 
   try {
+    const events = await cached(
+      `user-events:v1:${login}`,
+      CACHE_TTL,
+      async () => {
+        const userResponse = await api.fetch(`/users/${encodeURIComponent(login)}`);
 
-    const userRes = await apiRateLimiter.fetch(`/users/${login}`);
-    if (!userRes.ok) {
-      if (userRes.status === 429 && cached) {
-        console.warn(`[WARN] Rate limited fetching user for events ${login}. Serving stale cache.`);
-        return NextResponse.json({ events: cached.events });
-      }
-      console.error("[DEBUG] User not found for login:", login);
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-    const user = await userRes.json();
-    let allEvents: any[] = [];
-    let page = 1;
-    const perPage = 100;
-    let eventsPage;
-    do {
-      const eventsRes = await apiRateLimiter.fetch(`/users/${user.id}/events?per_page=${perPage}&page=${page}`);
-      if (!eventsRes.ok) {
-
-        if (eventsRes.status === 429 && cached) {
-          console.warn(`[WARN] Rate limited fetching events for ${login}. Serving stale cache.`);
-          return NextResponse.json({ events: cached.events });
+        if (!userResponse.ok) {
+          throw new Error(`42 API responded ${userResponse.status}`);
         }
-        console.error(`[DEBUG] Failed to fetch events page ${page} for user ${login}:`, eventsRes.statusText);
 
-        return NextResponse.json({ error: `Failed to fetch events: ${eventsRes.statusText}` }, { status: eventsRes.status });
-      }
-      eventsPage = await eventsRes.json();
-      allEvents = allEvents.concat(eventsPage);
-      page++;
-    } while (eventsPage && eventsPage.length === perPage);
+        const user = await userResponse.json();
 
+        return api.fetchAllPages(`/users/${user.id}/events`, {
+          maxPages: 5,
+        });
+      },
+    );
 
-    eventsCache.set(login, { events: allEvents, timestamp: Date.now() });
-
-    return NextResponse.json({ events: allEvents });
+    return NextResponse.json({ events });
   } catch (error: any) {
-    console.error("[ERROR] /api/users/[login]/events:", error.message);
-    return NextResponse.json({ error: "Failed to fetch events", details: error.message }, { status: 500 });
+    console.error(`[user-events] failed for ${login}:`, error.message);
+    return NextResponse.json(
+      { error: "Failed to fetch events from the 42 API" },
+      { status: 502 },
+    );
   }
 }

@@ -1,56 +1,56 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { apiRateLimiter } from "@/lib/api-rate-limiter";
+import { getApi } from "@/lib/forty-two/api";
+import { keyRequiredResponse } from "@/lib/forty-two/user-api";
+import { cached } from "@/lib/memory-cache";
+import { CAMPUS_IDS } from "@/lib/forty-two/live-campus";
+
+/** One 42 request per event, shared by everyone who opens that event. */
+
+const CACHE_TTL = 300;
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ campus_name: string; event_id: string }> },
 ) {
-    const session = await getServerSession(authOptions)
-    if (!session || !session.user) {
-        return NextResponse.json(
-            { error: 'Unauthorized' },
-            { status: 401 }
-        )
-    }
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const api = await getApi();
+  if (!api) return keyRequiredResponse();
+
+  const { campus_name, event_id } = await params;
+
+  if (!CAMPUS_IDS[campus_name]) {
+    return NextResponse.json({ error: "Campus not found" }, { status: 404 });
+  }
+
   try {
-    const { campus_name, event_id } = await params
+    const subscribers = await cached(
+      `event-subscribers:v1:${event_id}`,
+      CACHE_TTL,
+      async () => {
+        const response = await api.fetch(
+          `/events/${event_id}/events_users?page[size]=100&page[number]=1`,
+        );
 
-    const campusMapping: { [key: string]: number } = {
-      Angouleme: 31,
-      Nice: 41,
-    };
+        if (!response.ok) {
+          throw new Error(`42 API responded ${response.status}`);
+        }
 
-    const campusId = campusMapping[campus_name];
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus not found" }, { status: 404 });
-    }
-    const response = await apiRateLimiter.fetch(
-      `/events/${event_id}/events_users?page[size]=100&page[number]=1 `,
+        return response.json();
+      },
     );
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: `Failed to fetch from 42 API: ${response.statusText}` },
-        { status: response.status },
-      );
-    }
-
-    const subscribers = await response.json();
     return NextResponse.json(subscribers);
   } catch (error: any) {
-    const { campus_name } = await params
-    console.error(
-      `[FATAL ERROR] in /api/campus/${campus_name}/intra:`,
-      error.message,
-    );
+    console.error(`[events] subscribers failed for ${event_id}:`, error.message);
     return NextResponse.json(
-      {
-        error: "Failed to fetch subscribers due to an internal server error.",
-        details: error.message,
-      },
-      { status: 500 },
+      { error: "Failed to fetch subscribers from the 42 API" },
+      { status: 502 },
     );
   }
 }

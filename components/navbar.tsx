@@ -1,6 +1,7 @@
 "use client";
 
 import type * as React from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,7 +15,6 @@ import {
   MoreHorizontal,
   Database,
   Calendar,
-  Activity,
   UserRoundSearch,
   Map,
   LayoutGrid,
@@ -22,6 +22,8 @@ import {
   Workflow,
   GamepadIcon,
   Award,
+  KeyRound,
+  Bug,
 } from "lucide-react";
 
 import {
@@ -56,6 +58,7 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react"
+import { hasApiKey } from "@/lib/api-client"
 import { CampusSwitcher } from "@/components/CampusSwitcher";
 import { useCampus } from "@/contexts/CampusContext";
 
@@ -206,16 +209,23 @@ const piscinenavigationData = {
 
 const bottomLinks = [
   {
-    title: "Monitor",
-    url: "https://monitor.bapasqui.duckdns.org/status/42insight",
-    icon: Activity,
-    description: "Monitor all related services",
+    title: "42 API key",
+    url: "/api-key",
+    icon: KeyRound,
+    description: "Connect the key everything else runs on",
   },
   {
     title: "Contribute",
     url: "/contribute",
     icon: Github,
     description: "Contribute to the project",
+  },
+  {
+    title: "Issue",
+    url: "https://github.com/fzphr/42insight/issues/new?title=[ISSUE]&body=Describe%20your%20issue%20here...&labels=issue",
+    icon: Bug,
+    description: "Report a bug or issue",
+    external: true,
   },
 ];
 
@@ -247,6 +257,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const dayOfWeek = today.getDay();
     return dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5;
   };
+
+  // Read after mount: document.cookie does not exist during the server render.
+  const [keyPresent, setKeyPresent] = useState(false)
+
+  useEffect(() => {
+    setKeyPresent(hasApiKey())
+  }, [pathname])
 
   const signOutfunc = async () => {
     document.cookie.split(";").forEach((c) => {
@@ -284,12 +301,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {user?.role != "pisciner" &&
           navigationData.navMain.map((group, groupIndex) => {
 
-            const accessibleItems = group.items.filter((item) => 
-              hasAccessToRoute(item.url, effectiveCampus, user?.role)
-            );
-            const restrictedItems = group.items.filter((item) => 
-              !hasAccessToRoute(item.url, effectiveCampus, user?.role)
-            );
+            // Without a key there is nothing for these pages to load, so they
+            // are shown greyed rather than leading to a prompt on arrival.
+            const allowed = (item: { url: string }) =>
+              keyPresent && hasAccessToRoute(item.url, effectiveCampus, user?.role);
+
+            const accessibleItems = group.items.filter(allowed);
+            const restrictedItems = group.items.filter((item) => !allowed(item));
             
 
             return (
@@ -361,7 +379,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <SidebarMenuButton
                           asChild={false}
                           isActive={false}
-                          tooltip="Only available for Nice and Angoulême"
+                          tooltip={
+                            keyPresent
+                              ? "Only available for Nice and Angoulême"
+                              : "Connect your 42 API key to open this"
+                          }
                           className="opacity-50 cursor-not-allowed relative group overflow-hidden"
                         >
                           <>
@@ -371,7 +393,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             {open && (
                               <div className="absolute inset-0 bg-background/95 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md pointer-events-none">
                                 <span className="text-[10px] text-muted-foreground px-2 text-center whitespace-nowrap font-medium">
-                                  Nice/Angoulême only
+                                  {keyPresent ? "Nice/Angoulême only" : "Key required"}
                                 </span>
                               </div>
                             )}
@@ -402,7 +424,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   {group.items.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
-                        asChild
+                        asChild={keyPresent}
+                        disabled={!keyPresent}
+                        className={keyPresent ? undefined : "opacity-50 cursor-not-allowed"}
                         isActive={pathname === item.url}
                         tooltip={item.description}
                       >
@@ -440,10 +464,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 isActive={pathname === item.url}
                 tooltip={item.description}
               >
-                <Link href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </Link>
+                {item.external ? (
+                  <a href={item.url} target="_blank" rel="noopener noreferrer">
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </a>
+                ) : (
+                  <Link href={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
@@ -525,6 +556,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                         Settings
                                     </Link>
                                 </DropdownMenuItem> */}
+                <DropdownMenuItem asChild>
+                  <Link href="/api-key">
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    {keyPresent ? "My 42 API key" : "Connect my 42 API key"}
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOutfunc}>
                   <span className="text-destructive">Sign out</span>
                 </DropdownMenuItem>
