@@ -23,6 +23,7 @@ import {
   GamepadIcon,
   Award,
   KeyRound,
+  Bug,
 } from "lucide-react";
 
 import {
@@ -218,6 +219,13 @@ const bottomLinks = [
     url: "/contribute",
     icon: Github,
     description: "Contribute to the project",
+  },
+  {
+    title: "Issue",
+    url: "https://github.com/fzphr/42insight/issues/new?title=[ISSUE]&body=Describe%20your%20issue%20here...&labels=issue",
+    icon: Bug,
+    description: "Report a bug or issue",
+    external: true,
   },
 ];
 
@@ -456,10 +464,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 isActive={pathname === item.url}
                 tooltip={item.description}
               >
-                <Link href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </Link>
+                {item.external ? (
+                  <a href={item.url} target="_blank" rel="noopener noreferrer">
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </a>
+                ) : (
+                  <Link href={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

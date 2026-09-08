@@ -18,7 +18,7 @@ import ReactConfetti from "react-confetti"
 import { useSession } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
-import { Loader2, GraduationCap, Trophy, Award } from "lucide-react"
+import { Loader2, GraduationCap, Trophy, Award, RefreshCw } from "lucide-react"
 
 function getManualProjectsKey(session: any) {
   return session?.user?.login ? `manualProjects_${session.user.login}` : undefined
@@ -115,7 +115,13 @@ export default function RNCPSimulator() {
     shallow,
   )
 
-  const { data: userIntraInfo, isLoading: isIntraLoading, error: intraError } = useQuery({
+  const {
+    data: userIntraInfo,
+    isLoading: isIntraLoading,
+    isFetching: isIntraFetching,
+    error: intraError,
+    refetch: refetchIntra,
+  } = useQuery({
     queryKey: ["userIntraInfo", session?.user?.login],
     queryFn: () => fetchUserIntraInfo(session!.user!.login!),
     enabled: !!session?.user?.login,
@@ -123,7 +129,12 @@ export default function RNCPSimulator() {
     gcTime: 30 * 60 * 1000,
   })
 
-  const { data: userEvents, isLoading: areEventsLoading } = useQuery({
+  const {
+    data: userEvents,
+    isLoading: areEventsLoading,
+    isFetching: isEventsFetching,
+    refetch: refetchEvents,
+  } = useQuery({
     queryKey: ["userEvents", session?.user?.login],
     queryFn: () => fetchUserEvents(session!.user!.login!),
     enabled: !!session?.user?.login,
@@ -136,6 +147,19 @@ export default function RNCPSimulator() {
       processInitialData(userIntraInfo, activeTitle)
     }
   }, [userIntraInfo, isDataProcessed, processInitialData])
+
+  // A plain refetch would land fresh marks in the query cache without ever
+  // reaching the store: processInitialData only auto-runs once, gated on
+  // isDataProcessed. It merges rather than overwrites -- a mark the visitor
+  // edited by hand differs from its auto-fetched twin, and stays put -- so
+  // calling it again here is safe even with manual edits already in place.
+  const isRefreshingSimulator = isIntraFetching || isEventsFetching
+  const refreshSimulatorData = async () => {
+    const [intraResult] = await Promise.all([refetchIntra(), refetchEvents()])
+    if (intraResult.data && activeTitle) {
+      processInitialData(intraResult.data, activeTitle)
+    }
+  }
 
   useEffect(() => {
     if (Array.isArray(userEvents)) {
@@ -221,38 +245,22 @@ export default function RNCPSimulator() {
       {activeTitle && <TitleSelector titles={titles} activeTitle={activeTitle} setActiveTitle={setActiveTitle} />}
 
       <Separator className="my-6" />
-      <div className="flex items-center gap-2 mb-2">
-        <span className="inline-block px-2 py-0.5 rounded bg-yellow-200 text-yellow-900 text-xs font-semibold">
-          Alpha
-        </span>
-        <span className="text-muted-foreground text-xs">
-          This version of the RNCP simulator is in alpha development.
-          <br />
-          Please don't hesitate to submit bug reports&nbsp;
-          <a
-            href="https://github.com/fzphr/42insight/issues/new?title=[ISSUE]&body=Describe%20your%20issue%20here...&labels=issue"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center text-blue-700 hover:text-blue-900"
-            aria-label="Report a bug on GitHub"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="ml-1"
-            >
-              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.84 1.236 1.84 1.236 1.07 1.834 2.809 1.304 3.495.997.108-.775.418-1.305.762-1.605-2.665-.305-5.466-1.334-5.466-5.93 0-1.31.469-2.381 1.236-3.221-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.301 1.23a11.52 11.52 0 0 1 3.003-.404c1.018.005 2.045.138 3.003.404 2.291-1.553 3.297-1.23 3.297-1.23.653 1.653.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.803 5.624-5.475 5.921.43.371.823 1.102.823 2.222 0 1.606-.014 2.898-.014 3.293 0 .322.218.694.825.576C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-            </svg>
-          </a>
-          
-        </span>
-      </div>
 
       <div className="my-6 space-y-1.5">
-        <h4 className="font-semibold text-2xl leading-none tracking-tight">Information</h4>
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="font-semibold text-2xl leading-none tracking-tight">Information</h4>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={refreshSimulatorData}
+            disabled={isRefreshingSimulator}
+            aria-label="Refresh my 42 data"
+            title="Refresh my 42 data"
+            className="h-7 w-7 shrink-0"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingSimulator ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
 
         <p className="text-muted-foreground text-sm">
           You must validate the requirements.{" "}
@@ -299,7 +307,7 @@ export default function RNCPSimulator() {
         autoExtraProjects={persistedOldProjects}
       />
       {activeTitle && <TitleOptions title={activeTitle} onCompletionChange={setOptionStatuses} />}
-      <div className="fixed bottom-2 left-0 w-full text-center text-xs text-muted-foreground pointer-events-none z-50">
+      <div className="text-center text-xs text-muted-foreground">
         This project is inspired by a similar tool from the staff of 42 Angoulême, with their agreement.
       </div>
     </div>
