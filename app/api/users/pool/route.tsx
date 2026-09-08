@@ -8,8 +8,8 @@ import {
   campusRequiredResponse,
 } from "@/lib/forty-two/campus-scope";
 import {
-  currentPool,
   getPoolUsers,
+  resolvePoolPromotion,
 } from "@/lib/forty-two/live-campus";
 
 // Walks every campus's pool roster in turn on a cold cache -- past Vercel's
@@ -33,11 +33,18 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const pool = currentPool();
-    const month = (searchParams.get("month") ?? pool.month).toLowerCase();
-    const year = searchParams.get("year") ?? pool.year;
+    const promotion = await resolvePoolPromotion(campus, api, {
+      month: searchParams.get("month"),
+      year: searchParams.get("year"),
+    });
 
-    return NextResponse.json(await getPoolUsers(campus, month, year, api));
+    // A campus with no piscine on record for the year has an empty ranking,
+    // which is an answer rather than a failure.
+    if (!promotion) return NextResponse.json([]);
+
+    return NextResponse.json(
+      await getPoolUsers(campus, promotion.month, promotion.year, api),
+    );
   } catch (error: any) {
 
     console.error("[pool] failed to build:", error.message);

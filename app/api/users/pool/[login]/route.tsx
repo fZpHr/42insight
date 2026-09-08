@@ -8,7 +8,7 @@ import {
   campusRequiredResponse,
 } from "@/lib/forty-two/campus-scope";
 import {
-  currentPool,
+  resolvePoolPromotion,
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
 
@@ -36,8 +36,10 @@ export async function GET(
 
   try {
     const { login } = await params;
-    const pool = currentPool();
-    const poolUsers = await getPoolUsers(campus, pool.month, pool.year, api);
+    const promotion = await resolvePoolPromotion(campus, api);
+    const poolUsers = promotion
+      ? await getPoolUsers(campus, promotion.month, promotion.year, api)
+      : [];
     const poolUser = poolUsers.find((candidate) => candidate.name === login);
 
     return poolUser

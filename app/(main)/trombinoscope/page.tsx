@@ -26,6 +26,7 @@ import { useSession } from "next-auth/react";
 import { Student } from "@/types";
 import { useCampus } from "@/contexts/CampusContext";
 import { fetchPoolStudents, type Cursus } from "@/lib/pool-roster";
+import { PoolPromotionPicker } from "@/components/PoolPromotionPicker";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -45,6 +46,8 @@ export default function Trombinoscope() {
   const effectiveCampus = contextCampus || user?.campus || "";
   // 42cursus or the piscine: a different cursus, so a different roster.
   const [cursus, setCursus] = useState<Cursus>("cursus");
+  const [poolYear, setPoolYear] = useState(() => String(new Date().getFullYear()));
+  const [poolMonth, setPoolMonth] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [showingName, setShowingName] = useState(true);
   const [year, setYear] = useState<string>("all");
@@ -67,10 +70,15 @@ export default function Trombinoscope() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["students", cursus, effectiveCampus],
+    queryKey: [
+      "students",
+      cursus,
+      effectiveCampus,
+      ...(cursus === "piscine" ? [poolYear, poolMonth] : []),
+    ],
     queryFn: () =>
       cursus === "piscine"
-        ? fetchPoolStudents(effectiveCampus)
+        ? fetchPoolStudents(effectiveCampus, { month: poolMonth, year: poolYear })
         : fetchCampusStudents(effectiveCampus),
     enabled: !!effectiveCampus,
     staleTime: 10 * 60 * 1000,
@@ -220,6 +228,18 @@ export default function Trombinoscope() {
               </button>
             ))}
           </div>
+          {cursus === "piscine" && effectiveCampus && (
+            <PoolPromotionPicker
+              campus={effectiveCampus}
+              year={poolYear}
+              month={poolMonth}
+              onYearChange={(next) => {
+                setPoolYear(next);
+                setPoolMonth(null);
+              }}
+              onMonthChange={setPoolMonth}
+            />
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

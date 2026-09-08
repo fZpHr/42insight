@@ -16,10 +16,28 @@ import type { PoolUser, Student } from "@/types";
 /** Which roster a page is showing. */
 export type Cursus = "cursus" | "piscine";
 
-export const fetchPoolStudents = async (campus: string): Promise<Student[]> => {
-  const pool = await fetchJson<PoolUser[]>(
-    `/api/users/pool?campus=${encodeURIComponent(campus)}`,
-  );
+/** One piscine a campus ran, as /api/pool-promotions reports it. */
+export interface PoolPromotion {
+  month: string;
+  year: string;
+  count: number;
+}
+
+/**
+ * A promotion when one has been picked; otherwise the route works out the
+ * campus's current one, which is not something the client can assume.
+ */
+export const fetchPoolStudents = async (
+  campus: string,
+  promotion?: { month: string | null; year: string } | null,
+): Promise<Student[]> => {
+  const query = new URLSearchParams({ campus });
+  if (promotion?.month) {
+    query.set("month", promotion.month);
+    query.set("year", promotion.year);
+  }
+
+  const pool = await fetchJson<PoolUser[]>(`/api/users/pool?${query}`);
 
   return pool.map((user) => ({
     ...user,

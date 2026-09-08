@@ -79,6 +79,7 @@ import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { readLogtimeIndex, withLogtime, type LogtimeIndex } from "@/lib/logtime-store";
 import { useCampus } from "@/contexts/CampusContext";
 import { fetchPoolStudents, type Cursus } from "@/lib/pool-roster";
+import { PoolPromotionPicker } from "@/components/PoolPromotionPicker";
 import { GlobalFetchDialog } from "@/components/GlobalFetchDialog";
 
 const sortOptions: StudentSortOption[] = [
@@ -226,6 +227,11 @@ export default function Rankings() {
    */
   const [cursus, setCursus] = useState<Cursus>("cursus");
 
+  // null month means "whichever one this campus is running", which only the
+  // route can work out -- a campus runs whichever months it likes.
+  const [poolYear, setPoolYear] = useState(() => String(new Date().getFullYear()));
+  const [poolMonth, setPoolMonth] = useState<string | null>(null);
+
   const [confirmingGlobal, setConfirmingGlobal] = useState(false);
   const [globalProgress, setGlobalProgress] = useState<{
     done: number;
@@ -320,13 +326,21 @@ export default function Rankings() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["campus-students", cursus, selectedCampus || user?.campus],
+    queryKey: [
+      "campus-students",
+      cursus,
+      selectedCampus || user?.campus,
+      ...(cursus === "piscine" ? [poolYear, poolMonth] : []),
+    ],
     queryFn: async () => {
       const campus = selectedCampus || user?.campus;
       if (!campus) return [];
 
       if (cursus === "piscine") {
-        const pool = await fetchPoolStudents(campus);
+        const pool = await fetchPoolStudents(campus, {
+          month: poolMonth,
+          year: poolYear,
+        });
         if (pool.length === 0) {
           toast.error("Nobody in the piscine at this campus right now", {
             duration: 2000,
@@ -1054,6 +1068,18 @@ export default function Rankings() {
                     </button>
                   ))}
                 </div>
+                {cursus === "piscine" && effectiveCampus && (
+                  <PoolPromotionPicker
+                    campus={effectiveCampus}
+                    year={poolYear}
+                    month={poolMonth}
+                    onYearChange={(next) => {
+                      setPoolYear(next);
+                      setPoolMonth(null);
+                    }}
+                    onMonthChange={setPoolMonth}
+                  />
+                )}
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <Select value={selectedYear} onValueChange={setSelectedYear}>

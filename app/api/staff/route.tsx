@@ -5,7 +5,7 @@ import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
   resolveCampusId,
-  currentPool,
+  resolvePoolPromotion,
   getCampusStudents,
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
@@ -39,11 +39,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    const pool = currentPool();
+    const promotion = await resolvePoolPromotion(campus, api);
 
     const [students, poolUsers] = await Promise.all([
       getCampusStudents(campus, api),
-      getPoolUsers(campus, pool.month, pool.year, api).catch(() => []),
+      promotion
+        ? getPoolUsers(campus, promotion.month, promotion.year, api).catch(() => [])
+        : Promise.resolve([]),
     ]);
 
     const totalStudents = students.length;

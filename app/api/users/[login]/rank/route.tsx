@@ -4,7 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
-  currentPool,
+  resolvePoolPromotion,
   getCampusStudents,
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
@@ -60,8 +60,10 @@ export async function GET(
       return NextResponse.json({ rank: rankByLevel(students, login) });
     }
 
-    const pool = currentPool();
-    const poolUsers = await getPoolUsers(campusName, pool.month, pool.year, api);
+    const promotion = await resolvePoolPromotion(campusName, api);
+    const poolUsers = promotion
+      ? await getPoolUsers(campusName, promotion.month, promotion.year, api)
+      : [];
     if (poolUsers.some((poolUser) => poolUser.name === login)) {
       return NextResponse.json({ rank: rankByLevel(poolUsers, login) });
     }

@@ -147,14 +147,6 @@ const POOL_TTL = 900;
 
 const studentsCacheKey = (campus: string) => `students:${campus}`;
 
-/**
- * The piscine promotion, which pool-data.js carried as a hardcoded line edited
- * by hand every year.
- */
-export const currentPool = () => ({
-  month: (process.env.POOL_MONTH ?? "september").toLowerCase(),
-  year: process.env.POOL_YEAR ?? String(new Date().getFullYear()),
-});
 
 const daysUntil = (date: string | null): number => {
   if (!date) return 0;
@@ -262,6 +254,120 @@ const getWorkStatus = async (
  * happens there and this is the campus as the 42 API gives it.
  */
 export const getEnrichedCampusStudents = getCampusStudents;
+
+/**
+ * The piscines a campus actually ran in a given year.
+ *
+ * There is no guessing this. Angouleme ran six in 2026 -- February, April,
+ * June, July, August and September -- and a different six in 2025. Paris runs
+ * neither July nor September, but May and June. A school changes its months
+ * from one year to the next, so the only honest answer comes from asking.
+ *
+ * Twelve requests, one per month, each asking for a single row purely to read
+ * the X-Total header. That is a fixed cost whatever the size of the campus:
+ * reading the year's roster instead would be three pages at Angouleme and
+ * thirty-three at Paris. Cached a day, since a piscine that has happened does
+ * not un-happen.
+ */
+
+export const POOL_MONTHS = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+] as const;
+
+export interface PoolPromotion {
+  month: string;
+  year: string;
+  /** How many people 42 has on it, staff included -- it is an order of size. */
+  count: number;
+}
+
+const PROMOTIONS_TTL = 24 * 60 * 60;
+
+export const listPoolPromotions = async (
+  campusName: string,
+  year: string,
+  api: FortyTwoApi,
+): Promise<PoolPromotion[]> => {
+  const campusId = await resolveCampusId(campusName, api);
+  if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
+
+  return cachedOnce(
+    `pool-promotions:${campusName}:${year}`,
+    PROMOTIONS_TTL,
+    async () => {
+      const found: PoolPromotion[] = [];
+
+      for (const month of POOL_MONTHS) {
+        const response = await api.fetch(
+          `/campus/${campusId}/users` +
+            `?filter[pool_month]=${month}&filter[pool_year]=${encodeURIComponent(year)}` +
+            `&page[size]=1`,
+        );
+        if (!response.ok) continue;
+
+        const count = Number(response.headers.get("X-Total")) || 0;
+        if (count > 0) found.push({ month, year, count });
+      }
+
+      return found;
+    },
+  );
+};
+
+/**
+ * The promotion to show when nobody has picked one: the most recent that has
+ * begun. A campus with a piscine starting next month should not open on it and
+ * report an empty ranking.
+ */
+export const currentPoolPromotion = (
+  promotions: PoolPromotion[],
+  now = new Date(),
+): PoolPromotion | null => {
+  const started = promotions.filter((promotion) => {
+    const year = Number(promotion.year);
+    if (year < now.getFullYear()) return true;
+    if (year > now.getFullYear()) return false;
+    return POOL_MONTHS.indexOf(promotion.month as any) <= now.getMonth();
+  });
+
+  const pool = started.length > 0 ? started : promotions;
+
+  return (
+    [...pool].sort(
+      (a, b) =>
+        Number(b.year) - Number(a.year) ||
+        POOL_MONTHS.indexOf(b.month as any) - POOL_MONTHS.indexOf(a.month as any),
+    )[0] ?? null
+  );
+};
+
+/**
+ * Which piscine a request is about: the one asked for, else the current one.
+ *
+ * Replaces a currentPool() that read POOL_MONTH/POOL_YEAR from the environment
+ * and fell back to the literal string "september". Nobody had set those, so
+ * every piscine page assumed September -- right at Nice by luck, wrong at
+ * Angouleme five months out of six, and wrong at Paris always.
+ */
+export const resolvePoolPromotion = async (
+  campusName: string,
+  api: FortyTwoApi,
+  asked: { month?: string | null; year?: string | null } = {},
+): Promise<PoolPromotion | null> => {
+  const month = asked.month?.toLowerCase();
+  const year = asked.year;
+
+  if (month && year) return { month, year, count: 0 };
+
+  const promotions = await listPoolPromotions(
+    campusName,
+    year ?? String(new Date().getFullYear()),
+    api,
+  );
+
+  return currentPoolPromotion(promotions);
+};
 
 /**
  * The piscine roster for one campus and one promotion.
