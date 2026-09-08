@@ -50,3 +50,23 @@ export const recordCall = (
 export const recentCalls = (keyId: string): ApiCall[] => [
   ...(log.get(keyId) ?? []),
 ];
+
+/**
+ * "/cursus_users?filter[campus_id]=41&…" -> "cursus_users · campus 41"
+ *
+ * cursus_id/cursus are dropped: every call carries them, on a site that reads
+ * one cursus, so they never distinguish anything and would push the fields
+ * that do off the visible width.
+ */
+export const readable = (path: string): string => {
+  const [endpoint, query = ""] = path.replace(/^\//, "").split("?");
+  const filters = [...query.matchAll(/(?:filter|range)\[([a-z_]+)\]=([^&]*)/g)]
+    .filter(([, name]) => name !== "cursus_id" && name !== "cursus")
+    .map(([, name, value]) => `${name.replace(/_id$/, "")} ${decodeURIComponent(value).slice(0, 14)}`)
+    .slice(0, 2);
+  const page = query.match(/page\[number\]=(\d+)/);
+
+  return [endpoint, ...filters, page ? `page ${page[1]}` : ""]
+    .filter(Boolean)
+    .join(" · ");
+};

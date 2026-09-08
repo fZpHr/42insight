@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { hasApiKey } from "@/lib/api-client";
+import { readable, type ApiCall } from "@/lib/forty-two/activity";
 
 /**
  * What the site is doing to the 42 API, always on screen.
@@ -54,27 +55,6 @@ interface QuotaLine {
   limit: number;
   source?: "42" | "counted";
 }
-
-interface ApiCall {
-  path: string;
-  status: number;
-  durationMs: number;
-  at: string;
-}
-
-/** "/cursus_users?filter[campus_id]=41&…" -> "cursus_users · campus 41" */
-const readable = (path: string): string => {
-  const [endpoint, query = ""] = path.replace(/^\//, "").split("?");
-  const filters = [...query.matchAll(/(?:filter|range)\[([a-z_]+)\]=([^&]*)/g)]
-    .filter(([, name]) => name !== "cursus_id" && name !== "cursus")
-    .map(([, name, value]) => `${name.replace(/_id$/, "")} ${decodeURIComponent(value).slice(0, 14)}`)
-    .slice(0, 2);
-  const page = query.match(/page\[number\]=(\d+)/);
-
-  return [endpoint, ...filters, page ? `page ${page[1]}` : ""]
-    .filter(Boolean)
-    .join(" · ");
-};
 
 export function ApiStatusBar() {
   const fetching = useIsFetching();
@@ -180,28 +160,26 @@ export function ApiStatusBar() {
           className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs transition-colors hover:bg-muted"
         >
         {fetching > 0 ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+        ) : (
+          <KeyRound className={`h-3.5 w-3.5 ${keyPresent ? "text-primary" : "text-muted-foreground"}`} />
+        )}
+        {active ? (
           <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-            <span className="tabular-nums">
-              {fetching} request{fetching > 1 ? "s" : ""} to 42…
+            <span className={`tabular-nums ${tone}`}>
+              {active.remaining}/{active.limit}
+            </span>
+            <span className="hidden text-muted-foreground sm:inline">
+              your key
             </span>
           </>
         ) : (
-          <>
-            <KeyRound className={`h-3.5 w-3.5 ${keyPresent ? "text-primary" : "text-muted-foreground"}`} />
-            {active ? (
-              <>
-                <span className={`tabular-nums ${tone}`}>
-                  {active.remaining}/{active.limit}
-                </span>
-                <span className="hidden text-muted-foreground sm:inline">
-                  your key
-                </span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">Connect your 42 key</span>
-            )}
-          </>
+          <span className="text-muted-foreground">Connect your 42 key</span>
+        )}
+        {fetching > 0 && (
+          <span className="tabular-nums text-primary">
+            · {fetching} to 42…
+          </span>
         )}
         </DropdownMenuTrigger>
 
