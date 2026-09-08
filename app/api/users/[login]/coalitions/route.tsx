@@ -5,7 +5,7 @@ import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { getServerSession } from "next-auth";
 import { cached } from "@/lib/memory-cache";
 
-/** A student's coalition: two 42 requests, on the site keys. */
+/** A student's coalition: two 42 requests, on the visitor's key. */
 
 const CACHE_TTL = 1800;
 

@@ -39,8 +39,9 @@ interface HostUsageData {
   [host: string]: HostUser[];
 }
 
-// The page walk happens server-side now, on the site keys and behind a shared
-// cache, so every open tab reads one answer instead of paginating its own.
+// The page walk happens server-side now, on the visitor's own key and behind
+// a shared cache, so every open tab reads one answer instead of paginating
+// its own.
 const fetchStudents = async (campus?: string): Promise<ClusterUser[]> => {
   try {
     if (!campus) return [];

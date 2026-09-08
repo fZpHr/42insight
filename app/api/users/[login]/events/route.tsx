@@ -5,7 +5,7 @@ import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { cached } from "@/lib/memory-cache";
 
-/** The events one student attended: two 42 requests, on the site keys. */
+/** The events one student attended: two 42 requests, on the visitor's key. */
 
 const CACHE_TTL = 600;
 

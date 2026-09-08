@@ -259,7 +259,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   // Read after mount: document.cookie does not exist during the server render.
-  const [keyPresent, setKeyPresent] = useState(true)
+  const [keyPresent, setKeyPresent] = useState(false)
 
   useEffect(() => {
     setKeyPresent(hasApiKey())

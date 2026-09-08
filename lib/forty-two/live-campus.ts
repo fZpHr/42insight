@@ -8,22 +8,21 @@ import {
 } from "@/lib/forty-two/work-projects";
 
 /**
- * Live campus data, straight from the 42 API, on the site's own keys.
+ * Live campus data, straight from the 42 API, on the visitor's own key.
  *
  * This replaces the refresh-42 cron jobs: nothing here reads a database.
  *
  * A whole campus arrives in one paginated call -- a dozen or so requests, not
  * one per student -- which is what makes it affordable to fetch on demand and
- * keep in memory for a few minutes. No visitor needs a key of their own to
- * read it, and the server keeps nothing between restarts.
+ * keep in memory for a few minutes. A connected key is required to fetch it,
+ * and the server keeps nothing between restarts.
  *
  * The one thing that does not fit that shape is logtime: it needs a request per
  * student, which no page load can afford. It is built by a visitor's own key
  * and stored in their browser, never here.
  *
- * The fetching runs on the visitor's own key -- the site's credentials are for
- * signing in and nothing else. What one visitor pays to load lands in the
- * shared cache, so the next reader gets it without spending anything.
+ * What one visitor pays to load lands in the shared cache, so the next reader
+ * gets it without spending anything.
  */
 
 export const CAMPUS_IDS: { [key: string]: number } = {

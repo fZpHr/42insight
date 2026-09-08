@@ -6,12 +6,12 @@ import { getServerSession } from "next-auth";
 import { cached } from "@/lib/memory-cache";
 
 /**
- * One student's profile and projects: two or three 42 requests, on the site
- * keys.
+ * One student's profile and projects: two or three 42 requests, on the
+ * visitor's key.
  *
- * The cache is shared rather than per-instance -- a serverless deployment runs
- * many instances of this route, and a Map in each one means the same profile is
- * refetched once per instance.
+ * Cached in the server's own memory, which is per instance, not shared across
+ * them -- a serverless deployment runs many instances of this route, and a Map
+ * in each one means the same profile is refetched once per instance.
  */
 
 const CACHE_TTL = 600;

@@ -166,7 +166,8 @@ export default function Query() {
             <Button
               onClick={() => fetchQueryResults(query)}
               className="w-full"
-              disabled={isLoading || !query.trim()}
+              disabled={isLoading || !query.trim() || keyPresent === false}
+              title={keyPresent === false ? "Connect your 42 API key first" : undefined}
             >
               {isLoading ? (
                 <>
