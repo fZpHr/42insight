@@ -16,11 +16,23 @@ import type { PoolUser, Student } from "@/types";
 /** Which roster a page is showing. */
 export type Cursus = "cursus" | "piscine";
 
+/**
+ * Stands in for a month, a year, or both, to rank across promotions rather
+ * than within one. The route reads it the same way.
+ */
+export const ALL_PROMOTIONS = "all";
+
 /** One piscine a campus ran, as /api/pool-promotions reports it. */
 export interface PoolPromotion {
   month: string;
   year: string;
   count: number;
+  /** null when the sample could not agree on one. */
+  cursusName: string | null;
+  /** False for a Discovery Piscine, which is a different cursus entirely. */
+  isCPiscine: boolean;
+  /** The one to open on when nobody has chosen. */
+  isCurrent?: boolean;
 }
 
 /**

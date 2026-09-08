@@ -8,7 +8,10 @@ import {
   campusRequiredResponse,
 } from "@/lib/forty-two/campus-scope";
 import {
+  YEARS_BACK,
   getPoolUsers,
+  getPoolUsersAcross,
+  listPoolPromotions,
   resolvePoolPromotion,
 } from "@/lib/forty-two/live-campus";
 
@@ -33,9 +36,32 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
+    const askedMonth = searchParams.get("month");
+    const askedYear = searchParams.get("year");
+
+    // "all" gathers promotions rather than naming one: every piscine of a
+    // year, or of the last few years, on one scale.
+    if (askedMonth === "all" || askedYear === "all") {
+      const thisYear = new Date().getFullYear();
+      const years =
+        askedYear === "all" || !askedYear
+          ? Array.from({ length: YEARS_BACK }, (_, i) => String(thisYear - i))
+          : [askedYear];
+
+      const promotions = (
+        await Promise.all(
+          years.map((year) => listPoolPromotions(campus, year, api)),
+        )
+      ).flat();
+
+      return NextResponse.json(
+        await getPoolUsersAcross(campus, promotions, api),
+      );
+    }
+
     const promotion = await resolvePoolPromotion(campus, api, {
-      month: searchParams.get("month"),
-      year: searchParams.get("year"),
+      month: askedMonth,
+      year: askedYear,
     });
 
     // A campus with no piscine on record for the year has an empty ranking,
@@ -43,7 +69,13 @@ export async function GET(request: Request) {
     if (!promotion) return NextResponse.json([]);
 
     return NextResponse.json(
-      await getPoolUsers(campus, promotion.month, promotion.year, api),
+      await getPoolUsers(
+        campus,
+        promotion.month,
+        promotion.year,
+        api,
+        promotion.cursusId ?? undefined,
+      ),
     );
   } catch (error: any) {
 

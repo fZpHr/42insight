@@ -256,18 +256,26 @@ const getWorkStatus = async (
 export const getEnrichedCampusStudents = getCampusStudents;
 
 /**
- * The piscines a campus actually ran in a given year.
+ * The piscines a campus actually ran in a given year, and which kind each was.
  *
- * There is no guessing this. Angouleme ran six in 2026 -- February, April,
- * June, July, August and September -- and a different six in 2025. Paris runs
- * neither July nor September, but May and June. A school changes its months
- * from one year to the next, so the only honest answer comes from asking.
+ * There is no guessing the months. Angouleme ran six promotions in 2026 --
+ * February, April, June, July, August and September -- and a different six in
+ * 2025. Paris runs neither July nor September, but May and June. A school
+ * changes its months from one year to the next, so the only honest answer
+ * comes from asking.
  *
- * Twelve requests, one per month, each asking for a single row purely to read
- * the X-Total header. That is a fixed cost whatever the size of the campus:
- * reading the year's roster instead would be three pages at Angouleme and
- * thirty-three at Paris. Cached a day, since a piscine that has happened does
- * not un-happen.
+ * Nor are they the same thing. Angouleme's February 2026 is a Discovery
+ * Piscine: cursus 3, "Web Programming Essentials", seven days, and not one of
+ * its 22 people is in the C Piscine cursus at all. September is the real one:
+ * cursus 9, twenty-five days. Listed together they would be a ranking in which
+ * a third of the promotions have everybody on level zero, because the level
+ * being read is for a cursus they never took.
+ *
+ * Cost: twelve requests, one per month, each asking for five rows -- the
+ * X-Total header for the size, the rows themselves for sample ids -- then one
+ * request that asks which cursus those samples are in. Thirteen, fixed,
+ * whatever the size of the campus. Cached a day, since a piscine that has
+ * happened does not un-happen.
  */
 
 export const POOL_MONTHS = [
@@ -278,11 +286,27 @@ export const POOL_MONTHS = [
 export interface PoolPromotion {
   month: string;
   year: string;
-  /** How many people 42 has on it, staff included -- it is an order of size. */
+  /** How many people 42 has on it -- an order of size, not a roster. */
   count: number;
+  /** The cursus its members actually sat, when the sample agreed on one. */
+  cursusId: number | null;
+  cursusName: string | null;
+  /** Whether that cursus is the C Piscine, as opposed to a Discovery one. */
+  isCPiscine: boolean;
+  /** The one a page opens on when nobody has chosen. */
+  isCurrent?: boolean;
 }
 
 const PROMOTIONS_TTL = 24 * 60 * 60;
+
+/**
+ * How far back "all years" reaches. Four covers anyone still at the school;
+ * further is a lot of requests for people who have long since left.
+ */
+export const YEARS_BACK = 4;
+
+/** Enough of a promotion to tell which cursus it was, without reading it all. */
+const SAMPLE_PER_MONTH = 5;
 
 export const listPoolPromotions = async (
   campusName: string,
@@ -293,26 +317,117 @@ export const listPoolPromotions = async (
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
   return cachedOnce(
-    `pool-promotions:${campusName}:${year}`,
+    `pool-promotions:v2:${campusName}:${year}`,
     PROMOTIONS_TTL,
     async () => {
-      const found: PoolPromotion[] = [];
+      const found: { month: string; count: number; samples: number[] }[] = [];
 
       for (const month of POOL_MONTHS) {
         const response = await api.fetch(
           `/campus/${campusId}/users` +
             `?filter[pool_month]=${month}&filter[pool_year]=${encodeURIComponent(year)}` +
-            `&page[size]=1`,
+            `&page[size]=${SAMPLE_PER_MONTH}`,
         );
         if (!response.ok) continue;
 
         const count = Number(response.headers.get("X-Total")) || 0;
-        if (count > 0) found.push({ month, year, count });
+        if (count === 0) continue;
+
+        const rows = await response.json();
+        found.push({
+          month,
+          count,
+          samples: (Array.isArray(rows) ? rows : [])
+            .map((row: any) => row?.id)
+            .filter((id: unknown): id is number => typeof id === "number"),
+        });
       }
 
-      return found;
+      const cursusBySample = await getSampleCursus(
+        found.flatMap((promotion) => promotion.samples),
+        api,
+      );
+
+      const classified = found.map(({ month, count, samples }) => {
+        const cursus = dominantCursus(samples, cursusBySample);
+
+        return {
+          month,
+          year,
+          count,
+          cursusId: cursus?.id ?? null,
+          cursusName: cursus?.name ?? null,
+          // Unclassifiable is treated as the real thing rather than hidden: a
+          // promotion nobody can name is still better shown than dropped.
+          isCPiscine: cursus === null || cursus.id === POOL_CURSUS_ID,
+        };
+      });
+
+      // Marked here rather than worked out again in the browser, so the page
+      // opens on the same promotion the roster route would have chosen.
+      const current = currentPoolPromotion(classified);
+
+      return classified.map((promotion) => ({
+        ...promotion,
+        isCurrent:
+          promotion.month === current?.month && promotion.year === current?.year,
+      }));
     },
   );
+};
+
+/** Which cursus each sampled student is in, in one request. */
+const getSampleCursus = async (
+  ids: number[],
+  api: FortyTwoApi,
+): Promise<Map<number, { id: number; name: string }[]>> => {
+  const bySample = new Map<number, { id: number; name: string }[]>();
+  if (ids.length === 0) return bySample;
+
+  try {
+    const rows = await api.fetchAllPages(
+      `/cursus_users?filter[user_id]=${ids.join(",")}`,
+      { maxPages: 3 },
+    );
+
+    for (const row of rows) {
+      const userId = row?.user?.id;
+      if (typeof userId !== "number" || typeof row.cursus_id !== "number") continue;
+
+      const seen = bySample.get(userId) ?? [];
+      seen.push({ id: row.cursus_id, name: row.cursus?.name ?? `Cursus ${row.cursus_id}` });
+      bySample.set(userId, seen);
+    }
+  } catch (error: any) {
+    console.error("[live-campus] classifying piscines failed:", error.message);
+  }
+
+  return bySample;
+};
+
+/**
+ * The cursus a promotion's samples have in common.
+ *
+ * A student can be in several -- somebody who did a Discovery Piscine and came
+ * back for the real one is in both -- so this counts across the samples and
+ * takes the most common, which is the one that promotion was.
+ */
+const dominantCursus = (
+  samples: number[],
+  cursusBySample: Map<number, { id: number; name: string }[]>,
+): { id: number; name: string } | null => {
+  const tally = new Map<number, { name: string; n: number }>();
+
+  for (const sample of samples) {
+    for (const cursus of cursusBySample.get(sample) ?? []) {
+      const seen = tally.get(cursus.id) ?? { name: cursus.name, n: 0 };
+      seen.n++;
+      tally.set(cursus.id, seen);
+    }
+  }
+
+  const best = [...tally.entries()].sort((a, b) => b[1].n - a[1].n)[0];
+  return best ? { id: best[0], name: best[1].name } : null;
 };
 
 /**
@@ -324,14 +439,19 @@ export const currentPoolPromotion = (
   promotions: PoolPromotion[],
   now = new Date(),
 ): PoolPromotion | null => {
-  const started = promotions.filter((promotion) => {
+  // The C Piscine is what "the piscine" means unqualified. A Discovery week is
+  // only shown when it is picked, or when a campus runs nothing else.
+  const real = promotions.filter((promotion) => promotion.isCPiscine);
+  const candidates = real.length > 0 ? real : promotions;
+
+  const started = candidates.filter((promotion) => {
     const year = Number(promotion.year);
     if (year < now.getFullYear()) return true;
     if (year > now.getFullYear()) return false;
     return POOL_MONTHS.indexOf(promotion.month as any) <= now.getMonth();
   });
 
-  const pool = started.length > 0 ? started : promotions;
+  const pool = started.length > 0 ? started : candidates;
 
   return (
     [...pool].sort(
@@ -356,15 +476,25 @@ export const resolvePoolPromotion = async (
   asked: { month?: string | null; year?: string | null } = {},
 ): Promise<PoolPromotion | null> => {
   const month = asked.month?.toLowerCase();
-  const year = asked.year;
+  const year = asked.year ?? String(new Date().getFullYear());
 
-  if (month && year) return { month, year, count: 0 };
+  const promotions = await listPoolPromotions(campusName, year, api);
 
-  const promotions = await listPoolPromotions(
-    campusName,
-    year ?? String(new Date().getFullYear()),
-    api,
-  );
+  // Even a promotion named outright is looked up rather than taken at face
+  // value: which cursus it was decides which levels to read, and a Discovery
+  // Piscine's members have none in the C Piscine.
+  if (month) {
+    return (
+      promotions.find((promotion) => promotion.month === month) ?? {
+        month,
+        year,
+        count: 0,
+        cursusId: null,
+        cursusName: null,
+        isCPiscine: true,
+      }
+    );
+  }
 
   return currentPoolPromotion(promotions);
 };
@@ -390,11 +520,13 @@ export const getPoolUsers = async (
   month: string,
   year: string,
   api: FortyTwoApi,
+  /** The cursus this promotion sat, when it is known to not be the C Piscine. */
+  cursusId: number = POOL_CURSUS_ID,
 ): Promise<any[]> => {
   const campusId = await resolveCampusId(campusName, api);
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
-  const cacheKey = `pool:${campusName}:${month}:${year}`;
+  const cacheKey = `pool:${campusName}:${month}:${year}:${cursusId}`;
 
   return cachedOnce(cacheKey, POOL_TTL, async () => {
     const users = await api.fetchAllPages(
@@ -408,6 +540,7 @@ export const getPoolUsers = async (
 
     const levels = await getPoolLevels(
       pisciners.map((user) => user.id),
+      cursusId,
       api,
     );
 
@@ -437,6 +570,46 @@ export const getPoolUsers = async (
 };
 
 /**
+ * Several promotions at once, for a ranking across a year or across the lot.
+ *
+ * Only C Piscine promotions are gathered. A Discovery week is a different
+ * cursus over seven days rather than twenty-five, so its levels do not belong
+ * on the same scale -- it is worth looking at, but on its own.
+ *
+ * Somebody who sat July and came back in September appears in both, so they
+ * are folded together on the higher level, which is the one that says how far
+ * they got.
+ */
+export const getPoolUsersAcross = async (
+  campusName: string,
+  promotions: PoolPromotion[],
+  api: FortyTwoApi,
+): Promise<any[]> => {
+  const byStudent = new Map<number, any>();
+
+  for (const promotion of promotions) {
+    if (!promotion.isCPiscine) continue;
+
+    const roster = await getPoolUsers(
+      campusName,
+      promotion.month,
+      promotion.year,
+      api,
+      promotion.cursusId ?? undefined,
+    ).catch(() => []);
+
+    for (const student of roster) {
+      const seen = byStudent.get(student.id);
+      if (!seen || (student.level ?? 0) > (seen.level ?? 0)) {
+        byStudent.set(student.id, student);
+      }
+    }
+  }
+
+  return [...byStudent.values()];
+};
+
+/**
  * Piscine levels, by student id.
  *
  * A hundred ids to a request: filter[user_id] takes a comma list, and a
@@ -445,6 +618,7 @@ export const getPoolUsers = async (
  */
 const getPoolLevels = async (
   ids: number[],
+  cursusId: number,
   api: FortyTwoApi,
 ): Promise<Map<number, number>> => {
   const levels = new Map<number, number>();
@@ -455,7 +629,7 @@ const getPoolLevels = async (
 
     try {
       const rows = await api.fetchAllPages(
-        `/cursus_users?filter[cursus_id]=${POOL_CURSUS_ID}` +
+        `/cursus_users?filter[cursus_id]=${cursusId}` +
           `&filter[user_id]=${chunk.join(",")}`,
         { maxPages: 2 },
       );

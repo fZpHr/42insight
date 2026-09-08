@@ -38,7 +38,13 @@ export async function GET(
     const { login } = await params;
     const promotion = await resolvePoolPromotion(campus, api);
     const poolUsers = promotion
-      ? await getPoolUsers(campus, promotion.month, promotion.year, api)
+      ? await getPoolUsers(
+          campus,
+          promotion.month,
+          promotion.year,
+          api,
+          promotion.cursusId ?? undefined,
+        )
       : [];
     const poolUser = poolUsers.find((candidate) => candidate.name === login);
 

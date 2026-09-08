@@ -1048,7 +1048,7 @@ export default function Rankings() {
 
             <div className="w-full sm:w-auto">
               {/* Desktop view - show controls directly */}
-              <div className="hidden sm:flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:w-auto">
+              <div className="hidden sm:flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:items-center sm:w-auto sm:justify-end">
                 {/* 42cursus or piscine: a different cursus, so a different
                     roster and a different request. */}
                 <div className="inline-flex overflow-hidden rounded-md border text-xs">
@@ -1073,29 +1073,34 @@ export default function Rankings() {
                     campus={effectiveCampus}
                     year={poolYear}
                     month={poolMonth}
-                    onYearChange={(next) => {
-                      setPoolYear(next);
-                      setPoolMonth(null);
+                    onChange={({ year, month }) => {
+                      setPoolYear(year);
+                      setPoolMonth(month);
                     }}
-                    onMonthChange={setPoolMonth}
                   />
                 )}
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <Select value={selectedYear} onValueChange={setSelectedYear}>
-                    <SelectTrigger className="w-full sm:w-32">
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Years</SelectItem>
-                      {availableYears.map((yr) => (
-                        <SelectItem key={yr} value={yr}>
-                          {yr}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+
+                {/* The student-year filter and the promotion picker are both
+                    "which year", and having them side by side asked the reader
+                    to work out which was which. The piscine has its own. */}
+                {cursus === "cursus" && (
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                      <SelectTrigger className="w-full sm:w-32">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Years</SelectItem>
+                        {availableYears.map((yr) => (
+                          <SelectItem key={yr} value={yr}>
+                            {yr}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <Select

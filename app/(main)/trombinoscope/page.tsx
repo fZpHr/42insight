@@ -233,11 +233,10 @@ export default function Trombinoscope() {
               campus={effectiveCampus}
               year={poolYear}
               month={poolMonth}
-              onYearChange={(next) => {
-                setPoolYear(next);
-                setPoolMonth(null);
+              onChange={({ year, month }) => {
+                setPoolYear(year);
+                setPoolMonth(month);
               }}
-              onMonthChange={setPoolMonth}
             />
           )}
           <TooltipProvider>

@@ -44,7 +44,13 @@ export async function GET(request: Request) {
     const [students, poolUsers] = await Promise.all([
       getCampusStudents(campus, api),
       promotion
-        ? getPoolUsers(campus, promotion.month, promotion.year, api).catch(() => [])
+        ? getPoolUsers(
+            campus,
+            promotion.month,
+            promotion.year,
+            api,
+            promotion.cursusId ?? undefined,
+          ).catch(() => [])
         : Promise.resolve([]),
     ]);
 

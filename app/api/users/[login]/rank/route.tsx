@@ -62,7 +62,13 @@ export async function GET(
 
     const promotion = await resolvePoolPromotion(campusName, api);
     const poolUsers = promotion
-      ? await getPoolUsers(campusName, promotion.month, promotion.year, api)
+      ? await getPoolUsers(
+          campusName,
+          promotion.month,
+          promotion.year,
+          api,
+          promotion.cursusId ?? undefined,
+        )
       : [];
     if (poolUsers.some((poolUser) => poolUser.name === login)) {
       return NextResponse.json({ rank: rankByLevel(poolUsers, login) });
