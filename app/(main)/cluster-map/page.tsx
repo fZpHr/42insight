@@ -447,6 +447,24 @@ export default function ClusterMap() {
         </div>
       ) : hasFloorPlan ? (
         <>
+          {fetchedPlan?.source === "vendored" &&
+            fetchedPlan.coverage !== undefined &&
+            fetchedPlan.coverage < 0.95 && (
+              <div className="max-w-7xl mx-auto mb-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Some machines are not on this plan</AlertTitle>
+                  <AlertDescription>
+                    The layout for {effectiveCampus} covers about{" "}
+                    {Math.round(fetchedPlan.coverage * 100)}% of the machines
+                    currently in use, so a few students will be logged in
+                    somewhere this map cannot show. Rooms change faster than
+                    the plans do.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
           {fetchedPlan?.source === "derived" && (
             <div className="max-w-7xl mx-auto mb-4">
               <Alert>

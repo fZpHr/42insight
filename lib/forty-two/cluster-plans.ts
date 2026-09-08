@@ -123,13 +123,19 @@ const compareNatural = (a: [string, unknown], b: [string, unknown]) =>
 /**
  * How much of a campus has to match a vendored map for it to be believed.
  *
- * The maps were last touched in December 2024 and campuses move. Paris is the
- * one that shows why this check exists: its vendored map is `e1r13p1` and the
- * campus now runs `f2r10s6`, so not one live host matches. A third is a
- * deliberately low bar -- a map missing recent machines is still worth having,
- * a map of a building nobody works in any more is not.
+ * The maps were last touched in December 2024 and campuses move. Surveying all
+ * 25 against the hosts 42 reports in use: ten still fit (Nice 100%, Barcelona
+ * 99%, Malaga 97%, Lausanne 79%, Khouribga 65%), ten have come adrift (Paris,
+ * Belgium, Quebec, Seoul, Rome, Yerevan and Heilbronn match nothing at all --
+ * Paris is listed as `e1r13p1` and now runs `f2r10s6`), and five are for
+ * campuses the API no longer serves.
+ *
+ * Half is the bar because of what the map is for. Below it, most of the people
+ * logged in are at machines the map has never heard of, so they appear nowhere
+ * -- and a schematic that shows everyone beats a beautiful room that hides
+ * them. Above it the real layout is worth the few it misses.
  */
-const FRESH_ENOUGH = 0.3;
+const FRESH_ENOUGH = 0.5;
 
 /** Up to a hundred recent hosts is one request and plenty to judge on. */
 const SAMPLE_SIZE = 100;
@@ -140,6 +146,11 @@ export interface ResolvedPlan {
   source: "vendored" | "derived";
   /** Workstations the plan names. */
   hostCount: number;
+  /**
+   * For a vendored plan, the share of machines in use that it knows about.
+   * Short of 1 means some students are sitting somewhere it cannot draw.
+   */
+  coverage?: number;
 }
 
 export const resolveFloorPlan = async (
@@ -148,9 +159,15 @@ export const resolveFloorPlan = async (
 ): Promise<ResolvedPlan | null> => {
   if (hasVendoredPlan(campusId)) {
     const plan = await loadVendoredPlan(campusId);
+    const coverage = plan ? await measureCoverage(plan, campusId, api) : 0;
 
-    if (plan && (await matchesCampus(plan, campusId, api))) {
-      return { plan, source: "vendored", hostCount: hostsIn(plan).size };
+    if (plan && coverage >= FRESH_ENOUGH) {
+      return {
+        plan,
+        source: "vendored",
+        hostCount: hostsIn(plan).size,
+        coverage,
+      };
     }
   }
 
@@ -160,31 +177,28 @@ export const resolveFloorPlan = async (
     : null;
 };
 
-/** Whether the machines a plan names are the machines students are sitting at. */
-const matchesCampus = async (
+/** What share of the machines students are actually at a plan knows about. */
+const measureCoverage = async (
   plan: FloorPlan,
   campusId: number,
   api: FortyTwoApi,
-): Promise<boolean> => {
+): Promise<number> => {
   const known = hostsIn(plan);
-  if (known.size === 0) return false;
+  if (known.size === 0) return 0;
 
   const response = await api.fetch(
     `/campus/${campusId}/locations?page[size]=${SAMPLE_SIZE}`,
   );
-  if (!response.ok) {
-    // No way to judge is not a reason to throw away a real layout.
-    return true;
-  }
+  // No way to judge is not a reason to throw away a real layout.
+  if (!response.ok) return 1;
 
   const live = new Set<string>();
   for (const row of await response.json()) {
     if (typeof row?.host === "string") live.add(row.host);
   }
 
-  // A campus with nobody on it tells us nothing either way.
-  if (live.size === 0) return true;
+  // A campus nobody has sat at tells us nothing either way.
+  if (live.size === 0) return 1;
 
-  const matched = [...live].filter((host) => known.has(host)).length;
-  return matched / live.size >= FRESH_ENOUGH;
+  return [...live].filter((host) => known.has(host)).length / live.size;
 };

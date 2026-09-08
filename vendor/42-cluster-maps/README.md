@@ -20,14 +20,52 @@ repository, which is the same reason it has no database and no cron.
 ## Trust, but check
 
 The data is crowd-sourced through that app's contribution flow and was last
-touched in December 2024, so some of it has aged. Paris is the clear case: its
-map here is `e1r13p1` and the campus now runs `f2r10s6`, which is a move, not a
-typo -- not one live host matches.
+touched in December 2024, so some of it has aged. Surveyed on 2026-09-08
+against the hosts 42 reports in use, one page of recent locations per campus:
 
-`lib/forty-two/cluster-plans.ts` therefore checks a map against the hosts 42
-reports as being in use before trusting it, and falls back to working the
-layout out from the host names when it does not hold up.
+| Campus | Workstations | Match | |
+| --- | ---: | ---: | --- |
+| Nice | 144 | 100% | current |
+| Barcelona | 177 | 99% | current |
+| Malaga | 207 | 97% | current |
+| Lausanne | 181 | 79% | current |
+| Khouribga | 300 | 65% | current |
+| Abu Dhabi | 112 | 52% | current |
+| Lyon | 161 | 42% | adrift |
+| Angouleme | 53 | 32% | adrift |
+| Benguerir | 150 | 32% | adrift |
+| Madrid | 84 | 30% | adrift |
+| Amsterdam | 56 | 16% | adrift |
+| Lisboa | 148 | 13% | adrift |
+| Mulhouse | 1 | 2% | adrift |
+| Paris | 811 | 0% | moved |
+| Belgium | 89 | 0% | moved |
+| Quebec | 179 | 0% | moved |
+| Seoul | 69 | 0% | moved |
+| Rome | 152 | 0% | moved |
+| Heilbronn | 288 | 0% | moved |
+| Yerevan | 0 | 0% | empty file |
 
-Where it does hold up it is exact. Nice and Angouleme were drawn by hand in
+Paris is the clearest case: its map here is `e1r13p1` and the campus now runs
+`f2r10s6`, which is a move rather than a typo. Five further files (campus ids
+5, 7, 8, 17, 23) are for campuses the API no longer serves at all.
+
+`lib/forty-two/cluster-plans.ts` therefore samples a map against the hosts in
+use before trusting it, and falls back to working the layout out from the host
+names below half. Half is the bar because of what the map is for: under it,
+most of the people logged in are at machines the map has never heard of and so
+appear nowhere, and a schematic that shows everyone beats a room that hides
+them.
+
+Where a map does hold up it is exact. Nice and Angouleme were drawn by hand in
 this repo before this directory existed, and against those two: 144 of 144
 workstations at Nice, 53 of 53 at Angouleme, identical on both sides.
+
+## Other collections looked at
+
+- [nicopasla/better-intra](https://github.com/nicopasla/better-intra) (MIT,
+  actively maintained) has campus files for 41 campuses, but only Belgium
+  carries an actual seat layout; the rest are `"definitions": {}` with just
+  cluster ids and names.
+- [femaury/intra_42](https://github.com/femaury/intra_42) has the same format
+  for 11 campuses, and is GPL-3.0, which does not sit with this project's MIT.
