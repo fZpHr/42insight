@@ -32,7 +32,7 @@ import { ALL_PROMOTIONS, type PoolPromotion } from "@/lib/pool-roster";
  * the same scale as a C Piscine's, but they are still worth looking at.
  */
 
-const YEARS_OFFERED = 4;
+const YEARS_OFFERED = 6;
 
 const titleCase = (month: string) =>
   month.charAt(0).toUpperCase() + month.slice(1);
@@ -181,7 +181,7 @@ function YearSubmenu({
 
         {!isLoading && promotions.length === 0 && (
           <p className="px-2 py-2 text-xs text-muted-foreground">
-            No piscine on record.
+            Nobody from a {year} piscine is still at this campus.
           </p>
         )}
       </DropdownMenuSubContent>

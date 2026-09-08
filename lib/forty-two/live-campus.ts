@@ -300,13 +300,30 @@ export interface PoolPromotion {
 const PROMOTIONS_TTL = 24 * 60 * 60;
 
 /**
- * How far back "all years" reaches. Four covers anyone still at the school;
- * further is a lot of requests for people who have long since left.
+ * How far back the piscine picker reaches.
+ *
+ * Older years thin out on their own, and not because they were quiet:
+ * /campus/:id/users lists who is at the campus now, so a promotion whose
+ * members have since graduated or moved away is mostly gone from it. Angouleme
+ * 2021 answers three people. Six years is far enough to cover anyone still
+ * around without pretending the years before that are empty.
  */
-export const YEARS_BACK = 4;
+export const YEARS_BACK = 6;
 
 /** Enough of a promotion to tell which cursus it was, without reading it all. */
 const SAMPLE_PER_MONTH = 5;
+
+const countPromotion = (
+  campusId: number,
+  month: string,
+  year: string,
+  api: FortyTwoApi,
+) =>
+  api.fetch(
+    `/campus/${campusId}/users` +
+      `?filter[pool_month]=${month}&filter[pool_year]=${encodeURIComponent(year)}` +
+      `&page[size]=${SAMPLE_PER_MONTH}`,
+  );
 
 export const listPoolPromotions = async (
   campusName: string,
@@ -323,12 +340,21 @@ export const listPoolPromotions = async (
       const found: { month: string; count: number; samples: number[] }[] = [];
 
       for (const month of POOL_MONTHS) {
-        const response = await api.fetch(
-          `/campus/${campusId}/users` +
-            `?filter[pool_month]=${month}&filter[pool_year]=${encodeURIComponent(year)}` +
-            `&page[size]=${SAMPLE_PER_MONTH}`,
-        );
-        if (!response.ok) continue;
+        // A month that fails is not a month with no piscine, and skipping it
+        // quietly meant one transient 429 could delete July 2023 -- 61 people
+        // -- from the list, and the gap was then cached for a day. Retried
+        // once, and a month that still will not answer fails the whole list
+        // rather than being served as if it were complete.
+        let response = await countPromotion(campusId, month, year, api);
+
+        if (!response.ok) {
+          response = await countPromotion(campusId, month, year, api);
+        }
+        if (!response.ok) {
+          throw new Error(
+            `42 API responded ${response.status} counting ${month} ${year}`,
+          );
+        }
 
         const count = Number(response.headers.get("X-Total")) || 0;
         if (count === 0) continue;
