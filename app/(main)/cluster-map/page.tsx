@@ -17,6 +17,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ClusterUser } from "@/types";
 import { angoulemeMaps } from "./(maps)/angouleme";
 import { niceMaps } from "./(maps)/nice";
+import type { DerivedPlan, FloorPlan } from "@/lib/forty-two/cluster-plan";
+import { fetchJson } from "@/lib/api-client";
 import { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -86,7 +88,7 @@ const fetchHostUsage = async (campus?: string): Promise<HostUsageData> => {
  * every seat empty. A campus that looked deserted was really a campus that was
  * never on the map.
  */
-const FLOOR_PLANS: Record<string, Record<string, (string | null)[][]>> = {
+const FLOOR_PLANS: Record<string, FloorPlan> = {
   angouleme: angoulemeMaps,
   nice: niceMaps,
 };
@@ -95,11 +97,20 @@ function getMapByCampus(campus?: string) {
   return FLOOR_PLANS[campus?.toLowerCase() ?? ""] ?? null;
 }
 
+/**
+ * The layout worked out from workstation names, for the campuses nobody drew.
+ * See lib/forty-two/cluster-plan.ts for why it is derived rather than fetched.
+ */
+const fetchDerivedPlan = async (campus?: string): Promise<DerivedPlan | null> => {
+  if (!campus) return null;
+  return fetchJson<DerivedPlan>(`/api/cluster-map/${encodeURIComponent(campus)}`);
+};
+
 export default function ClusterMap() {
   const { data: session, status } = useSession();
   const user = session?.user;
   const { selectedCampus } = useCampus();
-  const [selectedCluster, setSelectedCluster] = useState("1");
+  const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [showTimeoutError, setShowTimeoutError] = useState(false);
 
 
@@ -142,11 +153,35 @@ export default function ClusterMap() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const renderCluster = (clusterNumber: string) => {
-    const campusMaps = getMapByCampus(effectiveCampus);
-    if (!campusMaps) return null;
-    const key = effectiveCampus === "Nice" ? `c${clusterNumber}` : clusterNumber;
-    const map = campusMaps[key];
+  // Drawn by hand where somebody drew one, worked out from the workstation
+  // names everywhere else. Only the second costs a request, and only once a day.
+  const drawnPlan = getMapByCampus(effectiveCampus);
+
+  const { data: derived, isLoading: isLoadingPlan } = useQuery({
+    queryKey: ["cluster-plan", effectiveCampus],
+    queryFn: () => fetchDerivedPlan(effectiveCampus),
+    enabled:
+      status === "authenticated" && !!effectiveCampus && drawnPlan === null,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+
+  const plan: FloorPlan | null = drawnPlan ?? derived?.plan ?? null;
+  const clusterKeys = plan
+    ? Object.keys(plan).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      )
+    : [];
+  const hasFloorPlan = clusterKeys.length > 0;
+
+  // Whatever the picker is set to has to exist in the plan that arrived: the
+  // keys differ per campus, and the previous campus's choice will not be there.
+  const currentCluster =
+    selectedCluster && clusterKeys.includes(selectedCluster)
+      ? selectedCluster
+      : (clusterKeys[0] ?? null);
+
+  const renderCluster = (clusterKey: string) => {
+    const map = plan?.[clusterKey];
     if (!map) return null;
 
     return (
@@ -286,11 +321,8 @@ export default function ClusterMap() {
     );
   };
 
-  const getAvailablePC = (clusterNumber: string) => {
-    const campusMaps = getMapByCampus(effectiveCampus);
-    if (!campusMaps) return 0;
-    const key = effectiveCampus === "Nice" ? `c${clusterNumber}` : clusterNumber;
-    const map = campusMaps[key];
+  const getAvailablePC = (clusterKey: string) => {
+    const map = plan?.[clusterKey];
     if (!map) return 0;
 
     const totalWorkspaces = map
@@ -308,32 +340,15 @@ export default function ClusterMap() {
     return totalWorkspaces - occupiedWorkspaces;
   };
 
-  const getTotalAvailablePCs = () => {
-    const count = getNumberofClusters();
-    let total = 0;
-    for (let i = 1; i <= count; i++) {
-      total += getAvailablePC(String(i));
-    }
-    return total;
-  };
-
-  const getNumberofClusters = () => {
-    const campusMaps = getMapByCampus(effectiveCampus);
-    return campusMaps ? Object.keys(campusMaps).length : 0;
-  };
-
-  const hasFloorPlan = getMapByCampus(effectiveCampus) !== null;
+  const getTotalAvailablePCs = () =>
+    clusterKeys.reduce((total, key) => total + getAvailablePC(key), 0);
 
   // Who is actually at a machine, for a campus with no plan to place them on.
   const connected = students
     .filter((student) => student.host && student.host !== "404")
     .sort((a, b) => a.host.localeCompare(b.host, undefined, { numeric: true }));
 
-  const count = getNumberofClusters();
-  const nums = Array.from(
-    { length: Math.max(0, count) },
-    (_, i) => String(i + 1)
-  );
+
 
 
 
@@ -399,47 +414,63 @@ export default function ClusterMap() {
               />
             </Button>
 
-            {hasFloorPlan && (
-            <Select
-              value={selectedCluster}
-              onValueChange={setSelectedCluster}
-            >
-              <SelectTrigger className="flex-1 sm:w-[220px]">
-                <SelectValue placeholder="Select cluster" />
-              </SelectTrigger>
-              <SelectContent>
-                {nums.map((num) => (
-                  <SelectItem key={num} value={num}>
-                    <span className="hidden sm:inline">
-                      Cluster {num} ({getAvailablePC(num)} available)
-                    </span>
-                    <span className="sm:hidden">
-                      C{num} ({getAvailablePC(num)})
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {hasFloorPlan && currentCluster && (
+              <Select value={currentCluster} onValueChange={setSelectedCluster}>
+                <SelectTrigger className="flex-1 sm:w-[220px]">
+                  <SelectValue placeholder="Select cluster" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clusterKeys.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      <span className="hidden sm:inline">
+                        Cluster {key} ({getAvailablePC(key)} available)
+                      </span>
+                      <span className="sm:hidden">
+                        {key} ({getAvailablePC(key)})
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading || isLoadingPlan ? (
         <div className="text-center text-sm text-gray-500 py-8">
-          Loading cluster {selectedCluster}...
+          {isLoadingPlan ? "Working out the layout…" : "Loading cluster…"}
         </div>
       ) : hasFloorPlan ? (
-        renderCluster(selectedCluster)
+        <>
+          {!drawnPlan && (
+            <div className="max-w-7xl mx-auto mb-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Layout read from the workstation names</AlertTitle>
+                <AlertDescription>
+                  Nobody drew a plan for {effectiveCampus}, and 42&apos;s own
+                  cluster endpoint is closed to student keys, so the rows and
+                  seats here come from the workstation names themselves
+                  {derived?.hostCount ? ` (${derived.hostCount} of them)` : ""}.
+                  Treat it as a seating chart rather than the room: seats run in
+                  numeric order, and a machine nobody has logged into recently
+                  is not in the names, so it shows as an empty square.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          {currentCluster && renderCluster(currentCluster)}
+        </>
       ) : (
         <div className="max-w-7xl mx-auto">
           <Alert className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>No floor plan for {effectiveCampus}</AlertTitle>
             <AlertDescription>
-              The seat-by-seat maps were drawn by hand for Angoulême and Nice,
-              and 42 publishes nothing that would let the others be generated.
-              Who is logged in, and where, is live all the same.
+              The workstation names at {effectiveCampus} do not carry row and
+              seat numbers, so there is nothing to lay the room out from. Who is
+              logged in, and where, is live all the same.
             </AlertDescription>
           </Alert>
 
