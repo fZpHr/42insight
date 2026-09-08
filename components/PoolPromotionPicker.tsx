@@ -2,16 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Loader2, Waves } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { fetchJson } from "@/lib/api-client";
@@ -22,10 +19,14 @@ import { ALL_PROMOTIONS, type PoolPromotion } from "@/lib/pool-roster";
  *
  * Not a fixed list, and not a short one. Angouleme ran six promotions in 2026
  * -- February, April, June, July, August and September -- and a different six
- * in 2025, while Paris runs May and June and never September. Four years of
- * that is fifty-odd entries, which is why the years are submenus: one line
- * each until opened, and a year's months are only fetched when somebody asks
- * for them, since asking costs thirteen requests.
+ * in 2025, while Paris runs May and June and never September. Six years of
+ * that is far too many lines for one menu, so it opens on the years and a year
+ * is opened in place.
+ *
+ * Opened by clicking, not by hovering. This was a submenu per year, and Radix
+ * opens those on hover: running the mouse down the list fired six years at
+ * thirteen requests each, seventy-eight requests nobody asked for, off the
+ * visitor's own hourly budget. Nothing here is fetched until it is chosen.
  *
  * Discovery Piscines are labelled rather than hidden. They are a different
  * cursus over seven days instead of twenty-five, so their levels are not on
@@ -36,17 +37,6 @@ const YEARS_OFFERED = 6;
 
 const titleCase = (month: string) =>
   month.charAt(0).toUpperCase() + month.slice(1);
-
-const usePromotions = (campus: string, year: string, enabled: boolean) =>
-  useQuery({
-    queryKey: ["pool-promotions", campus, year],
-    queryFn: () =>
-      fetchJson<PoolPromotion[]>(
-        `/api/pool-promotions?campus=${encodeURIComponent(campus)}&year=${year}`,
-      ),
-    enabled: enabled && !!campus,
-    staleTime: 24 * 60 * 60 * 1000,
-  });
 
 export function PoolPromotionPicker({
   campus,
@@ -60,15 +50,18 @@ export function PoolPromotionPicker({
   month: string | null;
   onChange: (choice: { year: string; month: string | null }) => void;
 }) {
-  const thisYear = String(new Date().getFullYear());
+  const [open, setOpen] = useState(false);
+  /** The year being looked into, or null while the years themselves show. */
+  const [openYear, setOpenYear] = useState<string | null>(null);
+
   const years = Array.from({ length: YEARS_OFFERED }, (_, i) =>
-    String(Number(thisYear) - i),
+    String(new Date().getFullYear() - i),
   );
 
   // Which promotion to open on is the route's answer, not a rule repeated
   // here: every January the current year is empty while December's piscine is
   // still running, and the two would disagree.
-  const { data: current, isLoading } = useQuery({
+  const { data: current, isLoading: findingCurrent } = useQuery({
     queryKey: ["pool-promotion-current", campus],
     queryFn: () =>
       fetchJson<PoolPromotion | null>(
@@ -83,15 +76,36 @@ export function PoolPromotionPicker({
     onChange({ year: current.year, month: current.month });
   }, [month, current, onChange]);
 
+  const { data: promotions = [], isFetching } = useQuery({
+    queryKey: ["pool-promotions", campus, openYear],
+    queryFn: () =>
+      fetchJson<PoolPromotion[]>(
+        `/api/pool-promotions?campus=${encodeURIComponent(campus)}&year=${openYear}`,
+      ),
+    enabled: !!campus && openYear !== null,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+
+  const choose = (choice: { year: string; month: string | null }) => {
+    onChange(choice);
+    setOpen(false);
+  };
+
   const label = () => {
     if (year === ALL_PROMOTIONS) return "Every piscine";
     if (month === ALL_PROMOTIONS) return `All of ${year}`;
-    if (month === null) return isLoading ? "Finding it…" : "Pick a piscine";
+    if (month === null) return findingCurrent ? "Finding it…" : "Pick a piscine";
     return `${titleCase(month)} ${year}`;
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setOpenYear(null);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
@@ -105,99 +119,95 @@ export function PoolPromotionPicker({
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuItem
-          onClick={() =>
-            onChange({ year: ALL_PROMOTIONS, month: ALL_PROMOTIONS })
-          }
-        >
-          Every piscine
-          <span className="ml-auto text-xs text-muted-foreground">
-            {YEARS_OFFERED} years
-          </span>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        {years.map((option) => (
-          <YearSubmenu
-            key={option}
-            campus={campus}
-            year={option}
-            onChange={onChange}
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-/** One year, whose promotions are fetched the first time it is opened. */
-function YearSubmenu({
-  campus,
-  year,
-  onChange,
-}: {
-  campus: string;
-  year: string;
-  onChange: (choice: { year: string; month: string | null }) => void;
-}) {
-  // Sticky: once opened, keep it loaded, so going back into it is instant.
-  const [opened, setOpened] = useState(false);
-  const { data: promotions = [], isLoading } = usePromotions(
-    campus,
-    year,
-    opened,
-  );
-
-  return (
-    <DropdownMenuSub onOpenChange={(open) => open && setOpened(true)}>
-      <DropdownMenuSubTrigger>{year}</DropdownMenuSubTrigger>
-
-      <DropdownMenuSubContent className="max-h-80 w-56 overflow-y-auto">
-        <DropdownMenuItem
-          onClick={() => onChange({ year, month: ALL_PROMOTIONS })}
-        >
-          All of {year}
-        </DropdownMenuItem>
-
-        {promotions.length > 0 && <DropdownMenuSeparator />}
-
-        {promotions.map((promotion) => (
-          <DropdownMenuItem
-            key={promotion.month}
-            onClick={() => onChange({ year, month: promotion.month })}
-          >
-            {titleCase(promotion.month)}
-            <span className="ml-auto pl-3 text-xs text-muted-foreground">
-              {promotion.count}
-              {!promotion.isCPiscine && " · Discovery"}
-            </span>
-          </DropdownMenuItem>
-        ))}
-
-        {isLoading && (
+      <DropdownMenuContent align="end" className="max-h-96 w-60 overflow-y-auto">
+        {openYear === null ? (
           <>
-            <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Reading {year}, a moment…
-            </div>
-            {/* Twelve months to ask about, one request each, so there is a
-                real wait here the first time a year is opened. */}
-            {[0, 1, 2].map((row) => (
-              <div key={row} className="px-2 py-1.5">
-                <div className="h-3 w-full animate-pulse rounded bg-muted" />
-              </div>
+            <DropdownMenuItem
+              onClick={() =>
+                choose({ year: ALL_PROMOTIONS, month: ALL_PROMOTIONS })
+              }
+            >
+              Every piscine
+              <span className="ml-auto text-xs text-muted-foreground">
+                {YEARS_OFFERED} years
+              </span>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            {years.map((option) => (
+              <DropdownMenuItem
+                key={option}
+                // Kept open: choosing a year opens it here rather than picking
+                // it, and only then is anything fetched.
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setOpenYear(option);
+                }}
+              >
+                {option}
+                <ChevronRight className="ml-auto h-4 w-4 opacity-50" />
+              </DropdownMenuItem>
             ))}
           </>
-        )}
+        ) : (
+          <>
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                setOpenYear(null);
+              }}
+              className="text-muted-foreground"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              {openYear}
+            </DropdownMenuItem>
 
-        {!isLoading && promotions.length === 0 && (
-          <p className="px-2 py-2 text-xs text-muted-foreground">
-            Nobody from a {year} piscine is still at this campus.
-          </p>
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              onClick={() => choose({ year: openYear, month: ALL_PROMOTIONS })}
+            >
+              All of {openYear}
+            </DropdownMenuItem>
+
+            {isFetching ? (
+              <>
+                <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Asking 42 about {openYear}…
+                </div>
+                {/* Twelve months to ask about, one request each, so there is a
+                    real wait the first time a year is opened. */}
+                {[0, 1, 2].map((row) => (
+                  <div key={row} className="px-2 py-1.5">
+                    <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                  </div>
+                ))}
+              </>
+            ) : promotions.length === 0 ? (
+              <p className="px-2 py-2 text-xs text-muted-foreground">
+                Nobody from a {openYear} piscine is still at this campus.
+              </p>
+            ) : (
+              promotions.map((promotion) => (
+                <DropdownMenuItem
+                  key={promotion.month}
+                  onClick={() =>
+                    choose({ year: openYear, month: promotion.month })
+                  }
+                >
+                  {titleCase(promotion.month)}
+                  <span className="ml-auto pl-3 text-xs text-muted-foreground">
+                    {promotion.count}
+                    {!promotion.isCPiscine && " · Discovery"}
+                  </span>
+                </DropdownMenuItem>
+              ))
+            )}
+          </>
         )}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
