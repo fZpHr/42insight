@@ -70,54 +70,52 @@ export async function GET(request: Request) {
         const to = new Date(now.getTime() + WINDOW_DAYS * 86_400_000);
         const students: any[] = [];
 
-        {
-          const exams = await api.fetchAllPages(
-            `/campus/${campusId}/exams?range[begin_at]=${from.toISOString()},${to.toISOString()}`,
-            { maxPages: 2 },
-          );
-          if (exams.length === 0) continue;
+        const exams = await api.fetchAllPages(
+          `/campus/${campusId}/exams?range[begin_at]=${from.toISOString()},${to.toISOString()}`,
+          { maxPages: 2 },
+        );
+        if (exams.length === 0) return students;
 
-          const projectIds = [
-            ...new Set(
-              exams.flatMap((exam: any) =>
-                (exam.projects ?? []).map((project: any) => project.id),
-              ),
+        const projectIds = [
+          ...new Set(
+            exams.flatMap((exam: any) =>
+              (exam.projects ?? []).map((project: any) => project.id),
             ),
-          ];
-          if (projectIds.length === 0) continue;
+          ),
+        ];
+        if (projectIds.length === 0) return students;
 
-          const photos = new Map<number, string>();
-          for (const student of await getCampusStudents(campusName, api).catch(
-            () => [],
-          )) {
-            photos.set(student.id, student.photoUrl);
-          }
+        const photos = new Map<number, string>();
+        for (const student of await getCampusStudents(campusName, api).catch(
+          () => [],
+        )) {
+          photos.set(student.id, student.photoUrl);
+        }
 
-          const rows = await api.fetchAllPages(
-            `/projects_users?filter[campus]=${campusId}` +
-              `&filter[project_id]=${projectIds.join(",")}` +
-              `&range[updated_at]=${from.toISOString()},${to.toISOString()}`,
-            { maxPages: 5 },
-          );
+        const rows = await api.fetchAllPages(
+          `/projects_users?filter[campus]=${campusId}` +
+            `&filter[project_id]=${projectIds.join(",")}` +
+            `&range[updated_at]=${from.toISOString()},${to.toISOString()}`,
+          { maxPages: 5 },
+        );
 
-          for (const row of rows) {
-            if (!row.user?.id) continue;
+        for (const row of rows) {
+          if (!row.user?.id) continue;
 
-            students.push({
-              id: row.user.id,
-              name: row.user.login,
-              photo: photos.get(row.user.id) ?? "",
-              grade: row.final_mark ?? 0,
-              lastUpdate: row.updated_at,
-              examId: String(row.project?.id ?? ""),
-              examName: row.project?.name ?? "",
-              occurence: row.occurrence ?? 0,
-              isToday: row.updated_at
-                ? isSameDay(new Date(row.updated_at), now)
-                : false,
-              campus: campusName,
-            });
-          }
+          students.push({
+            id: row.user.id,
+            name: row.user.login,
+            photo: photos.get(row.user.id) ?? "",
+            grade: row.final_mark ?? 0,
+            lastUpdate: row.updated_at,
+            examId: String(row.project?.id ?? ""),
+            examName: row.project?.name ?? "",
+            occurence: row.occurrence ?? 0,
+            isToday: row.updated_at
+              ? isSameDay(new Date(row.updated_at), now)
+              : false,
+            campus: campusName,
+          });
         }
 
         return students;
