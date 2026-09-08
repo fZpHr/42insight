@@ -73,15 +73,26 @@ const fetchHostUsage = async (campus?: string): Promise<HostUsageData> => {
   }
 };
 
+/**
+ * The floor plans, which exist for the two campuses somebody sat down and drew.
+ *
+ * They are literal seat-by-seat layouts naming real hosts -- Angouleme's are
+ * "1A1", Nice's are "c1r1p1" -- so they are not transferable, and 42 publishes
+ * nothing that would let them be generated. Anywhere else gets the list view
+ * below instead.
+ *
+ * This used to fall back to Angouleme's plan for every other campus, which drew
+ * a room that does not exist there and, since no host name matched, showed
+ * every seat empty. A campus that looked deserted was really a campus that was
+ * never on the map.
+ */
+const FLOOR_PLANS: Record<string, Record<string, (string | null)[][]>> = {
+  angouleme: angoulemeMaps,
+  nice: niceMaps,
+};
+
 function getMapByCampus(campus?: string) {
-  switch (campus?.toLowerCase()) {
-    case "angouleme":
-      return angoulemeMaps;
-    case "nice":
-      return niceMaps;
-    default:
-      return angoulemeMaps;
-  }
+  return FLOOR_PLANS[campus?.toLowerCase() ?? ""] ?? null;
 }
 
 export default function ClusterMap() {
@@ -133,6 +144,7 @@ export default function ClusterMap() {
 
   const renderCluster = (clusterNumber: string) => {
     const campusMaps = getMapByCampus(effectiveCampus);
+    if (!campusMaps) return null;
     const key = effectiveCampus === "Nice" ? `c${clusterNumber}` : clusterNumber;
     const map = campusMaps[key];
     if (!map) return null;
@@ -276,6 +288,7 @@ export default function ClusterMap() {
 
   const getAvailablePC = (clusterNumber: string) => {
     const campusMaps = getMapByCampus(effectiveCampus);
+    if (!campusMaps) return 0;
     const key = effectiveCampus === "Nice" ? `c${clusterNumber}` : clusterNumber;
     const map = campusMaps[key];
     if (!map) return 0;
@@ -306,8 +319,15 @@ export default function ClusterMap() {
 
   const getNumberofClusters = () => {
     const campusMaps = getMapByCampus(effectiveCampus);
-    return Object.keys(campusMaps).length;
+    return campusMaps ? Object.keys(campusMaps).length : 0;
   };
+
+  const hasFloorPlan = getMapByCampus(effectiveCampus) !== null;
+
+  // Who is actually at a machine, for a campus with no plan to place them on.
+  const connected = students
+    .filter((student) => student.host && student.host !== "404")
+    .sort((a, b) => a.host.localeCompare(b.host, undefined, { numeric: true }));
 
   const count = getNumberofClusters();
   const nums = Array.from(
@@ -357,9 +377,11 @@ export default function ClusterMap() {
               </strong>{" "}
               students logged in
             </p>
-            <p className="text-sm sm:text-base">
-              <strong>{getTotalAvailablePCs()}</strong> available PCs
-            </p>
+            {hasFloorPlan && (
+              <p className="text-sm sm:text-base">
+                <strong>{getTotalAvailablePCs()}</strong> available PCs
+              </p>
+            )}
           </div>
 
           <div className="flex gap-2 w-full sm:w-auto">
@@ -377,6 +399,7 @@ export default function ClusterMap() {
               />
             </Button>
 
+            {hasFloorPlan && (
             <Select
               value={selectedCluster}
               onValueChange={setSelectedCluster}
@@ -397,6 +420,7 @@ export default function ClusterMap() {
                 ))}
               </SelectContent>
             </Select>
+            )}
           </div>
         </div>
       </div>
@@ -405,8 +429,60 @@ export default function ClusterMap() {
         <div className="text-center text-sm text-gray-500 py-8">
           Loading cluster {selectedCluster}...
         </div>
-      ) : (
+      ) : hasFloorPlan ? (
         renderCluster(selectedCluster)
+      ) : (
+        <div className="max-w-7xl mx-auto">
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No floor plan for {effectiveCampus}</AlertTitle>
+            <AlertDescription>
+              The seat-by-seat maps were drawn by hand for Angoulême and Nice,
+              and 42 publishes nothing that would let the others be generated.
+              Who is logged in, and where, is live all the same.
+            </AlertDescription>
+          </Alert>
+
+          {connected.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nobody is logged in at {effectiveCampus} right now.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {connected.map((student) => (
+                <button
+                  key={student.host}
+                  type="button"
+                  onClick={() =>
+                    window.open(
+                      `https://profile.intra.42.fr/users/${student.user.login}`,
+                      "_blank",
+                    )
+                  }
+                  className="flex items-center gap-2 rounded-md border p-2 text-left transition-colors hover:bg-muted/50"
+                >
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarImage
+                      src={student.user.image?.versions?.small}
+                      alt={student.user.login}
+                    />
+                    <AvatarFallback className="text-xs">
+                      {student.user.login.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {student.user.login}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {student.host}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

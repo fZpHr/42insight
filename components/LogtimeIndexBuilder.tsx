@@ -114,12 +114,17 @@ export function LogtimeIndexBuilder({ campus, onBuilt }: Props) {
           ) : (
             <Clock className="h-4 w-4" />
           )}
-          {progress !== null ? "Building…" : "Build logtime index"}
+          {progress !== null
+            ? "Building…"
+            : builtAt
+              ? "Rebuild logtime index"
+              : "Build logtime index"}
         </Button>
 
         {builtAt && progress === null && (
           <span className="text-xs text-muted-foreground">
-            Built {new Date(builtAt).toLocaleDateString()}, in this browser
+            Built {new Date(builtAt).toLocaleDateString()}, in this browser.
+            It does not update itself.
           </span>
         )}
       </div>

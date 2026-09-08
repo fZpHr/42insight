@@ -1230,21 +1230,22 @@ export default function Rankings() {
               </div>
 
               {/* Actions, not filters: they were crowding the search bar out
-                  of the toolbar. Their own line, labelled for what they are. */}
-              {effectiveCampus !== "Global" &&
-                (!hasLogtimeData ||
-                  (CORRECTION_RATIOS_ENABLED && !hasCorrectionStats)) && (
-                  <div className="hidden w-full items-center gap-2 border-t pt-2 sm:flex">
+                  of the toolbar. Their own line, labelled for what they are.
+
+                  Shown whether or not the index exists. Hiding the button once
+                  built made the feature vanish without a trace -- no way to see
+                  when it was built, and no way to rebuild it when it went
+                  stale, which it does: it is a snapshot in one browser. */}
+              {effectiveCampus !== "Global" && (
+                  <div className="flex w-full flex-wrap items-center gap-2 border-t pt-2">
                     <span className="shrink-0 text-xs text-muted-foreground">
                       Optional data, fetched on your key:
                     </span>
                     <div className="flex items-center gap-2 overflow-x-auto">
-                      {!hasLogtimeData && (
-                        <LogtimeIndexBuilder
-                          campus={effectiveCampus}
-                          onBuilt={reloadLogtimeIndex}
-                        />
-                      )}
+                      <LogtimeIndexBuilder
+                        campus={effectiveCampus}
+                        onBuilt={reloadLogtimeIndex}
+                      />
                       {CORRECTION_RATIOS_ENABLED && !hasCorrectionStats && (
                         <Button
                           variant="outline"
