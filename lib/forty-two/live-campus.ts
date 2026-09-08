@@ -363,6 +363,17 @@ const isCPiscineKind = (kind: string) =>
 const isMainKind = (kind: string) =>
   kind === "main" || kind === "main_deprecated";
 
+/**
+ * Staff are excluded at 42's end, not ours, so the count matches the roster.
+ *
+ * Angouleme's November 2023 was one person: eliot, an admin whose pool_month
+ * happens to say November 2023. The picker offered "November 2023, 1 person",
+ * the roster dropped staff and came back empty, and the page said nobody was
+ * there -- a promotion that never existed, offered because the count and the
+ * roster disagreed about who counts.
+ */
+const POOL_USERS_FILTER = "&filter[staff?]=false";
+
 const countPromotion = (
   campusId: number,
   month: string,
@@ -372,6 +383,7 @@ const countPromotion = (
   api.fetch(
     `/campus/${campusId}/users` +
       `?filter[pool_month]=${month}&filter[pool_year]=${encodeURIComponent(year)}` +
+      POOL_USERS_FILTER +
       `&page[size]=${SAMPLE_PER_MONTH}`,
   );
 
@@ -642,9 +654,12 @@ export const getPoolUsers = async (
     const users = await api.fetchAllPages(
       `/campus/${campusId}/users` +
         `?filter[pool_month]=${encodeURIComponent(month)}` +
-        `&filter[pool_year]=${encodeURIComponent(year)}`,
+        `&filter[pool_year]=${encodeURIComponent(year)}` +
+        POOL_USERS_FILTER,
     );
 
+    // Belt and braces: the filter above is what makes the count agree with the
+    // roster, and this makes a filter 42 might one day stop honouring harmless.
     const pisciners = users.filter((user) => user && !user["staff?"]);
     if (pisciners.length === 0) return [];
 

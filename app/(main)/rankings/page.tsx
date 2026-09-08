@@ -1023,7 +1023,11 @@ export default function Rankings() {
     <TooltipProvider>
     <div className="max-w-7xl mx-auto px-4 space-y-6 py-3">
       {/* Message d'erreur après timeout */}
-      {showTimeoutError && (!isSuccess || !students || students.length === 0) && (
+      {/* Only a request that has not come back. An empty answer that arrived
+          is not an API failure -- a campus with nobody logged in, or a
+          piscine promotion of one person who turned out to be staff, was
+          being reported as "42 API Issue" fifteen seconds later. */}
+      {showTimeoutError && !isSuccess && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>42 API Issue</AlertTitle>
