@@ -123,72 +123,12 @@ export default function ExamTracker() {
         : 0;
 
 
-    let scheduleInfo: React.ReactNode = null;
-    if (effectiveCampus === "Nice") {
-        scheduleInfo = (
-            <Alert variant="default" className="mb-4">
-                <AlertTitle>Nice Exam Schedule</AlertTitle>
-                <AlertDescription>
-                    <ul className="list-disc ml-5">
-                        <li><b>C Piscine Exams</b>: Every <b>Friday</b> <span className="block text-xs text-muted-foreground">(Only during Piscine periods)</span></li>
-                        <li><b>Rank Exams</b>: Every <b>Tuesday</b> from <b>14:00</b> to <b>17:00</b> and <b>Thursday</b> from <b>08:00</b> to <b>15:00</b></li>
-                    </ul>
-                </AlertDescription>
-            </Alert>
-        );
-    } else if (effectiveCampus === "Angouleme") {
-        scheduleInfo = (
-            <Alert variant="default" className="mb-4">
-                <AlertTitle>Angoulême Exam Schedule</AlertTitle>
-                <AlertDescription>
-                    <ul className="list-disc ml-5">
-                        <li><b>C Piscine Exams</b>: Every <b>Friday</b> <span className="block text-xs text-muted-foreground">(Only during Piscine periods)</span></li>
-                        <li><b>Rank Exams</b>: Every <b>Wednesday</b> from <b>08:00</b> to <b>12:00</b> and <b>Thursday</b> from <b>08:00</b> to <b>15:00</b></li>
-                    </ul>
-                </AlertDescription>
-            </Alert>
-        );
-    } else {
-        scheduleInfo = (
-            <Alert variant="default" className="mb-4">
-                <AlertTitle>Exam Schedule</AlertTitle>
-                <AlertDescription>
-                    <span>
-                        No recurring schedule is written down here for {effectiveCampus || "this campus"}.
-                        The exams below are the ones 42 has on its agenda right now.
-                    </span>
-                </AlertDescription>
-            </Alert>
-        );
-    }
 
 
     if ((isLoading || isFetching) && !isSuccess) {
         return <LoadingScreen message="Loading exam tracker..." />;
     }
 
-
-    if (!wantExam) {
-        return (
-            <div className="max-w-7xl mx-auto px-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
-                        <p className="text-muted-foreground">
-                            Live marks for the exam being sat right now, read from
-                            the 42 API on your own key.
-                        </p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {scheduleInfo}
-                        <Button onClick={() => setWantExam(true)} className="gap-2">
-                            Load exam results
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
 
     return (
         <div className="max-w-7xl mx-auto px-4">
@@ -206,7 +146,9 @@ export default function ExamTracker() {
                                 </span>
                             </CardTitle>
                             <p className="text-muted-foreground">
-                                Refreshed every 10 minutes while this page is open.
+                                {wantExam
+                                    ? "Refreshed every 10 minutes while this page is open."
+                                    : "Live marks for the exam being sat right now, read from the 42 API on your own key."}
                             </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
@@ -234,7 +176,7 @@ export default function ExamTracker() {
                                 variant="outline"
                                 size="icon"
                                 onClick={() => refetch()}
-                                disabled={isFetching}
+                                disabled={!wantExam || isFetching}
                                 aria-label="Refresh exam results"
                                 className="shrink-0"
                             >
@@ -264,7 +206,13 @@ export default function ExamTracker() {
                         </Alert>
                     )}
                     
-                    {scheduleInfo}
+                    {/* Asked for, not automatic: an exam sweep is a few pages
+                        on the visitor's own key. */}
+                    {!wantExam && (
+                        <Button onClick={() => setWantExam(true)} className="gap-2">
+                            Load exam results
+                        </Button>
+                    )}
                     {isLoading && students.length === 0 && (
                         <Table className="mt-5">
                             <TableHeader>
@@ -306,7 +254,7 @@ export default function ExamTracker() {
                         </Table>
                     )}
 
-                    {studentsToShow.length === 0 && !isLoading && (
+                    {wantExam && studentsToShow.length === 0 && !isLoading && (
                         <Alert variant="default" className="mt-5">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>No students found</AlertTitle>

@@ -53,7 +53,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { PoolUser, Student, StudentSortOption } from "@/types";
+import type { Student, StudentSortOption } from "@/types";
 import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts";
 import {
   Accordion,
@@ -78,6 +78,7 @@ import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
 import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { readLogtimeIndex, withLogtime, type LogtimeIndex } from "@/lib/logtime-store";
 import { useCampus } from "@/contexts/CampusContext";
+import { fetchPoolStudents, type Cursus } from "@/lib/pool-roster";
 import { GlobalFetchDialog } from "@/components/GlobalFetchDialog";
 
 const sortOptions: StudentSortOption[] = [
@@ -194,32 +195,6 @@ const CORRECTION_RATIOS_ENABLED = false;
 
 const fetchCampusStudents = (campus: string): Promise<Student[]> =>
   fetchJson<Student[]>(`/api/campus/${campus}/students`);
-
-/**
- * The piscine is a different cursus, so a different roster.
- *
- * Its rows come back shaped like a student's already, bar the four fields the
- * 42cursus has and a pisciner does not -- there is no blackhole to time and no
- * internship to be on -- so they are filled in here rather than teaching every
- * sort and column about a second type.
- */
-const fetchPoolStudents = async (campus: string): Promise<Student[]> => {
-  const pool = await fetchJson<PoolUser[]>(
-    `/api/users/pool?campus=${encodeURIComponent(campus)}`,
-  );
-
-  return pool.map((user) => ({
-    ...user,
-    blackholeTimer: 0,
-    relation: null,
-    work: 0,
-    has_validated: user.has_succeeded ?? false,
-    campus,
-  }));
-};
-
-/** Which roster the page is showing. */
-type Cursus = "cursus" | "piscine";
 
 type SortDirection = "asc" | "desc";
 
