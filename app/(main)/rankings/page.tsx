@@ -482,17 +482,17 @@ export default function Rankings() {
   }, [students]);
 
   /**
-   * Sorting by ratio needs everybody, and everybody is two requests each: a
-   * campus of 700 is twenty-odd minutes. So the ratio is a column, not a sort
-   * key, and this stays false until every student in the list has one.
+   * Whether the correction sorts are offered: once the index has been built.
+   *
+   * This asked for every student to have a ratio, which sounds careful and is
+   * useless -- one student the 42 API will not answer for, and a build that is
+   * otherwise complete never unlocks the sort. It does not need to be that
+   * strict, because the sort itself already drops anyone with fewer than
+   * fifteen corrections, and a student with no ratio has none.
    */
   const hasCorrectionStats = useMemo(
-    () =>
-      students.length > 0 &&
-      students.every(
-        (student: Student) => student.correctionPercentage !== NO_CORRECTION_DATA,
-      ),
-    [students],
+    () => Object.keys(correctionIndex?.entries ?? {}).length > 0,
+    [correctionIndex],
   );
 
   const hasLogtimeData = useMemo(
