@@ -62,7 +62,7 @@ const homeCopy = {
     highlight4Text:
       "Nothing to provision, and no key of mine to borrow. Clone it, put any random string in JWT_SECRET (yours, not mine), then npm install and npm run dev.",
     whySummary:
-      "Your key does three things at once. It keeps the site running with nothing stored anywhere, keeps it working even if I ever stop maintaining it, and keeps everything open source so you can check exactly what happens to it.",
+      "Using your key rather than one of mine changes three things. The site runs with nothing stored anywhere. It stops depending on me, so it keeps working even if I ever stop looking after it. And the code is open source, so you can check exactly what is done with your key.",
     moreDetail: "More detail",
     connect: "Connect",
     connecting: "Connecting…",
@@ -97,7 +97,7 @@ const homeCopy = {
     highlight4Text:
       "Rien à provisionner, aucune clé de ma part à emprunter. Clonez, mettez n'importe quelle chaîne dans JWT_SECRET (le vôtre, pas le mien), puis npm install et npm run dev.",
     whySummary:
-      "Votre clé fait trois choses à la fois. Elle fait tourner le site sans rien stocker nulle part, elle continue de fonctionner même si j'arrête un jour de le maintenir, et tout reste open source pour que vous puissiez vérifier exactement ce qu'il en advient.",
+      "Utiliser votre clé plutôt qu'une des miennes change trois choses. Le site tourne sans rien stocker nulle part. Il cesse de dépendre de moi, donc il continue de marcher même si j'arrête un jour de m'en occuper. Et le code est open source, vous pouvez vérifier exactement ce qui est fait de votre clé.",
     moreDetail: "Plus de détails",
     connect: "Se connecter",
     connecting: "Connexion…",
@@ -456,6 +456,7 @@ export default function Home() {
                   <p>{tKey.why}</p>
                   <p>{tKey.whyAutonomy}</p>
                   <p>{tKey.whyPrivacy}</p>
+                  <p>{tKey.whySelfHost}</p>
                 </div>
               )}
             </div>

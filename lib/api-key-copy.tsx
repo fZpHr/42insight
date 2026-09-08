@@ -25,7 +25,9 @@ export const copy = {
     whyAutonomy:
       "It also means the site doesn't depend on me. If I'm not at 42 anymore, or I don't have the time or the will to keep maintaining it, it keeps running exactly the same, because nothing here is tied to my own account or my own keys.",
     whyPrivacy:
-      "There's a privacy angle too. Clicking \"share my public information\" to sign into a 42-related site isn't actually limited to public data. Any app you connect that way also gets your birth date, phone number, address, even an emergency contact, all sitting on your intra profile. Your key still goes through this site's own server to talk to 42, but nothing is stored there, and the code is open source if you want to check for yourself.",
+      "There's a privacy angle too. Clicking \"share my public information\" to sign into a 42-related site isn't actually limited to public data: any app you connect that way also gets your birth date, phone number, address, even an emergency contact, all sitting on your intra profile.",
+    whySelfHost:
+      "Be clear about the limit of that, though. On this site your key still goes through my server to reach 42. Nothing is stored there and the code is open source, but that is my word for it. If you would rather not take it, run your own copy: clone the repo, put any random string in JWT_SECRET, npm install and npm run dev. Three commands, and there is no middleman left at all.",
     quota:
       "With your key you browse on your own budget: 1200 requests an hour.",
     transparency:
@@ -96,7 +98,9 @@ export const copy = {
     whyAutonomy:
       "Ça veut aussi dire que le site ne dépend pas de moi. Si je ne suis plus à 42, ou que je n'ai plus le temps ou l'envie de m'en occuper, il continue de tourner exactement pareil, parce que rien ici n'est lié à mon propre compte ou à mes propres clés.",
     whyPrivacy:
-      "Il y a aussi un aspect vie privée. Cliquer sur « partager mes informations publiques » pour se connecter à un site lié à 42 ne se limite pas vraiment aux infos publiques. N'importe quelle application connectée de cette façon récupère aussi votre date de naissance, votre téléphone, votre adresse, même un contact d'urgence, le tout stocké sur votre profil intra. Votre clé passe quand même par le serveur de ce site pour parler à 42, mais rien n'y est stocké, et le code est open source si vous voulez vérifier par vous-même.",
+      "Il y a aussi un aspect vie privée. Cliquer sur « partager mes informations publiques » pour se connecter à un site lié à 42 ne se limite pas vraiment aux infos publiques : n'importe quelle application connectée de cette façon récupère aussi votre date de naissance, votre téléphone, votre adresse, même un contact d'urgence, le tout stocké sur votre profil intra.",
+    whySelfHost:
+      "Autant être clair sur la limite de l'argument. Sur ce site, votre clé passe quand même par mon serveur pour parler à 42. Rien n'y est stocké et le code est open source, mais ça reste ma parole. Si vous préférez ne pas avoir à me croire, faites tourner votre propre copie : clonez le repo, mettez n'importe quelle chaîne dans JWT_SECRET, npm install et npm run dev. Trois commandes, et il n'y a plus d'intermédiaire du tout.",
     quota:
       "Avec votre clé, vous naviguez sur votre propre budget : 1200 requêtes par heure.",
     transparency:

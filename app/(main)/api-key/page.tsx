@@ -171,6 +171,7 @@ export default function ApiKeyPage() {
             <p>{t.why}</p>
             <p>{t.whyAutonomy}</p>
             <p>{t.whyPrivacy}</p>
+            <p>{t.whySelfHost}</p>
             <p>{t.quota}</p>
             <p>{t.transparency}</p>
             <p>
