@@ -75,8 +75,13 @@ import {
 import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
+import { CorrectionIndexBuilder } from "@/components/CorrectionIndexBuilder";
 import { fetchJson, isKeyRequired } from "@/lib/api-client";
-import type { CorrectionRatio } from "@/lib/forty-two/corrections";
+import {
+  readCorrectionIndex,
+  withCorrections,
+  type CorrectionIndex,
+} from "@/lib/corrections-store";
 import { readLogtimeIndex, withLogtime, type LogtimeIndex } from "@/lib/logtime-store";
 import { useCampus } from "@/contexts/CampusContext";
 import { fetchPoolStudents, type Cursus } from "@/lib/pool-roster";
@@ -438,43 +443,33 @@ export default function Rankings() {
   }, [reloadLogtimeIndex]);
 
   /**
-   * Correction ratios, for the students on screen and no further.
+   * Correction ratios, built once and kept in this browser.
    *
-   * The campus-wide version read every evaluation the campus had and grouped
-   * by corrector, because scale_teams cannot be filtered by corrector: 108813
-   * rows at Nice, 1089 pages, eighteen minutes on one visitor's key, and it
-   * held the paced lane the whole time so every other page crawled behind it.
-   * That is why it was switched off.
-   *
-   * as_corrector answers for one person and X-Total gives the count without
-   * returning a single row, so a student costs two requests. A screenful is
-   * forty, and the column fills in behind the reader as they scroll.
+   * Briefly this filled in behind the reader as they scrolled, which was
+   * wrong: two requests a student meant forty just to open the page and 1478
+   * to reach the end of Nice, against an hourly budget of 1200, none of it
+   * asked for. It is a build now, like the logtime index, for the same reason
+   * and with the same shape.
    */
-  const [ratios, setRatios] = useState<Record<number, CorrectionRatio>>({});
-  const askedFor = useRef<Set<number>>(new Set());
+  const [correctionIndex, setCorrectionIndex] =
+    useState<CorrectionIndex | null>(null);
 
-  // A different roster is a different set of people to ask about.
+  const reloadCorrectionIndex = useCallback(() => {
+    setCorrectionIndex(readCorrectionIndex(effectiveCampus));
+  }, [effectiveCampus]);
+
   useEffect(() => {
-    setRatios({});
-    askedFor.current = new Set();
-  }, [effectiveCampus, cursus]);
+    reloadCorrectionIndex();
+  }, [reloadCorrectionIndex]);
 
-  const students = useMemo(() => {
-    const withTime = withLogtime(rawStudents ?? [], logtimeIndex);
-
-    return withTime.map((student: Student) => {
-      const tally = ratios[Number(student.id)];
-      if (!tally) return student;
-
-      return {
-        ...student,
-        correctionPositive: tally.positive,
-        correctionNegative: tally.negative,
-        correctionTotal: tally.positive + tally.negative,
-        correctionPercentage: tally.percentage,
-      };
-    });
-  }, [rawStudents, logtimeIndex, ratios]);
+  const students = useMemo(
+    () =>
+      withCorrections(
+        withLogtime(rawStudents ?? [], logtimeIndex),
+        correctionIndex,
+      ),
+    [rawStudents, logtimeIndex, correctionIndex],
+  );
 
   // Built from the data, not written by hand: the list used to stop at 2025
   // because someone had to remember to add a line every year, and nobody did.
@@ -759,39 +754,6 @@ export default function Rankings() {
 
   const visibleStudents = processedStudents.slice(0, visibleCount);
 
-  // Ask about the people on screen, once each. askedFor is what stops this
-  // from looping: an answer changes `students`, which changes this list, which
-  // runs the effect again -- and finds nothing new to ask about.
-  useEffect(() => {
-    if (!CORRECTION_RATIOS_ENABLED || effectiveCampus === "Global") return;
-
-    const missing = visibleStudents
-      .map((student) => Number(student.id))
-      .filter((id) => Number.isInteger(id) && !askedFor.current.has(id));
-
-    if (missing.length === 0) return;
-
-    const batch = missing.slice(0, CORRECTION_BATCH);
-    for (const id of batch) askedFor.current.add(id);
-
-    fetchJson<Record<string, CorrectionRatio>>(
-      `/api/corrections?ids=${batch.join(",")}`,
-    )
-      .then((answer) => {
-        setRatios((previous) => {
-          const merged = { ...previous };
-          for (const [id, ratio] of Object.entries(answer)) {
-            merged[Number(id)] = ratio;
-          }
-          return merged;
-        });
-      })
-      .catch(() => {
-        // Let them be asked about again on the next scroll rather than
-        // leaving a permanent hole in the column.
-        for (const id of batch) askedFor.current.delete(id);
-      });
-  }, [visibleStudents, effectiveCampus]);
   const hasMore = visibleCount < processedStudents.length;
 
   const loadMoreStudents = () => {
@@ -1405,6 +1367,10 @@ export default function Rankings() {
                       <LogtimeIndexBuilder
                         campus={effectiveCampus}
                         onBuilt={reloadLogtimeIndex}
+                      />
+                      <CorrectionIndexBuilder
+                        campus={effectiveCampus}
+                        onBuilt={reloadCorrectionIndex}
                       />
                     </div>
                   </div>
