@@ -26,3 +26,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# claude code: machine-specific, holds absolute paths to a local node install
+.claude/launch.json
