@@ -313,6 +313,44 @@ export const YEARS_BACK = 6;
 /** Enough of a promotion to tell which cursus it was, without reading it all. */
 const SAMPLE_PER_MONTH = 5;
 
+/**
+ * What 42 calls each cursus, and what kind it is.
+ *
+ * The kind is the thing worth having: "piscine" is a C Piscine (9, and the
+ * Brussels and Antwerp ones), "piscine_deprecated" an older form of it,
+ * "professional_training" the Discovery Piscines, and "main" the 42cursus.
+ * Seventy-odd rows in one request, and they change about never.
+ */
+const CURSUS_TTL = 7 * 24 * 60 * 60;
+
+interface CursusInfo {
+  id: number;
+  name: string;
+  kind: string;
+}
+
+const listCursus = async (api: FortyTwoApi): Promise<Map<number, CursusInfo>> =>
+  cachedOnce("cursus-directory", CURSUS_TTL, async () => {
+    const rows = await api.fetchAllPages(`/cursus`, { maxPages: 2 });
+
+    return new Map(
+      rows
+        .filter((row) => typeof row?.id === "number")
+        .map((row) => [
+          row.id,
+          { id: row.id, name: row.name ?? `Cursus ${row.id}`, kind: row.kind ?? "" },
+        ]),
+    );
+  });
+
+/** A C Piscine, as opposed to a Discovery week or the 42cursus itself. */
+const isCPiscineKind = (kind: string) =>
+  kind === "piscine" || kind === "piscine_deprecated";
+
+/** The 42cursus, which a pisciner joins after passing and which is not a piscine. */
+const isMainKind = (kind: string) =>
+  kind === "main" || kind === "main_deprecated";
+
 const countPromotion = (
   campusId: number,
   month: string,
@@ -369,13 +407,13 @@ export const listPoolPromotions = async (
         });
       }
 
-      const cursusBySample = await getSampleCursus(
-        found.flatMap((promotion) => promotion.samples),
-        api,
-      );
+      const [cursusBySample, directory] = await Promise.all([
+        getSampleCursus(found.flatMap((promotion) => promotion.samples), api),
+        listCursus(api),
+      ]);
 
       const classified = found.map(({ month, count, samples }) => {
-        const cursus = dominantCursus(samples, cursusBySample);
+        const cursus = dominantCursus(samples, cursusBySample, directory);
 
         return {
           month,
@@ -385,7 +423,8 @@ export const listPoolPromotions = async (
           cursusName: cursus?.name ?? null,
           // Unclassifiable is treated as the real thing rather than hidden: a
           // promotion nobody can name is still better shown than dropped.
-          isCPiscine: cursus === null || cursus.id === POOL_CURSUS_ID,
+          isCPiscine:
+            cursus === null || isCPiscineKind(directory.get(cursus.id)?.kind ?? ""),
         };
       });
 
@@ -432,27 +471,44 @@ const getSampleCursus = async (
 };
 
 /**
- * The cursus a promotion's samples have in common.
+ * Which piscine a promotion's samples sat.
  *
- * A student can be in several -- somebody who did a Discovery Piscine and came
- * back for the real one is in both -- so this counts across the samples and
- * takes the most common, which is the one that promotion was.
+ * The 42cursus is excluded before counting, and this is the whole point.
+ * A pisciner who passes joins it, so every sample from a finished promotion is
+ * in both cursus 9 and cursus 21 -- five and five. Taking the most common
+ * cursus outright therefore came down to a tie, and sort() being stable, to
+ * whichever of the two the API happened to list first. The same promotion
+ * classified differently from one fetch to the next: Angouleme July 2023 read
+ * as a C Piscine with levels around nine, or as the 42cursus with levels of
+ * twenty-three, where a piscine tops out near ten.
+ *
+ * Among what is left, a real C Piscine beats a Discovery week: somebody who
+ * did both is in both, and the C Piscine is the one being asked about.
  */
 const dominantCursus = (
   samples: number[],
   cursusBySample: Map<number, { id: number; name: string }[]>,
+  directory: Map<number, CursusInfo>,
 ): { id: number; name: string } | null => {
   const tally = new Map<number, { name: string; n: number }>();
 
   for (const sample of samples) {
     for (const cursus of cursusBySample.get(sample) ?? []) {
+      if (isMainKind(directory.get(cursus.id)?.kind ?? "")) continue;
+
       const seen = tally.get(cursus.id) ?? { name: cursus.name, n: 0 };
       seen.n++;
       tally.set(cursus.id, seen);
     }
   }
 
-  const best = [...tally.entries()].sort((a, b) => b[1].n - a[1].n)[0];
+  const best = [...tally.entries()].sort((a, b) => {
+    const aPiscine = isCPiscineKind(directory.get(a[0])?.kind ?? "");
+    const bPiscine = isCPiscineKind(directory.get(b[0])?.kind ?? "");
+    if (aPiscine !== bPiscine) return aPiscine ? -1 : 1;
+    return b[1].n - a[1].n;
+  })[0];
+
   return best ? { id: best[0], name: best[1].name } : null;
 };
 
