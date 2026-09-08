@@ -25,10 +25,30 @@ All of the Old Features from our existing website have been moved to one website
 - Find-Peers
 - Tree Graph Relation (in reworking for now)
 
+## Run your own
+
+The whole point of the design, and the shortest section here:
+
+```bash
+git clone https://github.com/fZpHr/42insight && cd 42insight
+npm install
+echo "JWT_SECRET=$(openssl rand -hex 32)" > .env
+npm run dev
+```
+
+That is the entire setup. `JWT_SECRET` is the only variable the code requires,
+it signs the session cookie and seals the stored credentials, and any random
+string will do — it is yours, not mine. There is nothing else to provision: no
+database to stand up, no Redis, no cron, no runner, and no 42 application of
+mine to borrow, because every visitor connects their own key and that key does
+both the signing in and the fetching.
+
+`GITHUB_REPO` is the only other variable read anywhere, and it is optional: it
+picks which repository the changelog page reads, defaulting to this one.
+
 ## Where the data comes from
 
-Everything is read live from the 42 API. There is no database, no Redis, no
-cron and no runner: clone the repo, fill in a `.env`, and it runs.
+Everything is read live from the 42 API.
 
 One key, doing both jobs.
 

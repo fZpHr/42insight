@@ -19,6 +19,7 @@ import {
   ExternalLink,
   ChevronDown,
   HelpCircle,
+  Server,
 } from "lucide-react";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { IntraKeyGuide } from "@/components/IntraKeyGuide";
@@ -57,6 +58,9 @@ const homeCopy = {
     highlight2Text: "No database, no cron, no background jobs. Every page reads the 42 API live.",
     highlight3Title: "Open source",
     highlight3Before: "Nothing hidden in how it works. Read the code on",
+    highlight4Title: "Host it yourself",
+    highlight4Text:
+      "Nothing to provision and no key of mine to ask for. Clone it, put any random string in JWT_SECRET, npm install, npm run dev.",
     whySummary:
       "Your key does three things at once. It keeps the site running with nothing stored anywhere, keeps it working even if I ever stop maintaining it, and keeps everything open source so you can check exactly what happens to it.",
     moreDetail: "More detail",
@@ -89,6 +93,9 @@ const homeCopy = {
     highlight2Text: "Pas de base de données, pas de tâche planifiée, pas de job en arrière-plan. Chaque page lit l'API 42 en direct.",
     highlight3Title: "Open source",
     highlight3Before: "Rien n'est caché dans son fonctionnement. Consultez le code sur",
+    highlight4Title: "Hébergez-le vous-même",
+    highlight4Text:
+      "Rien à provisionner, et aucune clé de ma part à demander. Clonez, mettez n'importe quelle chaîne au hasard dans JWT_SECRET, npm install, npm run dev.",
     whySummary:
       "Votre clé fait trois choses à la fois. Elle fait tourner le site sans rien stocker nulle part, elle continue de fonctionner même si j'arrête un jour de le maintenir, et tout reste open source pour que vous puissiez vérifier exactement ce qu'il en advient.",
     moreDetail: "Plus de détails",
@@ -115,7 +122,7 @@ const homeCopy = {
   },
 };
 
-const highlightIcons = [KeyRound, Database, Github];
+const highlightIcons = [KeyRound, Database, Github, Server];
 
 const tutorialSteps: Record<Language, React.ReactNode[]> = {
   en: [
@@ -330,6 +337,10 @@ export default function Home() {
         </>
       ),
     },
+    // The point of the whole design, said plainly: the site needs one secret
+    // of the host's own choosing and nothing else. No database to stand up, no
+    // 42 application of mine to borrow -- every visitor brings their own key.
+    { icon: highlightIcons[3], title: t.highlight4Title, text: t.highlight4Text },
   ];
 
   if (status === "loading" || status === "authenticated" || devPreview) {
