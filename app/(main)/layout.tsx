@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ApiStatusBar } from "@/components/ApiStatusBar";
 import { Info } from "lucide-react";
+import { isDevPreviewEnabled } from "@/lib/dev-preview";
 
 const supportedCampuses = ["Angouleme", "Nice"];
 
@@ -129,8 +130,15 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       }
       setIsInitialized(true);
     } else if (status === "unauthenticated") {
-      setSidebarOpen(null);
-      setIsInitialized(false);
+      // Preview mode never gets a session, so waiting for one here would
+      // spin forever -- fall back to a plain, unpersisted open sidebar.
+      if (isDevPreviewEnabled()) {
+        setSidebarOpen(true);
+        setIsInitialized(true);
+      } else {
+        setSidebarOpen(null);
+        setIsInitialized(false);
+      }
     }
   }, [status, session?.user?.login]);
 

@@ -4,14 +4,13 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
-  CAMPUS_IDS,
   currentPool,
   getCampusStudents,
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
 
-// A miss on the first campus (and pool) tried chains several full walks --
-// each ten seconds or so cold, past Vercel's default function timeout.
+// A cold campus (or pool) walk runs ten seconds or so, past Vercel's default
+// function timeout.
 export const maxDuration = 60;
 
 const rankByLevel = (
@@ -38,26 +37,33 @@ export async function GET(
   try {
     const { login } = await params;
 
-    // Look at the caller's own campus first. Each miss costs a full page walk
-    // through a campus -- ten seconds or so on a cold cache -- and the answer
-    // is almost always in the first one tried.
-    const ordered = Object.keys(CAMPUS_IDS).sort((a, b) =>
-      a === session.user.campus ? -1 : b === session.user.campus ? 1 : 0,
-    );
+    // One request names the student's own campus, rather than guessing by
+    // walking every campus 42 has looking for a match.
+    const userResponse = await api.fetch(`/users/${encodeURIComponent(login)}`);
+    if (userResponse.status === 404) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    if (!userResponse.ok) {
+      throw new Error(`42 API responded ${userResponse.status}`);
+    }
 
-    for (const campus of ordered) {
-      const students = await getCampusStudents(campus, api);
-      if (students.some((student) => student.name === login)) {
-        return NextResponse.json({ rank: rankByLevel(students, login) });
-      }
+    const profile = await userResponse.json();
+    const campusName =
+      profile.campus?.find((c: any) => c.is_primary)?.name ??
+      profile.campus?.[0]?.name;
+    if (!campusName) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const students = await getCampusStudents(campusName, api);
+    if (students.some((student) => student.name === login)) {
+      return NextResponse.json({ rank: rankByLevel(students, login) });
     }
 
     const pool = currentPool();
-    for (const campus of ordered) {
-      const poolUsers = await getPoolUsers(campus, pool.month, pool.year, api);
-      if (poolUsers.some((poolUser) => poolUser.name === login)) {
-        return NextResponse.json({ rank: rankByLevel(poolUsers, login) });
-      }
+    const poolUsers = await getPoolUsers(campusName, pool.month, pool.year, api);
+    if (poolUsers.some((poolUser) => poolUser.name === login)) {
+      return NextResponse.json({ rank: rankByLevel(poolUsers, login) });
     }
 
     return NextResponse.json({ error: "User not found" }, { status: 404 });

@@ -71,6 +71,7 @@ export default function PeersPage() {
     const { data, error, isLoading, isSuccess, isFetching, refetch } = useQuery<Project[]>({
         queryKey: ['peersData', effectiveCampus, projectFilter],
         queryFn: () => fetchPeersData(effectiveCampus, projectFilter),
+        enabled: !!user,
         staleTime: 30 * 60 * 1000,
     });
 

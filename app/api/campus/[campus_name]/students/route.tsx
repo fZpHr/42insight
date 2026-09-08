@@ -4,7 +4,7 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
-  CAMPUS_IDS,
+  resolveCampusId,
   getEnrichedCampusStudents,
 } from "@/lib/forty-two/live-campus";
 
@@ -27,7 +27,7 @@ export async function GET(
   if (!api) return keyRequiredResponse();
 
   const { campus_name } = await params;
-  if (!CAMPUS_IDS[campus_name]) {
+  if (!(await resolveCampusId(campus_name, api))) {
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });
   }
 

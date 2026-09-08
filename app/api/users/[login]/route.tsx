@@ -3,13 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
-import {
-  CAMPUS_IDS,
-  getEnrichedCampusStudents,
-} from "@/lib/forty-two/live-campus";
+import { getEnrichedCampusStudents } from "@/lib/forty-two/live-campus";
 
-// A miss on the first campus tried costs a second full walk -- up to twenty
-// seconds cold, past Vercel's default function timeout.
+// A cold campus walk runs ten seconds or so, past Vercel's default function
+// timeout.
 export const maxDuration = 60;
 
 export async function GET(
@@ -27,11 +24,27 @@ export async function GET(
   try {
     const { login } = await params;
 
-    for (const campus of Object.keys(CAMPUS_IDS)) {
-      const students = await getEnrichedCampusStudents(campus, api);
-      const student = students.find((candidate) => candidate.name === login);
-      if (student) return NextResponse.json(student);
+    // One request names the student's own campus, rather than guessing by
+    // walking every campus 42 has looking for a match.
+    const userResponse = await api.fetch(`/users/${encodeURIComponent(login)}`);
+    if (userResponse.status === 404) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+    if (!userResponse.ok) {
+      throw new Error(`42 API responded ${userResponse.status}`);
+    }
+
+    const profile = await userResponse.json();
+    const campusName =
+      profile.campus?.find((c: any) => c.is_primary)?.name ??
+      profile.campus?.[0]?.name;
+    if (!campusName) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const students = await getEnrichedCampusStudents(campusName, api);
+    const student = students.find((candidate) => candidate.name === login);
+    if (student) return NextResponse.json(student);
 
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   } catch (error: any) {

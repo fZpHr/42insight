@@ -4,7 +4,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
-  CAMPUS_IDS,
+  resolveCampusId,
   currentPool,
   getCampusStudents,
   getPoolUsers,
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const campus = searchParams.get("campus") || user.campus;
 
-  if (!campus || !CAMPUS_IDS[campus]) {
+  if (!campus || !(await resolveCampusId(campus, api))) {
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });
   }
 

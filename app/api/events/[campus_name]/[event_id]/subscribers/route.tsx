@@ -4,7 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { cached } from "@/lib/memory-cache";
-import { CAMPUS_IDS } from "@/lib/forty-two/live-campus";
+import { resolveCampusId } from "@/lib/forty-two/live-campus";
 
 /** One 42 request per event, shared by everyone who opens that event. */
 
@@ -24,7 +24,7 @@ export async function GET(
 
   const { campus_name, event_id } = await params;
 
-  if (!CAMPUS_IDS[campus_name]) {
+  if (!(await resolveCampusId(campus_name, api))) {
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });
   }
 

@@ -60,32 +60,13 @@ import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react"
 import { hasApiKey } from "@/lib/api-client"
 import { CampusSwitcher } from "@/components/CampusSwitcher";
-import { useCampus } from "@/contexts/CampusContext";
+import { isDevPreviewEnabled } from "@/lib/dev-preview";
 
 
-const campusRestrictedRoutes = [
-  "/rankings",
-  "/exam-tracker",
-  "/trombinoscope",
-  "/cluster-map",
-  "/peers",
-  "/events",
-];
-
-const supportedCampuses = ["Angouleme", "Nice"];
-
-
-const hasAccessToRoute = (url: string, campus?: string | null, role?: string | null) => {
-
+const hasAccessToRoute = (url: string, role?: string | null) => {
   const poolRestrictedRoutes = ["/query", "/rankings", "/trombinoscope"];
   if (role === "pisciner" && poolRestrictedRoutes.some(route => url.startsWith(route))) {
     return false;
-  }
-
-
-
-  if (campusRestrictedRoutes.some(route => url.startsWith(route))) {
-    return campus ? supportedCampuses.includes(campus) : false;
   }
 
   return true;
@@ -235,10 +216,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session, status } = useSession();
   const user = session?.user;
   const { open } = useSidebar();
-  const { selectedCampus } = useCampus();
-  
-
-  const effectiveCampus = selectedCampus || user?.campus;
 
   const getBadgeVariant = (badge: string) => {
     switch (badge.toLowerCase()) {
@@ -260,9 +237,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Read after mount: document.cookie does not exist during the server render.
   const [keyPresent, setKeyPresent] = useState(false)
+  const [previewBypass, setPreviewBypass] = useState(false)
 
   useEffect(() => {
     setKeyPresent(hasApiKey())
+    setPreviewBypass(isDevPreviewEnabled())
   }, [pathname])
 
   const signOutfunc = async () => {
@@ -303,8 +282,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
             // Without a key there is nothing for these pages to load, so they
             // are shown greyed rather than leading to a prompt on arrival.
+            // Preview mode skips this too: there is no session to read a
+            // campus or a key from, and the point is to look at the page.
             const allowed = (item: { url: string }) =>
-              keyPresent && hasAccessToRoute(item.url, effectiveCampus, user?.role);
+              previewBypass ||
+              (keyPresent && hasAccessToRoute(item.url, user?.role));
 
             const accessibleItems = group.items.filter(allowed);
             const restrictedItems = group.items.filter((item) => !allowed(item));
@@ -381,7 +363,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           isActive={false}
                           tooltip={
                             keyPresent
-                              ? "Only available for Nice and Angoulême"
+                              ? "Not available during the piscine"
                               : "Connect your 42 API key to open this"
                           }
                           className="opacity-50 cursor-not-allowed relative group overflow-hidden"
@@ -393,7 +375,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             {open && (
                               <div className="absolute inset-0 bg-background/95 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md pointer-events-none">
                                 <span className="text-[10px] text-muted-foreground px-2 text-center whitespace-nowrap font-medium">
-                                  {keyPresent ? "Nice/Angoulême only" : "Key required"}
+                                  {keyPresent ? "Piscine restricted" : "Key required"}
                                 </span>
                               </div>
                             )}

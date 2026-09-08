@@ -18,6 +18,7 @@ import {
   EyeOff,
   ExternalLink,
   ChevronDown,
+  HelpCircle,
 } from "lucide-react";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { IntraKeyGuide } from "@/components/IntraKeyGuide";
@@ -28,6 +29,7 @@ import {
   type Language,
 } from "@/lib/api-key-copy";
 import { signIn, useSession } from "next-auth/react";
+import { isDevPreviewEnabled, setDevPreview as persistDevPreview } from "@/lib/dev-preview";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -212,6 +214,7 @@ export default function Home() {
   const [showGuide, setShowGuide] = useState(false);
   const [showWhyDetail, setShowWhyDetail] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [devPreview, setDevPreview] = useState(false);
 
   const t = homeCopy[language];
   const tKey = copy[language];
@@ -228,15 +231,21 @@ export default function Home() {
   // and guessing wrong would flash the wrong language for a moment.
   useEffect(() => setLanguage(detectLanguage()), []);
 
+  // Same cookie the DevPreviewToggle button sets. Read after mount: the
+  // server never sees this cookie's value the way the client does, so
+  // checking it during render would fight hydration.
+  useEffect(() => setDevPreview(isDevPreviewEnabled()), []);
+
   // A visitor whose session cookie is still good has nothing to do on this
   // page. Without this, it showed the connect form on every visit even
-  // though the credentials cookie was still valid for a month.
+  // though the credentials cookie was still valid for a month. Preview mode
+  // gets the same shortcut, since its whole point is skipping this form.
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status !== "authenticated" && !devPreview) return;
     router.replace(
       resolveCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl")),
     );
-  }, [status, router]);
+  }, [status, devPreview, router]);
 
   const chooseLanguage = (next: Language) => {
     setLanguage(next);
@@ -321,7 +330,7 @@ export default function Home() {
     },
   ];
 
-  if (status === "loading" || status === "authenticated") {
+  if (status === "loading" || status === "authenticated" || devPreview) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -436,6 +445,41 @@ export default function Home() {
               )}
             </div>
 
+            <button
+              type="button"
+              onClick={() => setShowGuide((shown) => !shown)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-400/30 bg-blue-500/10 px-4 py-2.5 text-sm font-medium text-blue-200 transition-colors hover:bg-blue-500/20"
+            >
+              <HelpCircle className="h-4 w-4" />
+              {t.noKey}
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showGuide ? "rotate-180" : ""}`} />
+            </button>
+
+            {showGuide && (
+              <div className="max-h-72 space-y-3 overflow-y-auto rounded-lg border border-white/10 bg-black/20 p-3 pr-2">
+                <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+                  <li>
+                    {t.stepOpenBefore}{" "}
+                    <a
+                      href="https://profile.intra.42.fr/oauth/applications/new"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-300 hover:underline"
+                    >
+                      Settings → API → Register a new app
+                      <ExternalLink className="h-3 w-3" />
+                    </a>{" "}
+                    {t.stepOpenAfter}
+                  </li>
+                  {tutorialSteps[language].map((step, index) => (
+                    <li key={index}>{step}</li>
+                  ))}
+                  <li>{t.stepCopy}</li>
+                </ol>
+                <IntraKeyGuide language={language} />
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label htmlFor="client-id" className="text-xs font-medium text-white/70">
                 {tKey.clientId}
@@ -499,39 +543,23 @@ export default function Home() {
               {" "}{t.alreadyAfter}
             </p>
 
-            <button
-              type="button"
-              onClick={() => setShowGuide((shown) => !shown)}
-              className="flex w-full items-center justify-center gap-1.5 border-t border-white/10 pt-3 text-xs text-muted-foreground hover:text-white transition-colors"
-            >
-              {t.noKey}
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showGuide ? "rotate-180" : ""}`} />
-            </button>
-
-            {showGuide && (
-              <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
-                <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
-                  <li>
-                    {t.stepOpenBefore}{" "}
-                    <a
-                      href="https://profile.intra.42.fr/oauth/applications/new"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-blue-300 hover:underline"
-                    >
-                      Settings → API → Register a new app
-                      <ExternalLink className="h-3 w-3" />
-                    </a>{" "}
-                    {t.stepOpenAfter}
-                  </li>
-                  {tutorialSteps[language].map((step, index) => (
-                    <li key={index}>{step}</li>
-                  ))}
-                  <li>{t.stepCopy}</li>
-                </ol>
-                <IntraKeyGuide language={language} />
-              </div>
+            {process.env.NODE_ENV !== "production" && (
+              <button
+                type="button"
+                onClick={() => {
+                  persistDevPreview(true);
+                  router.replace(
+                    resolveCallbackUrl(
+                      new URLSearchParams(window.location.search).get("callbackUrl"),
+                    ),
+                  );
+                }}
+                className="text-center text-xs text-amber-400/80 underline underline-offset-2 hover:text-amber-300"
+              >
+                Dev only: skip sign-in, preview mode
+              </button>
             )}
+
           </motion.form>
 
           <div className="flex w-full flex-wrap justify-center gap-2">

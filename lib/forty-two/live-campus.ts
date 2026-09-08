@@ -25,6 +25,12 @@ import {
  * gets it without spending anything.
  */
 
+/**
+ * Kept as a fast, no-request path for the two campuses this project started
+ * on. Anything else resolves through the live directory below -- the site is
+ * no longer limited to these two, now that every request runs on the
+ * visitor's own key rather than a shared one with a campus-shaped quota.
+ */
 export const CAMPUS_IDS: { [key: string]: number } = {
   Angouleme: 31,
   Nice: 41,
@@ -32,6 +38,54 @@ export const CAMPUS_IDS: { [key: string]: number } = {
 
 export const CURSUS_ID = 21;
 export const POOL_CURSUS_ID = 9;
+
+export interface CampusInfo {
+  id: number;
+  name: string;
+}
+
+interface CampusDirectory {
+  byName: Map<string, number>;
+  list: CampusInfo[];
+  expiresAt: number;
+}
+
+/** The full campus list barely ever changes, so a day's cache is cheap. */
+const CAMPUS_DIRECTORY_TTL_MS = 24 * 60 * 60 * 1000;
+
+let directory: CampusDirectory | null = null;
+
+const loadDirectory = async (api: FortyTwoApi): Promise<CampusDirectory> => {
+  if (directory && directory.expiresAt > Date.now()) return directory;
+
+  const byName = new Map(Object.entries(CAMPUS_IDS));
+  try {
+    const rows = await api.fetchAllPages(`/campus`, { maxPages: 3 });
+    for (const row of rows) {
+      if (row?.name && typeof row.id === "number") byName.set(row.name, row.id);
+    }
+  } catch (error: any) {
+    // The seed above still covers the two campuses this started on.
+    console.error("[live-campus] fetching the campus directory failed:", error.message);
+  }
+
+  const list = [...byName.entries()]
+    .map(([name, id]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  directory = { byName, list, expiresAt: Date.now() + CAMPUS_DIRECTORY_TTL_MS };
+  return directory;
+};
+
+/** Every campus 42 has, id and name, cached for a day. */
+export const listCampuses = async (api: FortyTwoApi): Promise<CampusInfo[]> =>
+  (await loadDirectory(api)).list;
+
+/** A campus's id from its name, or null when 42 has no such campus. */
+export const resolveCampusId = async (
+  name: string,
+  api: FortyTwoApi,
+): Promise<number | null> => (await loadDirectory(api)).byName.get(name) ?? null;
 
 /**
  * The rankings page hides the correction ratio column when it sees this value.
@@ -99,7 +153,7 @@ export const getCampusStudents = async (
   campusName: string,
   api: FortyTwoApi,
 ): Promise<Student[]> => {
-  const campusId = CAMPUS_IDS[campusName];
+  const campusId = await resolveCampusId(campusName, api);
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
   return cachedOnce(studentsCacheKey(campusName), STUDENTS_TTL, async () => {
@@ -168,7 +222,7 @@ export const getPoolUsers = async (
   year: string,
   api: FortyTwoApi,
 ): Promise<any[]> => {
-  const campusId = CAMPUS_IDS[campusName];
+  const campusId = await resolveCampusId(campusName, api);
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
   const cacheKey = `pool:${campusName}:${month}:${year}`;

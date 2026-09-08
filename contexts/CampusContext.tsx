@@ -20,10 +20,25 @@ export function CampusProvider({ children }: { children: React.ReactNode }) {
   
 
   const canChangeCampus = userRole === 'staff' || userRole === 'admin'
-  
 
-  const availableCampuses = ['Angouleme', 'Nice', 'Paris']
-  
+  // Seeded with the two this site started on so the switcher has something
+  // to show immediately; replaced with the real, full list once it loads.
+  const [availableCampuses, setAvailableCampuses] = useState<string[]>(['Angouleme', 'Nice'])
+
+  useEffect(() => {
+    if (!canChangeCampus) return
+    fetch('/api/campuses')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setAvailableCampuses(data.map((campus: { name: string }) => campus.name))
+        }
+      })
+      .catch(() => {
+        // The seeded pair still works.
+      })
+  }, [canChangeCampus])
+
 
   const [selectedCampus, setSelectedCampus] = useState<string>(userCampus)
   
