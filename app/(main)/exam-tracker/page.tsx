@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, RefreshCw } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import Link from 'next/link'
@@ -65,11 +65,14 @@ export default function ExamTracker() {
         return () => clearTimeout(timer);
     }, [effectiveCampus]);
 
-    const { data: students = [], isLoading, error, isSuccess, isFetching } = useQuery({
-        queryKey: ['current_exam'],
+    const { data: students = [], isLoading, error, isSuccess, isFetching, refetch } = useQuery({
+        queryKey: ['current_exam', effectiveCampus],
         queryFn: async () => {
-
-            const response = await fetch("/api/current_exam");
+            // Without this, every visitor -- Nice or Angoulême -- walks both
+            // campuses and throws half the answer away in studentsFiltered
+            // below. One campus known up front is one exam sweep, not two.
+            const query = effectiveCampus ? `?campus=${encodeURIComponent(effectiveCampus)}` : "";
+            const response = await fetch(`/api/current_exam${query}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch students');
             }
@@ -187,18 +190,32 @@ export default function ExamTracker() {
         <div className="max-w-7xl mx-auto px-4">
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                        Exam Tracker
-                        <span title="In development" className="ml-2 text-yellow-500 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-1">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="text-xs font-semibold">In development</span>
-                        </span>
-                    </CardTitle>
-                    <p className="text-muted-foreground">
-                        Refreshed every 10 minutes while this page is open.
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                                Exam Tracker
+                                <span title="In development" className="ml-2 text-yellow-500 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-1">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="text-xs font-semibold">In development</span>
+                                </span>
+                            </CardTitle>
+                            <p className="text-muted-foreground">
+                                Refreshed every 10 minutes while this page is open.
+                            </p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => refetch()}
+                            disabled={isFetching}
+                            aria-label="Refresh exam results"
+                            className="shrink-0"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {/* Message d'erreur après timeout */}
@@ -267,7 +284,19 @@ export default function ExamTracker() {
                         <Alert variant="default" className="mt-5">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>No students found</AlertTitle>
-                            <AlertDescription className="text-muted-foreground">Exam hasn't started yet.</AlertDescription>
+                            <AlertDescription className="flex items-center justify-between gap-4 text-muted-foreground">
+                                <span>Exam hasn't started yet, or nobody has been graded so far. Check again in a moment.</span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => refetch()}
+                                    disabled={isFetching}
+                                    className="shrink-0 gap-2"
+                                >
+                                    <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                                    {isFetching ? "Checking…" : "Check again"}
+                                </Button>
+                            </AlertDescription>
                         </Alert>
                     )}
 

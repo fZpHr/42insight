@@ -8,6 +8,10 @@ import {
   getEnrichedCampusStudents,
 } from "@/lib/forty-two/live-campus";
 
+// A miss on the first campus tried costs a second full walk -- up to twenty
+// seconds cold, past Vercel's default function timeout.
+export const maxDuration = 60;
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ login: string }> },

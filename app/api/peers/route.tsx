@@ -17,6 +17,10 @@ import type { Project, ProjectSubscriber } from "@/types";
  * only an id and a login.
  */
 
+// A cold campus roster walk plus the projects_users page walk can run past
+// Vercel's default function timeout.
+export const maxDuration = 60;
+
 const CACHE_TTL = 600;
 
 /**
@@ -42,7 +46,8 @@ export async function GET(request: Request) {
 
   // One campus, not every campus. The page filters on the selected one
   // anyway, so walking the others threw away half of a very expensive fetch.
-  const requested = new URL(request.url).searchParams.get("campus");
+  const { searchParams } = new URL(request.url);
+  const requested = searchParams.get("campus");
   const campuses = Object.entries(CAMPUS_IDS).filter(
     ([name]) => !requested || name === requested,
   );
@@ -51,9 +56,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });
   }
 
+  // Everyone in progress on every listed project is the expensive default --
+  // nine pages a campus. A visitor who wants one project (to pair with a
+  // group they can already see, say) should not pay for the other 819 rows.
+  const requestedProject = searchParams.get("project");
+  if (requestedProject && !PEER_PROJECT_IDS.includes(Number(requestedProject))) {
+    return NextResponse.json({ error: "Unknown project" }, { status: 404 });
+  }
+  const projectIds = requestedProject
+    ? [Number(requestedProject)]
+    : PEER_PROJECT_IDS;
+
   try {
     const result = await cachedOnce(
-      `${CACHE_KEY}:${requested ?? "all"}`,
+      `${CACHE_KEY}:${requested ?? "all"}:${requestedProject ?? "all"}`,
       CACHE_TTL,
       async () => {
     const projects = new Map<number, Project>();
@@ -77,7 +93,7 @@ export async function GET(request: Request) {
 
       const projectUsers = await api.fetchAllPages(
         `/projects_users?filter[campus]=${campusId}&filter[cursus]=${CURSUS_ID}` +
-          `&filter[status]=in_progress&filter[project_id]=${PEER_PROJECT_IDS.join(",")}` +
+          `&filter[status]=in_progress&filter[project_id]=${projectIds.join(",")}` +
           `&range[updated_at]=${since},${new Date().toISOString()}`,
         { maxPages: 15 },
       );

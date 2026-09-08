@@ -10,6 +10,10 @@ import {
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
 
+// A miss on the first campus (and pool) tried chains several full walks --
+// each ten seconds or so cold, past Vercel's default function timeout.
+export const maxDuration = 60;
+
 const rankByLevel = (
   people: Array<{ name: string; level: number }>,
   login: string,

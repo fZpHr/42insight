@@ -9,6 +9,10 @@ import {
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
 
+// A miss on the first campus tried costs a second full pool walk, past
+// Vercel's default function timeout on a cold cache.
+export const maxDuration = 60;
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ login: string }> },

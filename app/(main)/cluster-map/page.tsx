@@ -317,7 +317,12 @@ export default function ClusterMap() {
 
 
 
-  if (!showTimeoutError && (status === "loading" || !effectiveCampus || (isLoading || isFetching) && !isSuccess)) {
+  // Keep the loading screen for as long as the request is actually running.
+  // The timeout timer used to dismiss it at 15s while the fetch was still
+  // going, so a slow campus rendered every host as empty over a request that
+  // then arrived a moment later -- indistinguishable from nobody being logged
+  // in, and the only fix was pressing refresh yourself.
+  if (status === "loading" || !effectiveCampus || ((isLoading || isFetching) && !isSuccess)) {
     return <LoadingScreen message="Loading cluster map..." />;
   }
 

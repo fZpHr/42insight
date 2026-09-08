@@ -24,6 +24,10 @@ import { cachedOnce } from "@/lib/memory-cache";
  * carries only an id and a login.
  */
 
+// Without a campus filter this walks every campus's roster in turn on a cold
+// cache -- past Vercel's default function timeout.
+export const maxDuration = 60;
+
 const CACHE_TTL = 120;
 /** An exam sat today, give or take the day either side of midnight. */
 const WINDOW_DAYS = 1;

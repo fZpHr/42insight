@@ -9,6 +9,10 @@ import {
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
 
+// Walks every campus's pool roster in turn on a cold cache -- past Vercel's
+// default function timeout.
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {

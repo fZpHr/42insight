@@ -17,9 +17,16 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from "@/components/ui/empty"
-import { Search, TriangleAlert, AlertCircle } from "lucide-react";
+import { Search, TriangleAlert, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Project } from "@/types";
 import { PROJECT_ORDER } from "@/lib/forty-two/peer-projects";
 import { useSession } from 'next-auth/react';
@@ -28,9 +35,14 @@ import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { fetchJson } from "@/lib/api-client";
 
-async function fetchPeersData(campus?: string) {
-    const query = campus ? `?campus=${encodeURIComponent(campus)}` : "";
-    return fetchJson<Project[]>(`/api/peers${query}`);
+const ALL_PROJECTS = "all";
+
+async function fetchPeersData(campus?: string, projectId?: string) {
+    const params = new URLSearchParams();
+    if (campus) params.set("campus", campus);
+    if (projectId && projectId !== ALL_PROJECTS) params.set("project", projectId);
+    const query = params.toString();
+    return fetchJson<Project[]>(`/api/peers${query ? `?${query}` : ""}`);
 }
 
 
@@ -43,6 +55,10 @@ export default function PeersPage() {
     const { selectedCampus } = useCampus();
     const effectiveCampus = selectedCampus || user?.campus;
     const [showTimeoutError, setShowTimeoutError] = React.useState(false);
+    // Every project in one call is the expensive default -- nine pages a
+    // campus. Picking one is the cheap path for a visitor who already knows
+    // who they want to pair with.
+    const [projectFilter, setProjectFilter] = React.useState<string>(ALL_PROJECTS);
 
 
     React.useEffect(() => {
@@ -50,20 +66,39 @@ export default function PeersPage() {
             setShowTimeoutError(true);
         }, 15000);
         return () => clearTimeout(timer);
-    }, [effectiveCampus]);
-    
-    const { data, error, isLoading, isSuccess, isFetching } = useQuery<Project[]>({
-        queryKey: ['peersData', effectiveCampus],
-        queryFn: () => fetchPeersData(effectiveCampus),
+    }, [effectiveCampus, projectFilter]);
+
+    const { data, error, isLoading, isSuccess, isFetching, refetch } = useQuery<Project[]>({
+        queryKey: ['peersData', effectiveCampus, projectFilter],
+        queryFn: () => fetchPeersData(effectiveCampus, projectFilter),
         staleTime: 30 * 60 * 1000,
     });
+
+    const projectPicker = (
+        <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="All projects" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value={ALL_PROJECTS}>All projects</SelectItem>
+                {Object.entries(PROJECT_ORDER).map(([name, id]) => (
+                    <SelectItem key={id} value={String(id)}>{name}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
 
 
     // Keep the loading screen for as long as the request is actually running.
     // The timeout used to dismiss it at 15s while the fetch was still going,
     // so a slow campus rendered "No Peers found" over data that then arrived.
     if ((isLoading || isFetching) && !isSuccess) {
-        return <LoadingScreen message="Loading peers..." />;
+        return (
+            <div className="container mx-auto px-2 py-6 space-y-4">
+                <div className="flex justify-end">{projectPicker}</div>
+                <LoadingScreen message="Loading peers..." />
+            </div>
+        );
     }
 
 
@@ -123,20 +158,30 @@ export default function PeersPage() {
     };
 
     if (error || !sortedProjects || sortedProjects.length === 0) {
-        return <div className="flex items-center justify-center h-full w-full">
-            <Empty>
-                <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                        <TriangleAlert />
-                    </EmptyMedia>
-                    <EmptyTitle>No Peers found</EmptyTitle>
-                </EmptyHeader>
-                <EmptyContent>
-                    <Button variant="outline" size="sm">
-                        Refresh
-                    </Button>
-                </EmptyContent>
-            </Empty>
+        return <div className="container mx-auto px-2 py-6 space-y-4">
+            <div className="flex justify-end">{projectPicker}</div>
+            <div className="flex items-center justify-center">
+                <Empty>
+                    <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                            <TriangleAlert />
+                        </EmptyMedia>
+                        <EmptyTitle>No Peers found</EmptyTitle>
+                    </EmptyHeader>
+                    <EmptyContent>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => refetch()}
+                            disabled={isFetching}
+                            className="gap-2"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                            Refresh
+                        </Button>
+                    </EmptyContent>
+                </Empty>
+            </div>
         </div>;
     }
 
@@ -164,16 +209,30 @@ export default function PeersPage() {
                 </Alert>
             )}
             
-            <div className="flex items-center justify-between mb-6">
-                <p className="text-xl font-bold">
-                    {sortedProjects.reduce((acc, project) => acc + project.subscribers.length, 0)} students
-                </p>
-                <p className="text-sm text-muted-foreground">
-                    Last Updated:{" "}
-                    {sortedProjects && sortedProjects.length > 0
-                        ? formatDate(sortedProjects[0].updatedAt)
-                        : "N/A"}
-                </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div>
+                    <p className="text-xl font-bold">
+                        {sortedProjects.reduce((acc, project) => acc + project.subscribers.length, 0)} students
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Last Updated:{" "}
+                        {sortedProjects && sortedProjects.length > 0
+                            ? formatDate(sortedProjects[0].updatedAt)
+                            : "N/A"}
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    {projectPicker}
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => refetch()}
+                        disabled={isFetching}
+                        aria-label="Refresh peers"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                    </Button>
+                </div>
             </div>
             {/* <div className="gap-6 mb-5">
                 {session?.user?.campus !== 'Angouleme' &&  session?.user.campus !== "Nice" && (

@@ -16,6 +16,7 @@ import {
   Briefcase,
   AlertCircle,
   Clock,
+  RefreshCw,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -247,6 +248,7 @@ export default function Rankings() {
     error,
     isSuccess,
     isFetching,
+    refetch,
   } = useQuery({
     queryKey: ["campus-students", selectedCampus || user?.campus],
     queryFn: async () => {
@@ -856,7 +858,12 @@ export default function Rankings() {
     );
   }
 
-  if ((isLoading || isFetching) && !isSuccess) {
+  // !effectiveCampus matters as much as the fetch flags: the query is
+  // disabled until the session/campus context resolves, so isLoading and
+  // isFetching both read false in that window and the page fell through to
+  // an empty "0 students" render until a manual refetch (which ignores
+  // `enabled`) actually showed anything.
+  if (!effectiveCampus || ((isLoading || isFetching) && !isSuccess)) {
     return (
       <LoadingScreen message="Loading rankings..." />
     );
@@ -1128,6 +1135,16 @@ export default function Rankings() {
                   <span className="hidden sm:inline">
                     {sortDirection === "asc" ? "Asc" : "Desc"}
                   </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  aria-label="Refresh rankings"
+                  className="shrink-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
                 </Button>
               </div>
 
@@ -1403,6 +1420,16 @@ export default function Rankings() {
                               ? "Ascending"
                               : "Descending"}
                           </span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => refetch()}
+                          disabled={isFetching}
+                          className="flex items-center gap-2 px-3 bg-transparent w-full"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                          <span>Refresh</span>
                         </Button>
                       </div>
                     </AccordionContent>

@@ -8,6 +8,12 @@ import {
   getEnrichedCampusStudents,
 } from "@/lib/forty-two/live-campus";
 
+// A cold cache walks the whole campus in paginated 42 API calls, roughly ten
+// seconds per campus paced at two requests a second -- past Vercel's default
+// function timeout, which kills the request before the client ever sees a
+// response (and the visitor has to reload to hit the now-warm cache).
+export const maxDuration = 60;
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ campus_name: string }> },

@@ -13,6 +13,7 @@ import {
   ArrowDown,
   Target,
   Eye,
+  RefreshCw,
 } from "lucide-react";
 import { useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +60,8 @@ export default function Piscine() {
     data: students,
     isLoading,
     error,
+    isFetching,
+    refetch,
   } = useQuery({
     queryKey: ["pool-students"],
     queryFn: async () => {
@@ -262,6 +265,16 @@ export default function Piscine() {
                 <span className="sm:inline">
                   {sortDirection === "asc" ? "Asc" : "Desc"}
                 </span>
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                aria-label="Refresh rankings"
+                className="shrink-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
               </Button>
             </div>
           </div>
