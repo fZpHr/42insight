@@ -115,8 +115,11 @@ export interface ExamStudent {
   grade: number;
   lastUpdate: Date;
   examId: string;
+  /** The project's own name, as 42 gives it: "Exam Rank 04", "C Piscine Exam 01". */
+  examName: string;
   occurence: number;
   isToday: boolean;
+  campus?: string;
 }
 
 export interface PoolUser {

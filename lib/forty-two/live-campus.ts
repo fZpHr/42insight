@@ -263,6 +263,22 @@ const getWorkStatus = async (
  */
 export const getEnrichedCampusStudents = getCampusStudents;
 
+/**
+ * The piscine roster for one campus and one promotion.
+ *
+ * This used to walk every cursus_users row the campus has ever had for the
+ * piscine cursus and then keep the ones whose pool_month matched -- 12 pages at
+ * Nice, 81 at Paris, to end up with a hundred people. Worse, fetchAllPages
+ * stops at 40 pages, so Paris's 8087 rows were read half way and the promotion
+ * being asked for could sit entirely in the half never read.
+ *
+ * /campus/:id/users filters on pool_month and pool_year directly, which is
+ * exact -- checked against the live API, every row it returns conforms, and
+ * Paris correctly answers zero for a promotion it never ran. What it does not
+ * carry is the cursus level, so the ids come back in a second request that asks
+ * cursus_users for exactly those users. Nice: four requests rather than twelve
+ * pages.
+ */
 export const getPoolUsers = async (
   campusName: string,
   month: string,
@@ -275,43 +291,76 @@ export const getPoolUsers = async (
   const cacheKey = `pool:${campusName}:${month}:${year}`;
 
   return cachedOnce(cacheKey, POOL_TTL, async () => {
-  const cursusUsers = await api.fetchAllPages(
-    `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${POOL_CURSUS_ID}`,
-  );
+    const users = await api.fetchAllPages(
+      `/campus/${campusId}/users` +
+        `?filter[pool_month]=${encodeURIComponent(month)}` +
+        `&filter[pool_year]=${encodeURIComponent(year)}`,
+    );
 
-  const poolUsers = cursusUsers
-    .filter((cursusUser) => {
-      const user = cursusUser.user;
-      if (!user || user["staff?"]) return false;
-      if ((user.pool_month ?? "").toLowerCase() !== month) return false;
-      return String(user.pool_year) === year;
-    })
-    .map((cursusUser) => {
-      const user = cursusUser.user;
-      return {
-        id: user.id,
-        name: user.login,
-        firstName: user.first_name ?? "",
-        level: cursusUser.level ?? 0,
-        photoUrl: user.image?.versions?.medium || user.image?.link || "",
-        location: user.location ?? "",
-        correctionPoints: user.correction_point ?? 0,
-        year: parseInt(user.pool_year) || new Date().getFullYear(),
-        wallet: user.wallet ?? 0,
-        isPoolUser: true,
+    const pisciners = users.filter((user) => user && !user["staff?"]);
+    if (pisciners.length === 0) return [];
 
-        // Exam grades and project state came from the exam crons.
-        correctionTotal: 0,
-        correctionPositive: 0,
-        correctionNegative: 0,
-        correctionPercentage: NO_CORRECTION_DATA,
-        activityData: { activities: [] },
-        examGrades: {},
-        currentProjects: "",
-        has_succeeded: false,
-      };
-    });
+    const levels = await getPoolLevels(
+      pisciners.map((user) => user.id),
+      api,
+    );
 
-    return poolUsers;
+    return pisciners.map((user) => ({
+      id: user.id,
+      name: user.login,
+      firstName: user.first_name ?? "",
+      level: levels.get(user.id) ?? 0,
+      photoUrl: user.image?.versions?.medium || user.image?.link || "",
+      location: user.location ?? "",
+      correctionPoints: user.correction_point ?? 0,
+      year: parseInt(user.pool_year) || new Date().getFullYear(),
+      wallet: user.wallet ?? 0,
+      isPoolUser: true,
+
+      // Exam grades and project state came from the exam crons.
+      correctionTotal: 0,
+      correctionPositive: 0,
+      correctionNegative: 0,
+      correctionPercentage: NO_CORRECTION_DATA,
+      activityData: { activities: [] },
+      examGrades: {},
+      currentProjects: "",
+      has_succeeded: false,
+    }));
   });
+};
+
+/**
+ * Piscine levels, by student id.
+ *
+ * A hundred ids to a request: filter[user_id] takes a comma list, and a
+ * hundred of them is a URL of some 770 characters. A failure here costs the
+ * level column, not the roster.
+ */
+const getPoolLevels = async (
+  ids: number[],
+  api: FortyTwoApi,
+): Promise<Map<number, number>> => {
+  const levels = new Map<number, number>();
+  const CHUNK = 100;
+
+  for (let start = 0; start < ids.length; start += CHUNK) {
+    const chunk = ids.slice(start, start + CHUNK);
+
+    try {
+      const rows = await api.fetchAllPages(
+        `/cursus_users?filter[cursus_id]=${POOL_CURSUS_ID}` +
+          `&filter[user_id]=${chunk.join(",")}`,
+        { maxPages: 2 },
+      );
+
+      for (const row of rows) {
+        if (row?.user?.id) levels.set(row.user.id, row.level ?? 0);
+      }
+    } catch (error: any) {
+      console.error("[live-campus] pool levels failed:", error.message);
+    }
+  }
+
+  return levels;
 };

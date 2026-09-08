@@ -53,7 +53,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Student, StudentSortOption } from "@/types";
+import type { PoolUser, Student, StudentSortOption } from "@/types";
 import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts";
 import {
   Accordion,
@@ -195,6 +195,32 @@ const CORRECTION_RATIOS_ENABLED = false;
 const fetchCampusStudents = (campus: string): Promise<Student[]> =>
   fetchJson<Student[]>(`/api/campus/${campus}/students`);
 
+/**
+ * The piscine is a different cursus, so a different roster.
+ *
+ * Its rows come back shaped like a student's already, bar the four fields the
+ * 42cursus has and a pisciner does not -- there is no blackhole to time and no
+ * internship to be on -- so they are filled in here rather than teaching every
+ * sort and column about a second type.
+ */
+const fetchPoolStudents = async (campus: string): Promise<Student[]> => {
+  const pool = await fetchJson<PoolUser[]>(
+    `/api/users/pool?campus=${encodeURIComponent(campus)}`,
+  );
+
+  return pool.map((user) => ({
+    ...user,
+    blackholeTimer: 0,
+    relation: null,
+    work: 0,
+    has_validated: user.has_succeeded ?? false,
+    campus,
+  }));
+};
+
+/** Which roster the page is showing. */
+type Cursus = "cursus" | "piscine";
+
 type SortDirection = "asc" | "desc";
 
 export default function Rankings() {
@@ -217,6 +243,14 @@ export default function Rankings() {
    * silently on the next visit.
    */
   const [globalMode, setGlobalMode] = useState(false);
+
+  /**
+   * 42cursus or the piscine. Not persisted either: somebody who came to look
+   * at the piscine came for that visit, and the rankings people mean by
+   * default are the ones they are in.
+   */
+  const [cursus, setCursus] = useState<Cursus>("cursus");
+
   const [confirmingGlobal, setConfirmingGlobal] = useState(false);
   const [globalProgress, setGlobalProgress] = useState<{
     done: number;
@@ -233,6 +267,14 @@ export default function Rankings() {
     }
     setGlobalMode(false);
     pickCampus(value);
+  };
+
+  const chooseCursus = (next: Cursus) => {
+    // Global is a 42cursus idea. A worldwide piscine would be 54 rosters for a
+    // few dozen people each, and nobody is comparing piscines across Tokyo and
+    // Nice -- so picking the piscine drops back to a single campus.
+    if (next === "piscine") setGlobalMode(false);
+    setCursus(next);
   };
   const [highlightUser, setHighlightUser] = useState(false);
   const userRowRef = useRef<HTMLDivElement>(null);
@@ -290,8 +332,10 @@ export default function Rankings() {
     // one the page is already loading.
     if (schools.length === 0 && own) schools.push({ value: own, label: own });
 
-    return [...schools, { value: "Global", label: "Global (every campus)" }];
-  }, [campuses, userCampus, user?.campus]);
+    return cursus === "piscine"
+      ? schools
+      : [...schools, { value: "Global", label: "Global (every campus)" }];
+  }, [campuses, userCampus, user?.campus, cursus]);
 
   const {
     data: rawStudents,
@@ -301,10 +345,22 @@ export default function Rankings() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["campus-students", selectedCampus || user?.campus],
+    queryKey: ["campus-students", cursus, selectedCampus || user?.campus],
     queryFn: async () => {
       const campus = selectedCampus || user?.campus;
       if (!campus) return [];
+
+      if (cursus === "piscine") {
+        const pool = await fetchPoolStudents(campus);
+        if (pool.length === 0) {
+          toast.error("Nobody in the piscine at this campus right now", {
+            duration: 2000,
+            position: "bottom-right",
+          });
+        }
+        return pool;
+      }
+
       if (campus === "Global") {
         // 42 has no worldwide roster endpoint, and a single walk of fifty
         // thousand students would outlive any serverless function anyway. So it
@@ -1004,6 +1060,25 @@ export default function Rankings() {
             <div className="w-full sm:w-auto">
               {/* Desktop view - show controls directly */}
               <div className="hidden sm:flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:w-auto">
+                {/* 42cursus or piscine: a different cursus, so a different
+                    roster and a different request. */}
+                <div className="inline-flex overflow-hidden rounded-md border text-xs">
+                  {(["cursus", "piscine"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => chooseCursus(option)}
+                      aria-pressed={cursus === option}
+                      className={`px-2.5 py-2 transition-colors ${
+                        cursus === option
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {option === "cursus" ? "42cursus" : "Piscine"}
+                    </button>
+                  ))}
+                </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -1236,7 +1311,9 @@ export default function Rankings() {
                   built made the feature vanish without a trace -- no way to see
                   when it was built, and no way to rebuild it when it went
                   stale, which it does: it is a snapshot in one browser. */}
-              {effectiveCampus !== "Global" && (
+              {/* The logtime index is built from the 42cursus roster, so it
+                  has nothing to say about a pisciner. */}
+              {effectiveCampus !== "Global" && cursus === "cursus" && (
                   <div className="flex w-full flex-wrap items-center gap-2 border-t pt-2">
                     <span className="shrink-0 text-xs text-muted-foreground">
                       Optional data, fetched on your key:
@@ -1276,6 +1353,23 @@ export default function Rankings() {
                     </AccordionTrigger>
                     <AccordionContent className="pb-2">
                       <div className="flex flex-col gap-3 px-3">
+                        <div className="inline-flex overflow-hidden rounded-md border text-xs">
+                          {(["cursus", "piscine"] as const).map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => chooseCursus(option)}
+                              aria-pressed={cursus === option}
+                              className={`flex-1 px-2.5 py-2 transition-colors ${
+                                cursus === option
+                                  ? "bg-primary text-primary-foreground"
+                                  : "text-muted-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {option === "cursus" ? "42cursus" : "Piscine"}
+                            </button>
+                          ))}
+                        </div>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <Select
