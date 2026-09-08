@@ -65,6 +65,7 @@ const homeCopy = {
     alreadyBefore: "Already registered one?",
     alreadyLink: "Find it in your existing apps",
     alreadyAfter: "and reuse its credentials. Make sure it's public.",
+    browseWithoutKey: "Browse the site without a key (so, without data)",
     noKey: "Don't have a key, or not sure what this is?",
     stepOpenBefore: "Open",
     stepOpenAfter: "on the intra.",
@@ -96,6 +97,7 @@ const homeCopy = {
     alreadyBefore: "Déjà inscrit une application ?",
     alreadyLink: "Retrouvez-la dans vos applications",
     alreadyAfter: "et réutilisez ses identifiants. Elle doit être publique.",
+    browseWithoutKey: "Accéder au site sans clé (donc sans data)",
     noKey: "Pas encore de clé, ou pas sûr de ce que c'est ?",
     stepOpenBefore: "Ouvrez",
     stepOpenAfter: "sur l'intra.",
@@ -529,6 +531,23 @@ export default function Home() {
               </span>
             </Button>
 
+            {process.env.NODE_ENV !== "production" && (
+              <button
+                type="button"
+                onClick={() => {
+                  persistDevPreview(true);
+                  router.replace(
+                    resolveCallbackUrl(
+                      new URLSearchParams(window.location.search).get("callbackUrl"),
+                    ),
+                  );
+                }}
+                className="text-center text-xs text-white/50 underline underline-offset-2 transition-colors hover:text-white/80"
+              >
+                {t.browseWithoutKey}
+              </button>
+            )}
+
             <p className="text-center text-xs text-muted-foreground">
               {t.alreadyBefore}{" "}
               <a
@@ -542,23 +561,6 @@ export default function Home() {
               </a>
               {" "}{t.alreadyAfter}
             </p>
-
-            {process.env.NODE_ENV !== "production" && (
-              <button
-                type="button"
-                onClick={() => {
-                  persistDevPreview(true);
-                  router.replace(
-                    resolveCallbackUrl(
-                      new URLSearchParams(window.location.search).get("callbackUrl"),
-                    ),
-                  );
-                }}
-                className="text-center text-xs text-amber-400/80 underline underline-offset-2 hover:text-amber-300"
-              >
-                Dev only: skip sign-in, preview mode
-              </button>
-            )}
 
           </motion.form>
 
