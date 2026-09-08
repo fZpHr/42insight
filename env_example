@@ -1,15 +1,9 @@
-# The site's own 42 application. It does exactly one thing: sign people in.
-#
-# No data is ever fetched on it. 42 meters per application, so a page load made
-# on this key would compete with logging in -- browse hard enough and nobody
-# can sign in until the hour rolls over. Visitors bring their own key for data.
-CLIENT_ID1=
-CLIENT_SECRET1=
-
 # Signs the session cookie, and encrypts the 42 credentials visitors connect.
+# Required: next-auth refuses to start in production without it.
 JWT_SECRET=
 
-# Where the site is reachable, for the OAuth callback.
+# Where the site is reachable. Required by next-auth for cookies and CSRF,
+# even though sign-in itself no longer redirects anywhere external.
 # In local development: http://localhost:3000
 NEXTAUTH_URL=
 

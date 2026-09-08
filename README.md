@@ -26,17 +26,20 @@ All of the Old Features from our existing website have been moved to one website
 Everything is read live from the 42 API. There is no database, no Redis, no
 cron and no runner: clone the repo, fill in a `.env`, and it runs.
 
-Two keys, with one job each.
+One key, doing both jobs.
 
-**The site's key signs people in, and nothing else.** 42 meters per
-application, and next-auth reads a profile on every sign-in. If pages were
-fetched on that same key, a busy afternoon of browsing would spend the budget
-logging in depends on, and nobody could sign in until the hour rolled over. So
-no data request is ever made on it.
+There used to be a second, site-owned 42 application just for signing people
+in, separate from the one a visitor registers for data. Everyone needed the
+second key anyway to see anything, so the first bought nothing but an extra
+step -- and a secret of mine to keep alive on top of it.
 
-**Your key fetches the data.** Register an application on the intra (Settings →
-API → Register a new app) and connect it from the header. Until then, pages ask
-for one rather than showing partial data. The credentials are sealed into an
+**Your key signs you in and fetches the data.** Register an application on the
+intra (Settings → API → Register a new app, set to Public) and connect it on
+the landing page. Signing in works by asking 42 who owns that application: its
+credentials are exchanged for a token, `GET /v2/apps?filter[uid]=` on that
+token names the owner, and a profile lookup on that login builds the session.
+42 only lists public applications there, so a private one won't resolve --
+the page says so if that happens. The same credentials are also sealed into an
 encrypted httpOnly cookie that lasts a month, so the key is entered once, not
 every session — what is stored is the credentials, not the two-hour access
 token, which is what lets the server mint a fresh one without asking again.
