@@ -76,6 +76,7 @@ import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
 import { fetchJson, isKeyRequired } from "@/lib/api-client";
+import type { CorrectionRatio } from "@/lib/forty-two/corrections";
 import { readLogtimeIndex, withLogtime, type LogtimeIndex } from "@/lib/logtime-store";
 import { useCampus } from "@/contexts/CampusContext";
 import { fetchPoolStudents, type Cursus } from "@/lib/pool-roster";
@@ -192,7 +193,10 @@ const NO_CORRECTION_DATA = 420;
  * make deliberately rather than to ship because the code happens to run. Flip
  * this back to true to bring the button, and the column, back.
  */
-const CORRECTION_RATIOS_ENABLED = false;
+const CORRECTION_RATIOS_ENABLED = true;
+
+/** What the route accepts at once, and about a screenful. */
+const CORRECTION_BATCH = 30;
 
 const fetchCampusStudents = (campus: string): Promise<Student[]> =>
   fetchJson<Student[]>(`/api/campus/${campus}/students`);
@@ -433,28 +437,33 @@ export default function Rankings() {
     reloadLogtimeIndex();
   }, [reloadLogtimeIndex]);
 
-  // Asked for, never automatic. A year of corrections is a hundred pages and
-  // three minutes, and every request is paced against the same key -- so
-  // running it on arrival did not merely cost quota, it put every other page
-  // behind it in the queue. Pages that normally take 400ms took three seconds.
-  const [wantCorrections, setWantCorrections] = useState(false);
+  /**
+   * Correction ratios, for the students on screen and no further.
+   *
+   * The campus-wide version read every evaluation the campus had and grouped
+   * by corrector, because scale_teams cannot be filtered by corrector: 108813
+   * rows at Nice, 1089 pages, eighteen minutes on one visitor's key, and it
+   * held the paced lane the whole time so every other page crawled behind it.
+   * That is why it was switched off.
+   *
+   * as_corrector answers for one person and X-Total gives the count without
+   * returning a single row, so a student costs two requests. A screenful is
+   * forty, and the column fills in behind the reader as they scroll.
+   */
+  const [ratios, setRatios] = useState<Record<number, CorrectionRatio>>({});
+  const askedFor = useRef<Set<number>>(new Set());
 
-  const { data: corrections, isFetching: correctionsLoading } = useQuery({
-    queryKey: ["campus-corrections", effectiveCampus],
-    queryFn: () =>
-      fetchJson<Record<string, { positive: number; negative: number; percentage: number }>>(
-        `/api/campus/${effectiveCampus}/corrections`,
-      ),
-    enabled: wantCorrections && !!effectiveCampus && effectiveCampus !== "Global",
-    staleTime: 60 * 60 * 1000,
-  });
+  // A different roster is a different set of people to ask about.
+  useEffect(() => {
+    setRatios({});
+    askedFor.current = new Set();
+  }, [effectiveCampus, cursus]);
 
   const students = useMemo(() => {
     const withTime = withLogtime(rawStudents ?? [], logtimeIndex);
-    if (!corrections) return withTime;
 
     return withTime.map((student: Student) => {
-      const tally = corrections[String(student.id)];
+      const tally = ratios[Number(student.id)];
       if (!tally) return student;
 
       return {
@@ -465,7 +474,7 @@ export default function Rankings() {
         correctionPercentage: tally.percentage,
       };
     });
-  }, [rawStudents, logtimeIndex, corrections]);
+  }, [rawStudents, logtimeIndex, ratios]);
 
   // Built from the data, not written by hand: the list used to stop at 2025
   // because someone had to remember to add a line every year, and nobody did.
@@ -477,9 +486,15 @@ export default function Rankings() {
     return [...years].sort().reverse();
   }, [students]);
 
+  /**
+   * Sorting by ratio needs everybody, and everybody is two requests each: a
+   * campus of 700 is twenty-odd minutes. So the ratio is a column, not a sort
+   * key, and this stays false until every student in the list has one.
+   */
   const hasCorrectionStats = useMemo(
     () =>
-      !!students?.some(
+      students.length > 0 &&
+      students.every(
         (student: Student) => student.correctionPercentage !== NO_CORRECTION_DATA,
       ),
     [students],
@@ -743,6 +758,40 @@ export default function Rankings() {
   }, [baselineSortedStudents, searchTerm, selectedYear, sortBy]);
 
   const visibleStudents = processedStudents.slice(0, visibleCount);
+
+  // Ask about the people on screen, once each. askedFor is what stops this
+  // from looping: an answer changes `students`, which changes this list, which
+  // runs the effect again -- and finds nothing new to ask about.
+  useEffect(() => {
+    if (!CORRECTION_RATIOS_ENABLED || effectiveCampus === "Global") return;
+
+    const missing = visibleStudents
+      .map((student) => Number(student.id))
+      .filter((id) => Number.isInteger(id) && !askedFor.current.has(id));
+
+    if (missing.length === 0) return;
+
+    const batch = missing.slice(0, CORRECTION_BATCH);
+    for (const id of batch) askedFor.current.add(id);
+
+    fetchJson<Record<string, CorrectionRatio>>(
+      `/api/corrections?ids=${batch.join(",")}`,
+    )
+      .then((answer) => {
+        setRatios((previous) => {
+          const merged = { ...previous };
+          for (const [id, ratio] of Object.entries(answer)) {
+            merged[Number(id)] = ratio;
+          }
+          return merged;
+        });
+      })
+      .catch(() => {
+        // Let them be asked about again on the next scroll rather than
+        // leaving a permanent hole in the column.
+        for (const id of batch) askedFor.current.delete(id);
+      });
+  }, [visibleStudents, effectiveCampus]);
   const hasMore = visibleCount < processedStudents.length;
 
   const loadMoreStudents = () => {
@@ -1357,20 +1406,6 @@ export default function Rankings() {
                         campus={effectiveCampus}
                         onBuilt={reloadLogtimeIndex}
                       />
-                      {CORRECTION_RATIOS_ENABLED && !hasCorrectionStats && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setWantCorrections(true)}
-                          disabled={correctionsLoading}
-                          className="shrink-0 gap-2"
-                          title="Every evaluation this campus has on record: several hundred requests on your key, and a few minutes."
-                        >
-                          {correctionsLoading
-                            ? "Reading evaluations…"
-                            : "Load correction ratios"}
-                        </Button>
-                      )}
                     </div>
                   </div>
                 )}
@@ -1849,7 +1884,7 @@ export default function Rankings() {
                         </div>
 
                         {/* Column 2: Correction Ratio & OK/KO */}
-                        {student.correctionPercentage !== 420 && (
+                        {student.correctionPercentage !== NO_CORRECTION_DATA && (
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-1">
                               <UITooltip>
