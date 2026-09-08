@@ -40,6 +40,8 @@ export const copy = {
     step2Before: "Give it any name, any application type, and any valid redirect URI (example: ",
     step2Code: "http://localhost",
     step2After: ").",
+    step2Public:
+      "Tick Public. Signing in works by looking up who owns the application, and 42 only lists the public ones.",
     step3: "Copy its UID and secret below.",
     existingBefore: "Already registered an application? ",
     existingLink: "Find it in your existing apps",
@@ -109,6 +111,8 @@ export const copy = {
     step2Before: "Donnez-lui le nom que vous voulez, n'importe quel type d'application, et une redirect URI valide (exemple : ",
     step2Code: "http://localhost",
     step2After: ").",
+    step2Public:
+      "Cochez Public : la connexion fonctionne en retrouvant qui possède l'application, et 42 ne liste que les applications publiques.",
     step3: "Copiez son UID et son secret ci-dessous.",
     existingBefore: "Vous avez déjà une application ? ",
     existingLink: "Retrouvez-la dans vos applications",

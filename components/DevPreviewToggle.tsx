@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Eye, X } from "lucide-react";
 import { isDevPreviewEnabled, setDevPreview } from "@/lib/dev-preview";
 
 /**
@@ -13,31 +14,38 @@ import { isDevPreviewEnabled, setDevPreview } from "@/lib/dev-preview";
  * No key means no session, so every page's queries stay `enabled: false`
  * and nothing is actually fetched. This is a way to see empty states, not a
  * way to see data without a key.
+ *
+ * It only appears once preview mode is on, as the way back out. Getting in is
+ * the landing page's business, where somebody who does not want to register an
+ * application is already looking.
  */
 export function DevPreviewToggle() {
   const [on, setOn] = useState(false);
+  const pathname = usePathname();
 
-  useEffect(() => setOn(isDevPreviewEnabled()), []);
+  // Re-read on every navigation, not just on mount. This lives in the root
+  // layout, which a client-side route change does not remount -- so entering
+  // preview from the landing page and being sent to the dashboard used to
+  // leave the badge behind, still reading the cookie as it was before the
+  // click.
+  useEffect(() => setOn(isDevPreviewEnabled()), [pathname]);
 
-  if (process.env.NODE_ENV === "production") return null;
+  if (process.env.NODE_ENV === "production" || !on) return null;
 
-  const toggle = () => {
-    setDevPreview(!on);
+  const leave = () => {
+    setDevPreview(false);
     window.location.reload();
   };
 
   return (
     <button
-      onClick={toggle}
-      className={`fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-lg transition-colors ${
-        on
-          ? "border-amber-500/50 bg-amber-500/20 text-amber-300"
-          : "border-white/10 bg-black/60 text-white/60 hover:text-white/90"
-      }`}
-      title="Dev only: skip sign-in to look at page layout. No key, no requests."
+      onClick={leave}
+      className="fixed left-1/2 top-3 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-500/50 bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-300 shadow-lg transition-colors hover:bg-amber-500/30"
+      title="No key, so no requests and no data. Click to leave preview mode."
     >
-      {on ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-      Preview mode: {on ? "ON" : "OFF"}
+      <Eye className="h-3.5 w-3.5" />
+      Preview mode
+      <X className="h-3.5 w-3.5 opacity-70" />
     </button>
   );
 }

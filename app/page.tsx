@@ -366,26 +366,28 @@ export default function Home() {
 
       <StarField paused={paused} />
 
-      <div className="absolute top-4 right-4 z-50 inline-flex overflow-hidden rounded-md border border-white/15 bg-black/40 text-xs backdrop-blur-sm">
-        {(["fr", "en"] as const).map((code) => (
-          <button
-            key={code}
-            type="button"
-            onClick={() => chooseLanguage(code)}
-            aria-pressed={language === code}
-            className={`px-2 py-1 transition-colors ${
-              language === code
-                ? "bg-white text-black"
-                : "text-white/60 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            {code.toUpperCase()}
-          </button>
-        ))}
-      </div>
-
       <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center gap-16 p-8 py-16">
         <main className="flex w-full max-w-2xl flex-col items-center gap-10">
+          {/* In the content column rather than the corner of the window: on a
+              wide screen the corner is half a metre from anything to read. */}
+          <div className="-mb-6 inline-flex self-end overflow-hidden rounded-md border border-white/15 bg-black/40 text-xs backdrop-blur-sm">
+            {(["fr", "en"] as const).map((code) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => chooseLanguage(code)}
+                aria-pressed={language === code}
+                className={`px-2 py-1 transition-colors ${
+                  language === code
+                    ? "bg-white text-black"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                {code.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
           <motion.div
             className="text-center space-y-4"
             initial={{ opacity: 0, y: -10 }}
@@ -531,6 +533,9 @@ export default function Home() {
               </span>
             </Button>
 
+            {/* A plain button rather than <Button variant="outline">: that
+                variant's dark-mode border resolves to near-black on this
+                background, which read as unstyled text rather than a button. */}
             {process.env.NODE_ENV !== "production" && (
               <button
                 type="button"
@@ -542,7 +547,7 @@ export default function Home() {
                     ),
                   );
                 }}
-                className="text-center text-xs text-white/50 underline underline-offset-2 transition-colors hover:text-white/80"
+                className="h-10 w-full rounded-md border border-white/20 bg-white/5 text-sm text-white/70 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
               >
                 {t.browseWithoutKey}
               </button>
