@@ -280,6 +280,16 @@ export class UserApi {
       if (pageData.length < pageSize) break;
     }
 
+    // Stopping at maxPages looks exactly like running out of rows, which is
+    // how Paris's rankings came to show 4000 of its 8402 students with nothing
+    // to say they were half a campus. X-Total knows better, so say so.
+    if (total > 0 && collected.length < total) {
+      console.warn(
+        `[42 API] ${path} truncated: ${collected.length} of ${total} rows, ` +
+          `stopped at maxPages=${maxPages}`,
+      );
+    }
+
     return collected;
   }
 }

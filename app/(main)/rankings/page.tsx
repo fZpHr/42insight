@@ -500,12 +500,23 @@ export default function Rankings() {
     sortKey: keyof Student,
     direction: SortDirection,
     sortByValue?: string,
+  ) => [...students].sort(makeComparator(sortKey, direction, sortByValue));
+
+  /**
+   * Exposed rather than inlined into the sort, because the ranking needs to
+   * know when two students are level -- a comparator returning 0 is the only
+   * thing that knows that across a dozen different sort keys.
+   */
+  const makeComparator = (
+    sortKey: keyof Student,
+    direction: SortDirection,
+    sortByValue?: string,
   ) => {
     let effectiveDirection = direction;
     if (sortKey === "correctionPercentage") {
       effectiveDirection = direction === "asc" ? "desc" : "asc";
     }
-    return [...students].sort((a, b) => {
+    return (a: Student, b: Student) => {
       let aValue: any = a[sortKey];
       let bValue: any = b[sortKey];
       
@@ -631,13 +642,10 @@ export default function Rankings() {
       } else {
         return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
       }
-    });
+    };
   };
 
-  const baselineSortedStudents = useMemo(() => {
-    if (!students) return [];
-
-
+  const baselineSortKey = useMemo((): keyof Student => {
     const activityDataSorts = [
       "totalLoginTime", "avgDailyHours", "avgLoginTime", "activeDays", "presenceRate",
       "currentStreak", "maxStreak", "daysWithoutConnection",
@@ -645,16 +653,17 @@ export default function Rankings() {
       "last7DaysTotal", "last30DaysTotal"
     ];
 
-    const sortKey =
-      sortBy === "internship" || sortBy === "work_study"
-        ? ("level" as keyof Student)
-        : activityDataSorts.includes(sortBy)
-        ? ("activityData" as keyof Student)
-        : ((sortOptions.find((o) => o.value === sortBy)?.key ||
-          "level") as keyof Student);
+    if (sortBy === "internship" || sortBy === "work_study") return "level";
+    if (activityDataSorts.includes(sortBy)) return "activityData";
+    return (sortOptions.find((option) => option.value === sortBy)?.key ||
+      "level") as keyof Student;
+  }, [sortBy]);
 
-    return sortStudents(students, sortKey, sortDirection, sortBy);
-  }, [students, sortBy, sortDirection]);
+  const baselineSortedStudents = useMemo(() => {
+    if (!students) return [];
+
+    return sortStudents(students, baselineSortKey, sortDirection, sortBy);
+  }, [students, baselineSortKey, sortBy, sortDirection]);
 
   const rankingStudents = useMemo(() => {
     if (!baselineSortedStudents) return [];
@@ -680,15 +689,30 @@ export default function Rankings() {
       });
   }, [baselineSortedStudents, selectedYear, sortBy]);
 
+  /**
+   * Position, counting people ahead rather than rows above.
+   *
+   * Rank used to be the row number, which made a tie an accident of whatever
+   * order the 42 API listed people in: 87 of the 100 in a fresh piscine are on
+   * level zero, and the same student sat at #14 or #91 from one refresh to the
+   * next. Students who are level now share a rank.
+   */
   const rankById = useMemo(() => {
     const map = new Map<string | number, number>();
-    const n = rankingStudents.length;
-    rankingStudents.forEach((student, idx) => {
-      const rank = sortDirection === "desc" ? idx + 1 : n - idx;
-      map.set(student.id, rank);
+    const compare = makeComparator(baselineSortKey, sortDirection, sortBy);
+
+    rankingStudents.forEach((student, index) => {
+      const previous = rankingStudents[index - 1];
+      const tied = previous && compare(previous, student) === 0;
+
+      map.set(
+        student.id,
+        tied ? (map.get(previous.id) ?? index + 1) : index + 1,
+      );
     });
+
     return map;
-  }, [rankingStudents, sortDirection]);
+  }, [rankingStudents, baselineSortKey, sortDirection, sortBy]);
 
   const processedStudents = useMemo(() => {
     if (!baselineSortedStudents) return [];

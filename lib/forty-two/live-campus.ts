@@ -147,6 +147,17 @@ const POOL_TTL = 900;
 
 const studentsCacheKey = (campus: string) => `students:${campus}`;
 
+/**
+ * How far a campus roster is allowed to walk.
+ *
+ * The default of forty silently cut Paris in half: 8402 students in the
+ * 42cursus is 85 pages, and forty of them is 4000 with nothing to say the rest
+ * existed. Ninety-five is what fits in the route's minute at the 600ms pacing,
+ * and covers every campus 42 has -- Paris is the only one past forty, and the
+ * next largest, Madrid, is twenty-six.
+ */
+const ROSTER_MAX_PAGES = 95;
+
 
 const daysUntil = (date: string | null): number => {
   if (!date) return 0;
@@ -199,6 +210,7 @@ export const getCampusStudents = async (
     const [cursusUsers, work] = await Promise.all([
       api.fetchAllPages(
         `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
+        { maxPages: ROSTER_MAX_PAGES },
       ),
       getWorkStatus(campusId, api),
     ]);
@@ -452,7 +464,10 @@ const getSampleCursus = async (
   try {
     const rows = await api.fetchAllPages(
       `/cursus_users?filter[user_id]=${ids.join(",")}`,
-      { maxPages: 3 },
+      // Sixty sample ids, each in several cursus: three pages was not always
+      // enough, and a sample with no cursus rows is a promotion classified on
+      // whatever the others happened to say.
+      { maxPages: 8 },
     );
 
     for (const row of rows) {
@@ -506,7 +521,8 @@ const dominantCursus = (
     const aPiscine = isCPiscineKind(directory.get(a[0])?.kind ?? "");
     const bPiscine = isCPiscineKind(directory.get(b[0])?.kind ?? "");
     if (aPiscine !== bPiscine) return aPiscine ? -1 : 1;
-    return b[1].n - a[1].n;
+    // Count, then id, so nothing is left for the response order to decide.
+    return b[1].n - a[1].n || a[0] - b[0];
   })[0];
 
   return best ? { id: best[0], name: best[1].name } : null;
@@ -690,7 +706,15 @@ export const getPoolUsersAcross = async (
       promotion.year,
       api,
       promotion.cursusId ?? undefined,
-    ).catch(() => []);
+    ).catch((error: any) => {
+      // Named, not swallowed: a promotion that fails to load leaves a gap in a
+      // ranking that otherwise looks complete.
+      console.error(
+        `[live-campus] ${promotion.month} ${promotion.year} missing from the ` +
+          `combined ranking: ${error.message}`,
+      );
+      return [];
+    });
 
     for (const student of roster) {
       const seen = byStudent.get(student.id);

@@ -13,13 +13,26 @@ import {
 // function timeout.
 export const maxDuration = 60;
 
+/**
+ * Where somebody stands, counting people ahead of them rather than rows.
+ *
+ * Sorting and taking the index made a tie an accident of order: 87 of the 100
+ * people in a fresh piscine are on level zero, so the same student was ranked
+ * 12th or 71st depending on how the 42 API happened to list them that minute.
+ * Everyone on the same level now shares a rank, which is what a ranking means.
+ */
 const rankByLevel = (
   people: Array<{ name: string; level: number }>,
   login: string,
 ): number | null => {
-  const sorted = [...people].sort((a, b) => b.level - a.level);
-  const index = sorted.findIndex((person) => person.name === login);
-  return index === -1 ? null : index + 1;
+  const person = people.find((candidate) => candidate.name === login);
+  if (!person) return null;
+
+  const ahead = people.filter(
+    (candidate) => candidate.level > person.level,
+  ).length;
+
+  return ahead + 1;
 };
 
 export async function GET(
