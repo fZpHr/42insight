@@ -259,6 +259,10 @@ export default function ApiKeyPage() {
                   </code>
                   {t.step2After}
                 </li>
+                {/* Its own step: an application left private authenticates
+                    nobody. Same weight as the others though -- it is one of
+                    the things to do, not a warning. */}
+                <li>{t.step2Public}</li>
                 <li>{t.step3}</li>
               </ol>
 

@@ -1,5 +1,5 @@
 import { withAuth } from "next-auth/middleware"
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { rateLimit, getClientIp, getRateLimitHeaders } from "@/lib/rate-limit"
 
 /** The page where a visitor connects their own 42 application. */
@@ -33,20 +33,15 @@ const adminStaffOnlyRoutes = [
   "/cluster-map",
 ]
 
-const supportedCampuses = [
-  "Angouleme",
-  "Nice"
-]
-
-const campusRestrictedRoutes = [
-  "/rankings",
-  "/exam-tracker",
-  "/trombinoscope",
-  "/cluster-map",
-  "/peers",
-  "/events",
-  "/piscine/:path*",
-]
+/**
+ * Set by the DevPreviewToggle button, to look at a page's layout during
+ * `npm run dev` without signing in. Gated on NODE_ENV so it does nothing on
+ * Vercel, where every deployment -- production and preview alike -- runs
+ * with NODE_ENV=production.
+ */
+const isDevPreview = (req: NextRequest) =>
+  process.env.NODE_ENV !== "production" &&
+  req.cookies.get("dev_preview")?.value === "1"
 
 
 export default withAuth(
@@ -68,17 +63,17 @@ export default withAuth(
     if (pathname.startsWith('/api/')) {
       const ip = getClientIp(req);
       const identifier = token?.login || ip;
-      
+
       const limit = token ? 100 : 50;
       const result = await rateLimit(identifier, limit, 60);
-      
+
       if (!result.success) {
         return NextResponse.json(
-          { 
+          {
             error: 'Too many requests',
             message: `Rate limit exceeded. Try again in ${Math.ceil((result.reset * 1000 - Date.now()) / 1000)} seconds.`
           },
-          { 
+          {
             status: 429,
             headers: getRateLimitHeaders(result)
           }
@@ -94,40 +89,16 @@ export default withAuth(
       (route) => pathname === route || pathname.startsWith(route + "/"),
     )
 
-    if (needsKey && !hasKey) {
+    if (needsKey && !hasKey && !isDevPreview(req)) {
       return NextResponse.redirect(new URL(API_KEY_PAGE, req.url))
     }
 
     if (token?.role === "pisciner") {
-      const isRestrictedRoute = poolRestrictedRoutes.some(route => 
+      const isRestrictedRoute = poolRestrictedRoutes.some(route =>
         pathname.startsWith(route)
       )
-      
+
       if (isRestrictedRoute) {
-        return NextResponse.redirect(new URL("/error/forbidden", req.url))
-      }
-    }
-
-
-
-
-
-      
-
-
-
-
-
-
-    const isStaffOrAdmin = token?.role === "staff" || token?.role === "admin"
-    
-    if (token?.campus && !isStaffOrAdmin) {
-      const isCampusRestrictedRoute = campusRestrictedRoutes.some(route => {
-        const base = route.replace(":path*", "").replace(/\/$/, "")
-        return pathname === base || pathname.startsWith(base + "/")
-      })
-
-      if (isCampusRestrictedRoute && !supportedCampuses.includes(token.campus)) {
         return NextResponse.redirect(new URL("/error/forbidden", req.url))
       }
     }
@@ -141,25 +112,25 @@ export default withAuth(
     // /api/auth/error?error=Configuration, right after a successful login.
     secret: process.env.JWT_SECRET,
     callbacks: {
-      authorized: ({ token }) => !!token
+      authorized: ({ token, req }) => !!token || isDevPreview(req)
     },
   }
 )
 
-export const config = { 
+export const config = {
   matcher: [
     "/api-key/:path*",
-    "/dashboard/:path*", 
-    "/trombinoscope/:path*", 
+    "/dashboard/:path*",
+    "/trombinoscope/:path*",
     "/query/:path*",
     "/rncp-simulator/:path*",
     "/rankings/:path*",
     "/events/:path*",
     "/cluster-map/:path*",
     "/peers/:path*",
-    "/exam-tracker/:path*", 
-    "/piscine/:path*", 
-    "/links/:path*", 
+    "/exam-tracker/:path*",
+    "/piscine/:path*",
+    "/links/:path*",
     "/contribute/:path*",
     "/api/proxy/:path*",
     "/api/rate_limit/:path*",
@@ -168,6 +139,7 @@ export const config = {
     "/api/campus/:path*",
     "/api/locations/:path*",
     "/api/byok/:path*",
+    "/api/campuses/:path*",
     "/api/staff/:path*",
     "/api/quota/:path*",
     "/api/activity/:path*",
@@ -175,5 +147,5 @@ export const config = {
     "/api/changelog/:path*",
     "/api/cluster-hosts/:path*",
     "/api/peers/:path*",
-  ] 
+  ]
 }

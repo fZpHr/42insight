@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "42insight",
+      "runtimeExecutable": "C:/Users/Zeph/AppData/Local/Temp/claude/C--42insight/2a700e70-d51e-4b61-9f11-208d0c7d9cb4/scratchpad/node-v24.20.0-win-x64/node.exe",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "--turbopack"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}

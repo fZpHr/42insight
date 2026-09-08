@@ -1,11 +1,15 @@
 # 🌐 42Insight
 
-Welcome to `42Insight`, the ultimate all-in-one solution for students of 42 Angoulême/Nice! 
+Welcome to `42Insight`, the ultimate all-in-one solution for students of 42 — every campus of it.
 
 This website aims to centralize all the essential tools and resources students need, making your journey at 42 easier and more efficient. From rankings to trombinoscope and much more to come, we’ve got you covered.
 
-> [!WARNING]  
-> Most of the features are only available for Angoulême and Nice campus
+> [!NOTE]
+> The site was built for Angoulême and Nice and is no longer limited to them:
+> every request runs on your own 42 key, so there is no shared budget to
+> protect and nothing to be outside of. The one thing still specific to a
+> campus is the cluster map, which needs a floor plan somebody has drawn —
+> everywhere else it works the layout out from the workstation names.
 
 => Access the website here : [42Insight](https://42insight.vercel.app/)
 

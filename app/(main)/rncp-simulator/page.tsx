@@ -15,10 +15,11 @@ import { useWindowSize } from "react-use"
 import { useContext } from "react"
 import { FortyTwoStoreContext } from "@/providers/forty-two-store-provider"
 import ReactConfetti from "react-confetti"
-import { useSession } from "next-auth/react"
+import { useSession, signIn } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
 import { Loader2, GraduationCap, Trophy, Award, RefreshCw } from "lucide-react"
+import { isDevPreviewEnabled } from "@/lib/dev-preview"
 
 function getManualProjectsKey(session: any) {
   return session?.user?.login ? `manualProjects_${session.user.login}` : undefined
@@ -34,7 +35,16 @@ async function fetchUserEvents(login: string) {
 
 export default function RNCPSimulator() {
   const storeContext = useContext(FortyTwoStoreContext)
-  const { data: session } = useSession({ required: true })
+  // Plain useSession, not `required: true`: that option pins status to
+  // "loading" for as long as it stays unauthenticated, which in preview mode
+  // is forever, and its own redirect-on-unauthenticated fired regardless of
+  // the value of `required` passed on later renders. Doing the redirect here
+  // instead means it only ever runs once, and only when there really is no
+  // preview bypass.
+  const { data: session, status } = useSession()
+  useEffect(() => {
+    if (status === "unauthenticated" && !isDevPreviewEnabled()) signIn()
+  }, [status])
   const { width, height } = useWindowSize()
 
 

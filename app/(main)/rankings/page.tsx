@@ -75,8 +75,12 @@ import {
 import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
-import { fetchJson } from "@/lib/api-client";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { readLogtimeIndex, withLogtime, type LogtimeIndex } from "@/lib/logtime-store";
+import { useCampus } from "@/contexts/CampusContext";
+import { fetchPoolStudents, type Cursus } from "@/lib/pool-roster";
+import { PoolPromotionPicker } from "@/components/PoolPromotionPicker";
+import { GlobalFetchDialog } from "@/components/GlobalFetchDialog";
 
 const sortOptions: StudentSortOption[] = [
   { value: "level", label: "Level", key: "level" },
@@ -201,7 +205,58 @@ export default function Rankings() {
   const [sortHistory, setSortHistory] = useState<string[]>(["totalLoginTime", "avgDailyHours"]);
   const [loginTimeCategory, setLoginTimeCategory] = useState<string>("overview");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [selectedCampus, setSelectedCampus] = useState<string>("");
+  const {
+    selectedCampus: pickedCampus,
+    setSelectedCampus: pickCampus,
+    campuses,
+    userCampus,
+  } = useCampus();
+
+  /**
+   * Global belongs to this page alone -- every other page reads one campus --
+   * and it is deliberately not remembered. Reading all of 42 is minutes of the
+   * visitor's own quota, so it is asked for each time rather than resumed
+   * silently on the next visit.
+   */
+  const [globalMode, setGlobalMode] = useState(false);
+
+  /**
+   * 42cursus or the piscine. Not persisted either: somebody who came to look
+   * at the piscine came for that visit, and the rankings people mean by
+   * default are the ones they are in.
+   */
+  const [cursus, setCursus] = useState<Cursus>("cursus");
+
+  // null month means "whichever one this campus is running", which only the
+  // route can work out -- a campus runs whichever months it likes.
+  const [poolYear, setPoolYear] = useState(() => String(new Date().getFullYear()));
+  const [poolMonth, setPoolMonth] = useState<string | null>(null);
+
+  const [confirmingGlobal, setConfirmingGlobal] = useState(false);
+  const [globalProgress, setGlobalProgress] = useState<{
+    done: number;
+    total: number;
+    campus: string;
+  } | null>(null);
+
+  const selectedCampus = globalMode ? "Global" : pickedCampus;
+
+  const setSelectedCampus = (value: string) => {
+    if (value === "Global") {
+      setConfirmingGlobal(true);
+      return;
+    }
+    setGlobalMode(false);
+    pickCampus(value);
+  };
+
+  const chooseCursus = (next: Cursus) => {
+    // Global is a 42cursus idea. A worldwide piscine would be 54 rosters for a
+    // few dozen people each, and nobody is comparing piscines across Tokyo and
+    // Nice -- so picking the piscine drops back to a single campus.
+    if (next === "piscine") setGlobalMode(false);
+    setCursus(next);
+  };
   const [highlightUser, setHighlightUser] = useState(false);
   const userRowRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<HTMLDivElement>(null);
@@ -236,11 +291,32 @@ export default function Rankings() {
   }, [selectedCampus, user?.campus]);
 
 
-  const campusOptions = [
-    { value: "Global", label: "Global" },
-    { value: "Nice", label: "Nice" },
-    { value: "Angouleme", label: "Angoulême" },
-  ];
+  /**
+   * Every campus 42 has, the visitor's own first, and Global last.
+   *
+   * This was a hardcoded three -- Global, Nice, Angouleme -- from when the site
+   * read a database seeded for two schools. The list is now whatever the 42 API
+   * says it is, so a student from anywhere finds their own campus here.
+   */
+  const campusOptions = useMemo(() => {
+    const own = userCampus || user?.campus;
+
+    const schools = campuses
+      .map((campus) => ({ value: campus.name, label: campus.name }))
+      .sort((a, b) => {
+        if (a.value === own) return -1;
+        if (b.value === own) return 1;
+        return a.label.localeCompare(b.label);
+      });
+
+    // Before the directory arrives there is still one campus worth naming: the
+    // one the page is already loading.
+    if (schools.length === 0 && own) schools.push({ value: own, label: own });
+
+    return cursus === "piscine"
+      ? schools
+      : [...schools, { value: "Global", label: "Global (every campus)" }];
+  }, [campuses, userCampus, user?.campus, cursus]);
 
   const {
     data: rawStudents,
@@ -250,16 +326,57 @@ export default function Rankings() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["campus-students", selectedCampus || user?.campus],
+    queryKey: [
+      "campus-students",
+      cursus,
+      selectedCampus || user?.campus,
+      ...(cursus === "piscine" ? [poolYear, poolMonth] : []),
+    ],
     queryFn: async () => {
       const campus = selectedCampus || user?.campus;
       if (!campus) return [];
+
+      if (cursus === "piscine") {
+        const pool = await fetchPoolStudents(campus, {
+          month: poolMonth,
+          year: poolYear,
+        });
+        if (pool.length === 0) {
+          toast.error("Nobody in the piscine at this campus right now", {
+            duration: 2000,
+            position: "bottom-right",
+          });
+        }
+        return pool;
+      }
+
       if (campus === "Global") {
-        const [nice, angouleme] = await Promise.all([
-          fetchCampusStudents("Nice"),
-          fetchCampusStudents("Angouleme"),
-        ]);
-        const all = [...(nice || []), ...(angouleme || [])];
+        // 42 has no worldwide roster endpoint, and a single walk of fifty
+        // thousand students would outlive any serverless function anyway. So it
+        // goes campus by campus, through the same cached route the picker uses:
+        // a campus already opened costs nothing here, and a load interrupted
+        // halfway resumes rather than starts over.
+        const all: Student[] = [];
+
+        for (const [index, school] of campuses.entries()) {
+          setGlobalProgress({
+            done: index,
+            total: campuses.length,
+            campus: school.name,
+          });
+
+          try {
+            all.push(...((await fetchCampusStudents(school.name)) ?? []));
+          } catch (error) {
+            // A missing key is the same answer 54 times over, so stop and let
+            // the page ask for one. Anything else is one campus that will not
+            // answer, which should not cost the other 53.
+            if (isKeyRequired(error)) throw error;
+          }
+        }
+
+        setGlobalProgress(null);
+
         if (all.length === 0) {
           toast.error("No students found for Global", {
             duration: 2000,
@@ -294,7 +411,10 @@ export default function Rankings() {
         }));
       }
     },
-    enabled: !!(selectedCampus || user?.campus),
+    enabled:
+      selectedCampus === "Global"
+        ? campuses.length > 0
+        : !!(selectedCampus || user?.campus),
     staleTime: 10 * 60 * 1000,
   });
 
@@ -380,12 +500,23 @@ export default function Rankings() {
     sortKey: keyof Student,
     direction: SortDirection,
     sortByValue?: string,
+  ) => [...students].sort(makeComparator(sortKey, direction, sortByValue));
+
+  /**
+   * Exposed rather than inlined into the sort, because the ranking needs to
+   * know when two students are level -- a comparator returning 0 is the only
+   * thing that knows that across a dozen different sort keys.
+   */
+  const makeComparator = (
+    sortKey: keyof Student,
+    direction: SortDirection,
+    sortByValue?: string,
   ) => {
     let effectiveDirection = direction;
     if (sortKey === "correctionPercentage") {
       effectiveDirection = direction === "asc" ? "desc" : "asc";
     }
-    return [...students].sort((a, b) => {
+    return (a: Student, b: Student) => {
       let aValue: any = a[sortKey];
       let bValue: any = b[sortKey];
       
@@ -511,13 +642,10 @@ export default function Rankings() {
       } else {
         return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
       }
-    });
+    };
   };
 
-  const baselineSortedStudents = useMemo(() => {
-    if (!students) return [];
-
-
+  const baselineSortKey = useMemo((): keyof Student => {
     const activityDataSorts = [
       "totalLoginTime", "avgDailyHours", "avgLoginTime", "activeDays", "presenceRate",
       "currentStreak", "maxStreak", "daysWithoutConnection",
@@ -525,16 +653,17 @@ export default function Rankings() {
       "last7DaysTotal", "last30DaysTotal"
     ];
 
-    const sortKey =
-      sortBy === "internship" || sortBy === "work_study"
-        ? ("level" as keyof Student)
-        : activityDataSorts.includes(sortBy)
-        ? ("activityData" as keyof Student)
-        : ((sortOptions.find((o) => o.value === sortBy)?.key ||
-          "level") as keyof Student);
+    if (sortBy === "internship" || sortBy === "work_study") return "level";
+    if (activityDataSorts.includes(sortBy)) return "activityData";
+    return (sortOptions.find((option) => option.value === sortBy)?.key ||
+      "level") as keyof Student;
+  }, [sortBy]);
 
-    return sortStudents(students, sortKey, sortDirection, sortBy);
-  }, [students, sortBy, sortDirection]);
+  const baselineSortedStudents = useMemo(() => {
+    if (!students) return [];
+
+    return sortStudents(students, baselineSortKey, sortDirection, sortBy);
+  }, [students, baselineSortKey, sortBy, sortDirection]);
 
   const rankingStudents = useMemo(() => {
     if (!baselineSortedStudents) return [];
@@ -560,15 +689,30 @@ export default function Rankings() {
       });
   }, [baselineSortedStudents, selectedYear, sortBy]);
 
+  /**
+   * Position, counting people ahead rather than rows above.
+   *
+   * Rank used to be the row number, which made a tie an accident of whatever
+   * order the 42 API listed people in: 87 of the 100 in a fresh piscine are on
+   * level zero, and the same student sat at #14 or #91 from one refresh to the
+   * next. Students who are level now share a rank.
+   */
   const rankById = useMemo(() => {
     const map = new Map<string | number, number>();
-    const n = rankingStudents.length;
-    rankingStudents.forEach((student, idx) => {
-      const rank = sortDirection === "desc" ? idx + 1 : n - idx;
-      map.set(student.id, rank);
+    const compare = makeComparator(baselineSortKey, sortDirection, sortBy);
+
+    rankingStudents.forEach((student, index) => {
+      const previous = rankingStudents[index - 1];
+      const tied = previous && compare(previous, student) === 0;
+
+      map.set(
+        student.id,
+        tied ? (map.get(previous.id) ?? index + 1) : index + 1,
+      );
     });
+
     return map;
-  }, [rankingStudents, sortDirection]);
+  }, [rankingStudents, baselineSortKey, sortDirection, sortBy]);
 
   const processedStudents = useMemo(() => {
     if (!baselineSortedStudents) return [];
@@ -865,7 +1009,13 @@ export default function Rankings() {
   // `enabled`) actually showed anything.
   if (!effectiveCampus || ((isLoading || isFetching) && !isSuccess)) {
     return (
-      <LoadingScreen message="Loading rankings..." />
+      <LoadingScreen
+        message={
+          globalProgress
+            ? `Loading ${globalProgress.campus} (${globalProgress.done + 1} of ${globalProgress.total} campuses)`
+            : "Loading rankings..."
+        }
+      />
     );
   }
 
@@ -873,7 +1023,11 @@ export default function Rankings() {
     <TooltipProvider>
     <div className="max-w-7xl mx-auto px-4 space-y-6 py-3">
       {/* Message d'erreur après timeout */}
-      {showTimeoutError && (!isSuccess || !students || students.length === 0) && (
+      {/* Only a request that has not come back. An empty answer that arrived
+          is not an API failure -- a campus with nobody logged in, or a
+          piscine promotion of one person who turned out to be staff, was
+          being reported as "42 API Issue" fifteen seconds later. */}
+      {showTimeoutError && !isSuccess && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>42 API Issue</AlertTitle>
@@ -922,23 +1076,59 @@ export default function Rankings() {
 
             <div className="w-full sm:w-auto">
               {/* Desktop view - show controls directly */}
-              <div className="hidden sm:flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:w-auto">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <Select value={selectedYear} onValueChange={setSelectedYear}>
-                    <SelectTrigger className="w-full sm:w-32">
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Years</SelectItem>
-                      {availableYears.map((yr) => (
-                        <SelectItem key={yr} value={yr}>
-                          {yr}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="hidden sm:flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:items-center sm:w-auto sm:justify-end">
+                {/* 42cursus or piscine: a different cursus, so a different
+                    roster and a different request. */}
+                <div className="inline-flex overflow-hidden rounded-md border text-xs">
+                  {(["cursus", "piscine"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => chooseCursus(option)}
+                      aria-pressed={cursus === option}
+                      className={`px-2.5 py-2 transition-colors ${
+                        cursus === option
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {option === "cursus" ? "42cursus" : "Piscine"}
+                    </button>
+                  ))}
                 </div>
+                {cursus === "piscine" && effectiveCampus && (
+                  <PoolPromotionPicker
+                    campus={effectiveCampus}
+                    year={poolYear}
+                    month={poolMonth}
+                    onChange={({ year, month }) => {
+                      setPoolYear(year);
+                      setPoolMonth(month);
+                    }}
+                  />
+                )}
+
+                {/* The student-year filter and the promotion picker are both
+                    "which year", and having them side by side asked the reader
+                    to work out which was which. The piscine has its own. */}
+                {cursus === "cursus" && (
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                      <SelectTrigger className="w-full sm:w-32">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Years</SelectItem>
+                        {availableYears.map((yr) => (
+                          <SelectItem key={yr} value={yr}>
+                            {yr}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <Select
@@ -1149,21 +1339,24 @@ export default function Rankings() {
               </div>
 
               {/* Actions, not filters: they were crowding the search bar out
-                  of the toolbar. Their own line, labelled for what they are. */}
-              {effectiveCampus !== "Global" &&
-                (!hasLogtimeData ||
-                  (CORRECTION_RATIOS_ENABLED && !hasCorrectionStats)) && (
-                  <div className="hidden w-full items-center gap-2 border-t pt-2 sm:flex">
+                  of the toolbar. Their own line, labelled for what they are.
+
+                  Shown whether or not the index exists. Hiding the button once
+                  built made the feature vanish without a trace -- no way to see
+                  when it was built, and no way to rebuild it when it went
+                  stale, which it does: it is a snapshot in one browser. */}
+              {/* The logtime index is built from the 42cursus roster, so it
+                  has nothing to say about a pisciner. */}
+              {effectiveCampus !== "Global" && cursus === "cursus" && (
+                  <div className="flex w-full flex-wrap items-center gap-2 border-t pt-2">
                     <span className="shrink-0 text-xs text-muted-foreground">
                       Optional data, fetched on your key:
                     </span>
                     <div className="flex items-center gap-2 overflow-x-auto">
-                      {!hasLogtimeData && (
-                        <LogtimeIndexBuilder
-                          campus={effectiveCampus}
-                          onBuilt={reloadLogtimeIndex}
-                        />
-                      )}
+                      <LogtimeIndexBuilder
+                        campus={effectiveCampus}
+                        onBuilt={reloadLogtimeIndex}
+                      />
                       {CORRECTION_RATIOS_ENABLED && !hasCorrectionStats && (
                         <Button
                           variant="outline"
@@ -1194,6 +1387,23 @@ export default function Rankings() {
                     </AccordionTrigger>
                     <AccordionContent className="pb-2">
                       <div className="flex flex-col gap-3 px-3">
+                        <div className="inline-flex overflow-hidden rounded-md border text-xs">
+                          {(["cursus", "piscine"] as const).map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => chooseCursus(option)}
+                              aria-pressed={cursus === option}
+                              className={`flex-1 px-2.5 py-2 transition-colors ${
+                                cursus === option
+                                  ? "bg-primary text-primary-foreground"
+                                  : "text-muted-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {option === "cursus" ? "42cursus" : "Piscine"}
+                            </button>
+                          ))}
+                        </div>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <Select
@@ -2183,6 +2393,15 @@ export default function Rankings() {
           )}
         </DialogContent>
       </Dialog>
+
+      <GlobalFetchDialog
+        open={confirmingGlobal}
+        onOpenChange={setConfirmingGlobal}
+        onConfirm={() => {
+          setConfirmingGlobal(false);
+          setGlobalMode(true);
+        }}
+      />
     </div>
     </TooltipProvider>
   );

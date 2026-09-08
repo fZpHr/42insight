@@ -4,8 +4,8 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
-  CAMPUS_IDS,
-  currentPool,
+  resolveCampusId,
+  resolvePoolPromotion,
   getCampusStudents,
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
@@ -34,16 +34,24 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const campus = searchParams.get("campus") || user.campus;
 
-  if (!campus || !CAMPUS_IDS[campus]) {
+  if (!campus || !(await resolveCampusId(campus, api))) {
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });
   }
 
   try {
-    const pool = currentPool();
+    const promotion = await resolvePoolPromotion(campus, api);
 
     const [students, poolUsers] = await Promise.all([
       getCampusStudents(campus, api),
-      getPoolUsers(campus, pool.month, pool.year, api).catch(() => []),
+      promotion
+        ? getPoolUsers(
+            campus,
+            promotion.month,
+            promotion.year,
+            api,
+            promotion.cursusId ?? undefined,
+          ).catch(() => [])
+        : Promise.resolve([]),
     ]);
 
     const totalStudents = students.length;

@@ -4,7 +4,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { cached } from "@/lib/memory-cache";
-import { CAMPUS_IDS } from "@/lib/forty-two/live-campus";
+import { resolveCampusId } from "@/lib/forty-two/live-campus";
 
 /**
  * The campus event list: one 42 request, and the same answer for everyone on
@@ -29,7 +29,7 @@ export async function GET(
 
   const { campus_name } = await params;
 
-  const campusId = CAMPUS_IDS[campus_name];
+  const campusId = await resolveCampusId(campus_name, api);
   if (!campusId) {
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });
   }

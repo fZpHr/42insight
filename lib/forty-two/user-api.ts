@@ -53,7 +53,7 @@ export const CREDENTIALS_MAX_AGE = 60 * 60 * 24 * 30;
  * -- scheduling jitter, a slow event loop -- earns a 429 and a retry that costs
  * more than the wait saved. A little headroom is cheaper.
  */
-const REQUEST_SPACING_MS = 600;
+export const REQUEST_SPACING_MS = 600;
 
 export interface Credentials {
   clientId: string;
@@ -278,6 +278,16 @@ export class UserApi {
       await onProgress?.(collected.length, total || collected.length);
 
       if (pageData.length < pageSize) break;
+    }
+
+    // Stopping at maxPages looks exactly like running out of rows, which is
+    // how Paris's rankings came to show 4000 of its 8402 students with nothing
+    // to say they were half a campus. X-Total knows better, so say so.
+    if (total > 0 && collected.length < total) {
+      console.warn(
+        `[42 API] ${path} truncated: ${collected.length} of ${total} rows, ` +
+          `stopped at maxPages=${maxPages}`,
+      );
     }
 
     return collected;

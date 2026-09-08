@@ -3,7 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
-import { CAMPUS_IDS, getCampusStudents } from "@/lib/forty-two/live-campus";
+import { getCampusStudents, resolveCampusId } from "@/lib/forty-two/live-campus";
+import {
+  campusForRequest,
+  campusRequiredResponse,
+} from "@/lib/forty-two/campus-scope";
 import { cachedOnce } from "@/lib/memory-cache";
 
 /**
@@ -46,14 +50,19 @@ export async function GET(request: Request) {
   const api = await getApi();
   if (!api) return keyRequiredResponse();
 
-  const requested = new URL(request.url).searchParams.get("campus");
-  const campuses = Object.entries(CAMPUS_IDS).filter(
-    ([name]) => !requested || name === requested,
-  );
+  // Given no campus this used to sweep the static seed. Against the live
+  // directory that is 54 exam lookups, so one campus it is.
+  const campusName = campusForRequest(request, session);
+  if (!campusName) return campusRequiredResponse();
+
+  const campusId = await resolveCampusId(campusName, api);
+  if (!campusId) {
+    return NextResponse.json({ error: "Campus not found" }, { status: 404 });
+  }
 
   try {
     const results = await cachedOnce(
-      `current-exam:${requested ?? "all"}`,
+      `current-exam:${campusName}`,
       CACHE_TTL,
       async () => {
         const now = new Date();
@@ -61,54 +70,52 @@ export async function GET(request: Request) {
         const to = new Date(now.getTime() + WINDOW_DAYS * 86_400_000);
         const students: any[] = [];
 
-        for (const [campusName, campusId] of campuses) {
-          const exams = await api.fetchAllPages(
-            `/campus/${campusId}/exams?range[begin_at]=${from.toISOString()},${to.toISOString()}`,
-            { maxPages: 2 },
-          );
-          if (exams.length === 0) continue;
+        const exams = await api.fetchAllPages(
+          `/campus/${campusId}/exams?range[begin_at]=${from.toISOString()},${to.toISOString()}`,
+          { maxPages: 2 },
+        );
+        if (exams.length === 0) return students;
 
-          const projectIds = [
-            ...new Set(
-              exams.flatMap((exam: any) =>
-                (exam.projects ?? []).map((project: any) => project.id),
-              ),
+        const projectIds = [
+          ...new Set(
+            exams.flatMap((exam: any) =>
+              (exam.projects ?? []).map((project: any) => project.id),
             ),
-          ];
-          if (projectIds.length === 0) continue;
+          ),
+        ];
+        if (projectIds.length === 0) return students;
 
-          const photos = new Map<number, string>();
-          for (const student of await getCampusStudents(campusName, api).catch(
-            () => [],
-          )) {
-            photos.set(student.id, student.photoUrl);
-          }
+        const photos = new Map<number, string>();
+        for (const student of await getCampusStudents(campusName, api).catch(
+          () => [],
+        )) {
+          photos.set(student.id, student.photoUrl);
+        }
 
-          const rows = await api.fetchAllPages(
-            `/projects_users?filter[campus]=${campusId}` +
-              `&filter[project_id]=${projectIds.join(",")}` +
-              `&range[updated_at]=${from.toISOString()},${to.toISOString()}`,
-            { maxPages: 5 },
-          );
+        const rows = await api.fetchAllPages(
+          `/projects_users?filter[campus]=${campusId}` +
+            `&filter[project_id]=${projectIds.join(",")}` +
+            `&range[updated_at]=${from.toISOString()},${to.toISOString()}`,
+          { maxPages: 5 },
+        );
 
-          for (const row of rows) {
-            if (!row.user?.id) continue;
+        for (const row of rows) {
+          if (!row.user?.id) continue;
 
-            students.push({
-              id: row.user.id,
-              name: row.user.login,
-              photo: photos.get(row.user.id) ?? "",
-              grade: row.final_mark ?? 0,
-              lastUpdate: row.updated_at,
-              examId: String(row.project?.id ?? ""),
-              examName: row.project?.name ?? "",
-              occurence: row.occurrence ?? 0,
-              isToday: row.updated_at
-                ? isSameDay(new Date(row.updated_at), now)
-                : false,
-              campus: campusName,
-            });
-          }
+          students.push({
+            id: row.user.id,
+            name: row.user.login,
+            photo: photos.get(row.user.id) ?? "",
+            grade: row.final_mark ?? 0,
+            lastUpdate: row.updated_at,
+            examId: String(row.project?.id ?? ""),
+            examName: row.project?.name ?? "",
+            occurence: row.occurrence ?? 0,
+            isToday: row.updated_at
+              ? isSameDay(new Date(row.updated_at), now)
+              : false,
+            campus: campusName,
+          });
         }
 
         return students;

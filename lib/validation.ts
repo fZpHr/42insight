@@ -5,55 +5,21 @@ import { z } from "zod";
  */
 
 
-export const campusSchema = z.enum([
-  "Angouleme",
-  "Nice",
-  "Amsterdam",
-  "Paris",
-  "Lyon",
-  "Brussels",
-  "Helsinki",
-  "Khouribga",
-  "Sao-Paulo",
-  "Benguerir",
-  "Madrid",
-  "Kazan",
-  "Quebec",
-  "Tokyo",
-  "Rio-de-Janeiro",
-  "Seoul",
-  "Rome",
-  "Yerevan",
-  "Bangkok",
-  "Kuala-Lumpur",
-  "Adelaide",
-  "Malaga",
-  "Lisboa",
-  "Heilbronn",
-  "Urduliz",
-  "42network",
-  "Abu-Dhabi",
-  "Wolfsburg",
-  "Alicante",
-  "Barcelona",
-  "Lausanne",
-  "Mulhouse",
-  "Istanbul",
-  "Kocaeli",
-  "Berlin",
-  "Florence",
-  "Vienna",
-  "Tetouan",
-  "Prague",
-  "London",
-  "Porto",
-  "Le-Havre",
-  "Singapore",
-  "Antananarivo",
-  "Warsaw",
-  "Luanda",
-  "Gyeongsan"
-]);
+/**
+ * A campus name.
+ *
+ * This was an enum of 47 hardcoded names, which was both a restriction and a
+ * list going quietly out of date -- 42 has 54 campuses, and opens new ones.
+ * The authority on which names exist is the 42 API, so routes resolve a name
+ * through the live directory in lib/forty-two/live-campus.ts and answer 404
+ * when it is not one. All this needs to do is reject something that could not
+ * be a campus name at all.
+ */
+export const campusSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .regex(/^[\p{L}\p{N} .'-]+$/u, "Not a campus name");
 
 export type Campus = z.infer<typeof campusSchema>;
 

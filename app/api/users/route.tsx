@@ -4,16 +4,16 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
-  CAMPUS_IDS,
-  getEnrichedCampusStudents,
-} from "@/lib/forty-two/live-campus";
+  campusForRequest,
+  campusRequiredResponse,
+} from "@/lib/forty-two/campus-scope";
+import { getEnrichedCampusStudents } from "@/lib/forty-two/live-campus";
 
-// Walks every campus in turn on a cold cache -- roughly ten seconds each,
-// past Vercel's default function timeout, which would otherwise kill the
-// request before the client sees a response.
+// One campus is a paginated walk paced at two requests a second, roughly ten
+// seconds cold, past Vercel's default function timeout.
 export const maxDuration = 60;
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -22,16 +22,15 @@ export async function GET() {
   const api = await getApi();
   if (!api) return keyRequiredResponse();
 
+  // This walked every campus in the static two-campus seed. With the live
+  // directory that would be 54 rosters in one request, so it now answers for
+  // one campus: the one asked for, or the caller's own.
+  const campus = campusForRequest(request, session);
+  if (!campus) return campusRequiredResponse();
+
   try {
-    const perCampus: Awaited<ReturnType<typeof getEnrichedCampusStudents>>[] = [];
-
-    for (const campus of Object.keys(CAMPUS_IDS)) {
-      perCampus.push(await getEnrichedCampusStudents(campus, api));
-    }
-
-    return NextResponse.json(perCampus.flat());
+    return NextResponse.json(await getEnrichedCampusStudents(campus, api));
   } catch (error: any) {
-
     console.error("[users] failed to build:", error.message);
     return NextResponse.json(
       { error: "Failed to fetch students" },

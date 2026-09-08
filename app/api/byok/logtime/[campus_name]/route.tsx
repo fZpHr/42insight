@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { computeLogtime } from "@/lib/forty-two/logtime";
-import { CAMPUS_IDS, getCampusStudents } from "@/lib/forty-two/live-campus";
+import { getCampusStudents } from "@/lib/forty-two/live-campus";
 import {
   getUserApi,
   keyRequiredResponse,
@@ -42,9 +42,6 @@ export async function POST(
   }
 
   const { campus_name } = await params;
-  if (!CAMPUS_IDS[campus_name]) {
-    return NextResponse.json({ error: "Campus not found" }, { status: 404 });
-  }
 
   let offset: number;
   let limit: number;

@@ -4,7 +4,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { cachedOnce } from "@/lib/memory-cache";
-import { CAMPUS_IDS, CURSUS_ID, getCampusStudents } from "@/lib/forty-two/live-campus";
+import { listCampuses, CURSUS_ID, getCampusStudents } from "@/lib/forty-two/live-campus";
 import { PEER_PROJECT_IDS } from "@/lib/forty-two/peer-projects";
 import type { Project, ProjectSubscriber } from "@/types";
 
@@ -48,9 +48,10 @@ export async function GET(request: Request) {
   // anyway, so walking the others threw away half of a very expensive fetch.
   const { searchParams } = new URL(request.url);
   const requested = searchParams.get("campus");
-  const campuses = Object.entries(CAMPUS_IDS).filter(
-    ([name]) => !requested || name === requested,
-  );
+  const allCampuses = await listCampuses(api);
+  const campuses = allCampuses
+    .filter((campus) => !requested || campus.name === requested)
+    .map((campus): [string, number] => [campus.name, campus.id]);
 
   if (campuses.length === 0) {
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });

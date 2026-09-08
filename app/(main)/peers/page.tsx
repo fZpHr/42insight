@@ -71,6 +71,7 @@ export default function PeersPage() {
     const { data, error, isLoading, isSuccess, isFetching, refetch } = useQuery<Project[]>({
         queryKey: ['peersData', effectiveCampus, projectFilter],
         queryFn: () => fetchPeersData(effectiveCampus, projectFilter),
+        enabled: !!user,
         staleTime: 30 * 60 * 1000,
     });
 
@@ -188,7 +189,11 @@ export default function PeersPage() {
     return (
         <div className="container mx-auto px-2 py-6">
             {/* Message d'erreur après timeout */}
-            {showTimeoutError && (!isSuccess || !data || data.length === 0) && (
+            {/* Only a request that has not come back. An empty answer that arrived
+                is not an API failure -- a campus with nobody logged in, or a
+                piscine promotion of one person who turned out to be staff, was
+                being reported as "42 API Issue" fifteen seconds later. */}
+            {showTimeoutError && !isSuccess && (
                 <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>42 API Issue</AlertTitle>
@@ -234,15 +239,6 @@ export default function PeersPage() {
                     </Button>
                 </div>
             </div>
-            {/* <div className="gap-6 mb-5">
-                {session?.user?.campus !== 'Angouleme' &&  session?.user.campus !== "Nice" && (
-                    <TransparentBadge
-                        text="⚠️ Only available for Angouleme campus for now"
-                        bgColor="bg-red-400/20"
-                        textColor="text-red-300"
-                    />
-                )}
-            </div> */}
             {/* load all people that dont have groups for your current project and make a tinder like choice to send a dm or a mail to the chosen group user */}
             {sortedProjects?.map((project) => {
                 const nonValidatedSubscribers = project.subscribers;

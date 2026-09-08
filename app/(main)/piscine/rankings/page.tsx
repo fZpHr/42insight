@@ -2,6 +2,7 @@
 import { toast } from "sonner";
 import { fetchJson } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
+import { useCampus } from "@/contexts/CampusContext";
 import {
   Search,
   Trophy,
@@ -44,11 +45,18 @@ const sortOptions: SortOption[] = [
   },
 ];
 
-const fetchPoolStudents = (): Promise<PoolUser[]> =>
-  fetchJson<PoolUser[]>("/api/users/pool");
+// The route answers for one campus now: there are 54, and sweeping them all
+// to show one piscine would spend most of an hour's quota.
+const fetchPoolStudents = (campus?: string): Promise<PoolUser[]> =>
+  fetchJson<PoolUser[]>(
+    `/api/users/pool${campus ? `?campus=${encodeURIComponent(campus)}` : ""}`,
+  );
 
 
 export default function Piscine() {
+  // Which piscine to show: the one being browsed, else the visitor's own.
+  const { selectedCampus, userCampus } = useCampus();
+  const effectiveCampus = selectedCampus || userCampus;
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<string>("level");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -63,9 +71,9 @@ export default function Piscine() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["pool-students"],
+    queryKey: ["pool-students", effectiveCampus],
     queryFn: async () => {
-      const response = await fetchPoolStudents();
+      const response = await fetchPoolStudents(effectiveCampus);
       if (!response || response.length === 0) {
         toast.error("No students found for this campus", {
           duration: 2000,

@@ -25,6 +25,8 @@ import {
 import { useSession } from "next-auth/react";
 import { Student } from "@/types";
 import { useCampus } from "@/contexts/CampusContext";
+import { fetchPoolStudents, type Cursus } from "@/lib/pool-roster";
+import { PoolPromotionPicker } from "@/components/PoolPromotionPicker";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -42,6 +44,10 @@ export default function Trombinoscope() {
   const { selectedCampus: contextCampus } = useCampus();
 
   const effectiveCampus = contextCampus || user?.campus || "";
+  // 42cursus or the piscine: a different cursus, so a different roster.
+  const [cursus, setCursus] = useState<Cursus>("cursus");
+  const [poolYear, setPoolYear] = useState(() => String(new Date().getFullYear()));
+  const [poolMonth, setPoolMonth] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [showingName, setShowingName] = useState(true);
   const [year, setYear] = useState<string>("all");
@@ -64,8 +70,16 @@ export default function Trombinoscope() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["students", effectiveCampus],
-    queryFn: () => fetchCampusStudents(effectiveCampus),
+    queryKey: [
+      "students",
+      cursus,
+      effectiveCampus,
+      ...(cursus === "piscine" ? [poolYear, poolMonth] : []),
+    ],
+    queryFn: () =>
+      cursus === "piscine"
+        ? fetchPoolStudents(effectiveCampus, { month: poolMonth, year: poolYear })
+        : fetchCampusStudents(effectiveCampus),
     enabled: !!effectiveCampus,
     staleTime: 10 * 60 * 1000,
   });
@@ -171,7 +185,11 @@ export default function Trombinoscope() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-3">
       {/* Message d'erreur après timeout */}
-      {showTimeoutError && (!isSuccess || students.length === 0) && (
+      {/* Only a request that has not come back. An empty answer that arrived
+          is not an API failure -- a campus with nobody logged in, or a
+          piscine promotion of one person who turned out to be staff, was
+          being reported as "42 API Issue" fifteen seconds later. */}
+      {showTimeoutError && !isSuccess && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>42 API Issue</AlertTitle>
@@ -197,6 +215,34 @@ export default function Trombinoscope() {
           {filteredStudents.length} students
         </p>
         <div className="flex items-center gap-2">
+          <div className="inline-flex overflow-hidden rounded-md border text-xs">
+            {(["cursus", "piscine"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setCursus(option)}
+                aria-pressed={cursus === option}
+                className={`px-2.5 py-2 transition-colors ${
+                  cursus === option
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {option === "cursus" ? "42cursus" : "Piscine"}
+              </button>
+            ))}
+          </div>
+          {cursus === "piscine" && effectiveCampus && (
+            <PoolPromotionPicker
+              campus={effectiveCampus}
+              year={poolYear}
+              month={poolMonth}
+              onChange={({ year, month }) => {
+                setPoolYear(year);
+                setPoolMonth(month);
+              }}
+            />
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

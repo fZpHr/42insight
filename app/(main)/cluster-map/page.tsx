@@ -17,6 +17,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ClusterUser } from "@/types";
 import { angoulemeMaps } from "./(maps)/angouleme";
 import { niceMaps } from "./(maps)/nice";
+import type { FloorPlan, ResolvedPlan } from "@/lib/forty-two/cluster-plans";
+import { fetchJson } from "@/lib/api-client";
 import { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -73,22 +75,44 @@ const fetchHostUsage = async (campus?: string): Promise<HostUsageData> => {
   }
 };
 
+/**
+ * The floor plans, which exist for the two campuses somebody sat down and drew.
+ *
+ * They are literal seat-by-seat layouts naming real hosts -- Angouleme's are
+ * "1A1", Nice's are "c1r1p1" -- so they are not transferable, and 42 publishes
+ * nothing that would let them be generated. Anywhere else gets the list view
+ * below instead.
+ *
+ * This used to fall back to Angouleme's plan for every other campus, which drew
+ * a room that does not exist there and, since no host name matched, showed
+ * every seat empty. A campus that looked deserted was really a campus that was
+ * never on the map.
+ */
+const FLOOR_PLANS: Record<string, FloorPlan> = {
+  angouleme: angoulemeMaps,
+  nice: niceMaps,
+};
+
 function getMapByCampus(campus?: string) {
-  switch (campus?.toLowerCase()) {
-    case "angouleme":
-      return angoulemeMaps;
-    case "nice":
-      return niceMaps;
-    default:
-      return angoulemeMaps;
-  }
+  return FLOOR_PLANS[campus?.toLowerCase() ?? ""] ?? null;
 }
+
+/**
+ * The layout for a campus without one of the hand-drawn plans above: a real
+ * one from vendor/42-cluster-maps where it exists and still describes the
+ * building, else one worked out from the workstation names. The route decides
+ * and says which, since the two deserve different amounts of trust.
+ */
+const fetchCampusPlan = async (campus?: string): Promise<ResolvedPlan | null> => {
+  if (!campus) return null;
+  return fetchJson<ResolvedPlan>(`/api/cluster-map/${encodeURIComponent(campus)}`);
+};
 
 export default function ClusterMap() {
   const { data: session, status } = useSession();
   const user = session?.user;
   const { selectedCampus } = useCampus();
-  const [selectedCluster, setSelectedCluster] = useState("1");
+  const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [showTimeoutError, setShowTimeoutError] = useState(false);
 
 
@@ -131,10 +155,34 @@ export default function ClusterMap() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const renderCluster = (clusterNumber: string) => {
-    const campusMaps = getMapByCampus(effectiveCampus);
-    const key = effectiveCampus === "Nice" ? `c${clusterNumber}` : clusterNumber;
-    const map = campusMaps[key];
+  // Hand-drawn where this repo has one; fetched otherwise, once a day.
+  const drawnPlan = getMapByCampus(effectiveCampus);
+
+  const { data: fetchedPlan, isLoading: isLoadingPlan } = useQuery({
+    queryKey: ["cluster-plan", effectiveCampus],
+    queryFn: () => fetchCampusPlan(effectiveCampus),
+    enabled:
+      status === "authenticated" && !!effectiveCampus && drawnPlan === null,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+
+  const plan: FloorPlan | null = drawnPlan ?? fetchedPlan?.plan ?? null;
+  const clusterKeys = plan
+    ? Object.keys(plan).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      )
+    : [];
+  const hasFloorPlan = clusterKeys.length > 0;
+
+  // Whatever the picker is set to has to exist in the plan that arrived: the
+  // keys differ per campus, and the previous campus's choice will not be there.
+  const currentCluster =
+    selectedCluster && clusterKeys.includes(selectedCluster)
+      ? selectedCluster
+      : (clusterKeys[0] ?? null);
+
+  const renderCluster = (clusterKey: string) => {
+    const map = plan?.[clusterKey];
     if (!map) return null;
 
     return (
@@ -274,10 +322,8 @@ export default function ClusterMap() {
     );
   };
 
-  const getAvailablePC = (clusterNumber: string) => {
-    const campusMaps = getMapByCampus(effectiveCampus);
-    const key = effectiveCampus === "Nice" ? `c${clusterNumber}` : clusterNumber;
-    const map = campusMaps[key];
+  const getAvailablePC = (clusterKey: string) => {
+    const map = plan?.[clusterKey];
     if (!map) return 0;
 
     const totalWorkspaces = map
@@ -295,25 +341,15 @@ export default function ClusterMap() {
     return totalWorkspaces - occupiedWorkspaces;
   };
 
-  const getTotalAvailablePCs = () => {
-    const count = getNumberofClusters();
-    let total = 0;
-    for (let i = 1; i <= count; i++) {
-      total += getAvailablePC(String(i));
-    }
-    return total;
-  };
+  const getTotalAvailablePCs = () =>
+    clusterKeys.reduce((total, key) => total + getAvailablePC(key), 0);
 
-  const getNumberofClusters = () => {
-    const campusMaps = getMapByCampus(effectiveCampus);
-    return Object.keys(campusMaps).length;
-  };
+  // Who is actually at a machine, for a campus with no plan to place them on.
+  const connected = students
+    .filter((student) => student.host && student.host !== "404")
+    .sort((a, b) => a.host.localeCompare(b.host, undefined, { numeric: true }));
 
-  const count = getNumberofClusters();
-  const nums = Array.from(
-    { length: Math.max(0, count) },
-    (_, i) => String(i + 1)
-  );
+
 
 
 
@@ -331,7 +367,11 @@ export default function ClusterMap() {
     <div className="w-full px-4 py-3">
       <div className="max-w-7xl mx-auto">
         {/* Alerte 42 API timeout */}
-        {showTimeoutError && (!isSuccess || students.length === 0) && (
+        {/* Only a request that has not come back. An empty answer that arrived
+            is not an API failure -- a campus with nobody logged in, or a
+            piscine promotion of one person who turned out to be staff, was
+            being reported as "42 API Issue" fifteen seconds later. */}
+        {showTimeoutError && !isSuccess && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>42 API Issue</AlertTitle>
@@ -357,9 +397,11 @@ export default function ClusterMap() {
               </strong>{" "}
               students logged in
             </p>
-            <p className="text-sm sm:text-base">
-              <strong>{getTotalAvailablePCs()}</strong> available PCs
-            </p>
+            {hasFloorPlan && (
+              <p className="text-sm sm:text-base">
+                <strong>{getTotalAvailablePCs()}</strong> available PCs
+              </p>
+            )}
           </div>
 
           <div className="flex gap-2 w-full sm:w-auto">
@@ -377,36 +419,127 @@ export default function ClusterMap() {
               />
             </Button>
 
-            <Select
-              value={selectedCluster}
-              onValueChange={setSelectedCluster}
-            >
-              <SelectTrigger className="flex-1 sm:w-[220px]">
-                <SelectValue placeholder="Select cluster" />
-              </SelectTrigger>
-              <SelectContent>
-                {nums.map((num) => (
-                  <SelectItem key={num} value={num}>
-                    <span className="hidden sm:inline">
-                      Cluster {num} ({getAvailablePC(num)} available)
-                    </span>
-                    <span className="sm:hidden">
-                      C{num} ({getAvailablePC(num)})
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {hasFloorPlan && currentCluster && (
+              <Select value={currentCluster} onValueChange={setSelectedCluster}>
+                <SelectTrigger className="flex-1 sm:w-[220px]">
+                  <SelectValue placeholder="Select cluster" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clusterKeys.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      <span className="hidden sm:inline">
+                        {/* The keys are already names where the plan had one:
+                            "C1" reads better than "Cluster C1". */}
+                        {/^c\d/i.test(key) ? key : `Cluster ${key}`} (
+                        {getAvailablePC(key)} available)
+                      </span>
+                      <span className="sm:hidden">
+                        {key} ({getAvailablePC(key)})
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading || isLoadingPlan ? (
         <div className="text-center text-sm text-gray-500 py-8">
-          Loading cluster {selectedCluster}...
+          {isLoadingPlan ? "Working out the layout…" : "Loading cluster…"}
         </div>
+      ) : hasFloorPlan ? (
+        <>
+          {fetchedPlan?.source === "vendored" &&
+            fetchedPlan.coverage !== undefined &&
+            fetchedPlan.coverage < 0.95 && (
+              <div className="max-w-7xl mx-auto mb-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Some machines are not on this plan</AlertTitle>
+                  <AlertDescription>
+                    The layout for {effectiveCampus} covers about{" "}
+                    {Math.round(fetchedPlan.coverage * 100)}% of the machines
+                    currently in use, so a few students will be logged in
+                    somewhere this map cannot show. Rooms change faster than
+                    the plans do.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
+          {fetchedPlan?.source === "derived" && (
+            <div className="max-w-7xl mx-auto mb-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Layout read from the workstation names</AlertTitle>
+                <AlertDescription>
+                  There is no drawn plan for {effectiveCampus} that still
+                  matches the building, and 42&apos;s own cluster endpoint is
+                  closed to student keys, so the rows and seats here come from
+                  the workstation names themselves ({fetchedPlan.hostCount} of
+                  them). Treat it as a seating chart rather than the room: seats
+                  run in numeric order, and a machine nobody has logged into
+                  recently is not in the names, so it shows as an empty square.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          {currentCluster && renderCluster(currentCluster)}
+        </>
       ) : (
-        renderCluster(selectedCluster)
+        <div className="max-w-7xl mx-auto">
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No floor plan for {effectiveCampus}</AlertTitle>
+            <AlertDescription>
+              The workstation names at {effectiveCampus} do not carry row and
+              seat numbers, so there is nothing to lay the room out from. Who is
+              logged in, and where, is live all the same.
+            </AlertDescription>
+          </Alert>
+
+          {connected.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nobody is logged in at {effectiveCampus} right now.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {connected.map((student) => (
+                <button
+                  key={student.host}
+                  type="button"
+                  onClick={() =>
+                    window.open(
+                      `https://profile.intra.42.fr/users/${student.user.login}`,
+                      "_blank",
+                    )
+                  }
+                  className="flex items-center gap-2 rounded-md border p-2 text-left transition-colors hover:bg-muted/50"
+                >
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarImage
+                      src={student.user.image?.versions?.small}
+                      alt={student.user.login}
+                    />
+                    <AvatarFallback className="text-xs">
+                      {student.user.login.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {student.user.login}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {student.host}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/tooltip";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { useSession, signOut } from "next-auth/react";
+import { isDevPreviewEnabled } from "@/lib/dev-preview";
 import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 import { Changelog } from "@/components/Changelog";
@@ -300,7 +301,7 @@ export default function Dashboard() {
   const effectiveCampus = selectedCampus || user?.campus || "";
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status === "unauthenticated" && !isDevPreviewEnabled()) {
       signOut({ callbackUrl: '/', redirect: true });
     }
   }, [status]);
@@ -369,10 +370,13 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-    if (!intraLoading && userIntraInfo) {
+    // A failed fetch (a 429 from going too fast, a dead 42 API call) settles
+    // the query just as much as a successful one -- without intraError here,
+    // the loading screen below waited forever for data that was never coming.
+    if (!intraLoading && (userIntraInfo || intraError)) {
       setIsDataReady(true);
     }
-  }, [intraLoading, userIntraInfo]);
+  }, [intraLoading, userIntraInfo, intraError]);
 
   const currentCursus = useMemo(() => {
     return (
@@ -478,12 +482,21 @@ export default function Dashboard() {
   }
 
   if (intraError) {
+    const isRateLimited = intraError instanceof Error && intraError.message.includes("429");
     return (
       <div className="container mx-auto p-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Failed to load dashboard data. Please try refreshing the page.
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              {isRateLimited
+                ? "Going a bit fast -- the 42 API asked for a break. Wait a few seconds and retry."
+                : "Failed to load dashboard data."}
+            </span>
+            <Button size="sm" variant="outline" onClick={() => refetchIntra()}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Retry
+            </Button>
           </AlertDescription>
         </Alert>
       </div>

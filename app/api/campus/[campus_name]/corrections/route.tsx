@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
-import { CAMPUS_IDS } from "@/lib/forty-two/live-campus";
+import { resolveCampusId } from "@/lib/forty-two/live-campus";
 import { cachedOnce } from "@/lib/memory-cache";
 
 /**
@@ -40,7 +40,7 @@ export async function GET(
   if (!api) return keyRequiredResponse();
 
   const { campus_name } = await params;
-  const campusId = CAMPUS_IDS[campus_name];
+  const campusId = await resolveCampusId(campus_name, api);
   if (!campusId) {
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });
   }

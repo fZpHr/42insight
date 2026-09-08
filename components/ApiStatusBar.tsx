@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { hasApiKey } from "@/lib/api-client";
 import { readable, type ApiCall } from "@/lib/forty-two/activity";
+import { isDevPreviewEnabled } from "@/lib/dev-preview";
 
 /**
  * What the site is doing to the 42 API, always on screen.
@@ -73,6 +74,8 @@ export function ApiStatusBar() {
     lastRefresh.current = now;
 
     setKeyPresent(hasApiKey());
+    // No session in preview mode, so this would only ever come back 401.
+    if (isDevPreviewEnabled()) return;
 
     fetch("/api/quota")
       .then((response) => (response.ok ? response.json() : null))
@@ -144,6 +147,18 @@ export function ApiStatusBar() {
         />
       )}
 
+      {/* Without a key the panel has nothing to show -- no quota, no calls,
+          only a link to the page that fixes it. So it is that link. */}
+      {!keyPresent ? (
+        <Link
+          href="/api-key"
+          title="No 42 key connected. Pages have nothing to load."
+          className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs transition-colors hover:bg-muted"
+        >
+          <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground">Connect your 42 key</span>
+        </Link>
+      ) : (
       <DropdownMenu
         open={panelOpen}
         onOpenChange={(open) => {
@@ -174,7 +189,7 @@ export function ApiStatusBar() {
             </span>
           </>
         ) : (
-          <span className="text-muted-foreground">Connect your 42 key</span>
+          <span className="text-muted-foreground">Your 42 key</span>
         )}
         {fetching > 0 && (
           <span className="tabular-nums text-primary">
@@ -226,6 +241,7 @@ export function ApiStatusBar() {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      )}
     </>
   );
 }

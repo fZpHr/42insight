@@ -18,28 +18,24 @@ import { TransparentBadge } from "@/components/TransparentBadge";
 import { useCampus } from "@/contexts/CampusContext";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
-function getExamName(examId: string) {
-    switch (examId) {
-        case '1301':
-            return 'C Piscine Exam 00'
-        case '1302':
-            return 'C Piscine Exam 01'
-        case '1303':
-            return 'C Piscine Exam 02'
-        case '1304':
-            return 'C Piscine Exam Final'
-        case '1324':
-            return 'Exam Rank 06'
-        case '1323':
-            return 'Exam Rank 05'
-        case '1322':
-            return 'Exam Rank 04'
-        case '1321':
-            return 'Exam Rank 03'
-        case '1320':
-            return 'Exam Rank 02'
-    }
-}
+/**
+ * Which exams to show.
+ *
+ * A campus sits both kinds on the same agenda, and the route returns whatever
+ * is in the window, so this costs nothing to fetch -- it is a filter over data
+ * already in hand. Told apart by the project's own name rather than by id:
+ * "Exam Rank 04" exists twice at 42, as project 1322 and again as 2710, and a
+ * list of ids kept here would go out of date the day they add a third.
+ */
+type ExamScope = "all" | "cursus" | "piscine";
+
+const isPiscineExam = (examName: string) => /piscine/i.test(examName);
+
+const scopeLabels: Record<ExamScope, string> = {
+    all: "All exams",
+    cursus: "42cursus",
+    piscine: "Piscine",
+};
 
 export default function ExamTracker() {
     const { data: session, status } = useSession();
@@ -49,6 +45,7 @@ export default function ExamTracker() {
     // Nothing is fetched until it is asked for: an exam sweep costs a few
     // pages on the visitor's own key.
     const [wantExam, setWantExam] = React.useState(false);
+    const [scope, setScope] = React.useState<ExamScope>("all");
     const [showTimeoutError, setShowTimeoutError] = React.useState(false);
 
 
@@ -68,9 +65,8 @@ export default function ExamTracker() {
     const { data: students = [], isLoading, error, isSuccess, isFetching, refetch } = useQuery({
         queryKey: ['current_exam', effectiveCampus],
         queryFn: async () => {
-            // Without this, every visitor -- Nice or Angoulême -- walks both
-            // campuses and throws half the answer away in studentsFiltered
-            // below. One campus known up front is one exam sweep, not two.
+            // Naming the campus is what keeps this to one exam sweep. Without
+            // it the route has 54 to choose from and no way to choose.
             const query = effectiveCampus ? `?campus=${encodeURIComponent(effectiveCampus)}` : "";
             const response = await fetch(`/api/current_exam${query}`);
             if (!response.ok) {
@@ -101,12 +97,17 @@ export default function ExamTracker() {
         return 'bg-red-500'
     }
 
-    const studentsNice = students.filter((s: any) => s.campus === "Nice");
-    const studentsAngouleme = students.filter((s: any) => s.campus === "Angouleme");
-    const studentsFiltered = effectiveCampus === "Angouleme" ? studentsAngouleme : effectiveCampus === "Nice" ? studentsNice : students;
-
+    // The route is asked for one campus and answers for that campus, so there
+    // is nothing left to filter here. This used to sift Nice out of Angouleme
+    // client-side, from when both arrived in the same response.
     const studentsToShow = React.useMemo(() => {
-        return [...studentsFiltered].sort((a: ExamStudent, b: ExamStudent) => {
+        const inScope = students.filter((student: ExamStudent) => {
+            if (scope === "all") return true;
+            const piscine = isPiscineExam(student.examName ?? "");
+            return scope === "piscine" ? piscine : !piscine;
+        });
+
+        return inScope.sort((a: ExamStudent, b: ExamStudent) => {
             const aIsFriend = isFriend(a.id);
             const bIsFriend = isFriend(b.id);
 
@@ -115,76 +116,19 @@ export default function ExamTracker() {
 
             return b.grade - a.grade;
         });
-    }, [studentsFiltered, friends]);
+    }, [students, friends, scope]);
 
     const averageGrade = Array.isArray(studentsToShow) && studentsToShow.length > 0
         ? studentsToShow.reduce((sum, student) => sum + (student.grade || 0), 0) / studentsToShow.length
         : 0;
 
 
-    let scheduleInfo: React.ReactNode = null;
-    if (effectiveCampus === "Nice") {
-        scheduleInfo = (
-            <Alert variant="default" className="mb-4">
-                <AlertTitle>Nice Exam Schedule</AlertTitle>
-                <AlertDescription>
-                    <ul className="list-disc ml-5">
-                        <li><b>C Piscine Exams</b>: Every <b>Friday</b> <span className="block text-xs text-muted-foreground">(Only during Piscine periods)</span></li>
-                        <li><b>Rank Exams</b>: Every <b>Tuesday</b> from <b>14:00</b> to <b>17:00</b> and <b>Thursday</b> from <b>08:00</b> to <b>15:00</b></li>
-                    </ul>
-                </AlertDescription>
-            </Alert>
-        );
-    } else if (effectiveCampus === "Angouleme") {
-        scheduleInfo = (
-            <Alert variant="default" className="mb-4">
-                <AlertTitle>Angoulême Exam Schedule</AlertTitle>
-                <AlertDescription>
-                    <ul className="list-disc ml-5">
-                        <li><b>C Piscine Exams</b>: Every <b>Friday</b> <span className="block text-xs text-muted-foreground">(Only during Piscine periods)</span></li>
-                        <li><b>Rank Exams</b>: Every <b>Wednesday</b> from <b>08:00</b> to <b>12:00</b> and <b>Thursday</b> from <b>08:00</b> to <b>15:00</b></li>
-                    </ul>
-                </AlertDescription>
-            </Alert>
-        );
-    } else {
-        scheduleInfo = (
-            <Alert variant="default" className="mb-4">
-                <AlertTitle>Exam Schedule</AlertTitle>
-                <AlertDescription>
-                    <span>Exam scheduling information is only available for Nice and Angoulême campuses.</span>
-                </AlertDescription>
-            </Alert>
-        );
-    }
 
 
     if ((isLoading || isFetching) && !isSuccess) {
         return <LoadingScreen message="Loading exam tracker..." />;
     }
 
-
-    if (!wantExam) {
-        return (
-            <div className="max-w-7xl mx-auto px-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-2xl font-bold">Exam Tracker</CardTitle>
-                        <p className="text-muted-foreground">
-                            Live marks for the exam being sat right now, read from
-                            the 42 API on your own key.
-                        </p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {scheduleInfo}
-                        <Button onClick={() => setWantExam(true)} className="gap-2">
-                            Load exam results
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
 
     return (
         <div className="max-w-7xl mx-auto px-4">
@@ -202,24 +146,52 @@ export default function ExamTracker() {
                                 </span>
                             </CardTitle>
                             <p className="text-muted-foreground">
-                                Refreshed every 10 minutes while this page is open.
+                                {wantExam
+                                    ? "Refreshed every 10 minutes while this page is open."
+                                    : "Live marks for the exam being sat right now, read from the 42 API on your own key."}
                             </p>
                         </div>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => refetch()}
-                            disabled={isFetching}
-                            aria-label="Refresh exam results"
-                            className="shrink-0"
-                        >
-                            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-                        </Button>
+                        <div className="flex shrink-0 items-center gap-2">
+                            {/* Both kinds sit on the same campus agenda, so this
+                                filters what already arrived rather than fetching
+                                again. */}
+                            <div className="inline-flex overflow-hidden rounded-md border text-xs">
+                                {(["all", "cursus", "piscine"] as const).map((option) => (
+                                    <button
+                                        key={option}
+                                        type="button"
+                                        onClick={() => setScope(option)}
+                                        aria-pressed={scope === option}
+                                        className={`px-2.5 py-1.5 transition-colors ${
+                                            scope === option
+                                                ? "bg-primary text-primary-foreground"
+                                                : "text-muted-foreground hover:bg-muted"
+                                        }`}
+                                    >
+                                        {scopeLabels[option]}
+                                    </button>
+                                ))}
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => refetch()}
+                                disabled={!wantExam || isFetching}
+                                aria-label="Refresh exam results"
+                                className="shrink-0"
+                            >
+                                <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
                     {/* Message d'erreur après timeout */}
-                    {showTimeoutError && (!isSuccess || students.length === 0) && (
+                    {/* Only a request that has not come back. An empty answer that arrived
+                        is not an API failure -- a campus with nobody logged in, or a
+                        piscine promotion of one person who turned out to be staff, was
+                        being reported as "42 API Issue" fifteen seconds later. */}
+                    {showTimeoutError && !isSuccess && (
                         <Alert variant="destructive" className="mb-4">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>42 API Issue</AlertTitle>
@@ -238,7 +210,13 @@ export default function ExamTracker() {
                         </Alert>
                     )}
                     
-                    {scheduleInfo}
+                    {/* Asked for, not automatic: an exam sweep is a few pages
+                        on the visitor's own key. */}
+                    {!wantExam && (
+                        <Button onClick={() => setWantExam(true)} className="gap-2">
+                            Load exam results
+                        </Button>
+                    )}
                     {isLoading && students.length === 0 && (
                         <Table className="mt-5">
                             <TableHeader>
@@ -280,12 +258,16 @@ export default function ExamTracker() {
                         </Table>
                     )}
 
-                    {studentsToShow.length === 0 && !isLoading && (
+                    {wantExam && studentsToShow.length === 0 && !isLoading && (
                         <Alert variant="default" className="mt-5">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>No students found</AlertTitle>
                             <AlertDescription className="flex items-center justify-between gap-4 text-muted-foreground">
-                                <span>Exam hasn't started yet, or nobody has been graded so far. Check again in a moment.</span>
+                                <span>
+                                    {students.length > 0
+                                        ? `Nothing under ${scopeLabels[scope]}. ${students.length} graded ${students.length === 1 ? "student" : "students"} are hidden by that filter.`
+                                        : "Exam hasn't started yet, or nobody has been graded so far. Check again in a moment."}
+                                </span>
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -342,9 +324,9 @@ export default function ExamTracker() {
                                                                 <p className="truncate font-medium" title={student.name}>{student.name}</p>
                                                                 <p
                                                                     className="truncate text-sm text-muted-foreground"
-                                                                    title={getExamName(student.examId) ?? `Exam ${student.examId}`}
+                                                                    title={student.examName || `Exam ${student.examId}`}
                                                                 >
-                                                                    {getExamName(student.examId) ?? `Exam ${student.examId}`}
+                                                                    {student.examName || `Exam ${student.examId}`}
                                                                 </p>
                                                             </div>
                                                         </div>
