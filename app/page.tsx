@@ -27,7 +27,7 @@ import {
   LANGUAGE_STORAGE_KEY,
   type Language,
 } from "@/lib/api-key-copy";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -62,7 +62,7 @@ const homeCopy = {
     connecting: "Connecting…",
     alreadyBefore: "Already registered one?",
     alreadyLink: "Find it in your existing apps",
-    alreadyAfter: "and reuse its credentials.",
+    alreadyAfter: "and reuse its credentials. Make sure it's public.",
     noKey: "Don't have a key, or not sure what this is?",
     stepOpenBefore: "Open",
     stepOpenAfter: "on the intra.",
@@ -93,7 +93,7 @@ const homeCopy = {
     connecting: "Connexion…",
     alreadyBefore: "Déjà inscrit une application ?",
     alreadyLink: "Retrouvez-la dans vos applications",
-    alreadyAfter: "et réutilisez ses identifiants.",
+    alreadyAfter: "et réutilisez ses identifiants. Elle doit être publique.",
     noKey: "Pas encore de clé, ou pas sûr de ce que c'est ?",
     stepOpenBefore: "Ouvrez",
     stepOpenAfter: "sur l'intra.",
@@ -203,6 +203,7 @@ const resolveCallbackUrl = (raw: string | null): string => {
 
 export default function Home() {
   const router = useRouter();
+  const { status } = useSession();
   const [paused, setPaused] = useState(false);
   const [language, setLanguage] = useState<Language>("en");
   const [clientId, setClientId] = useState("");
@@ -226,6 +227,16 @@ export default function Home() {
   // Read after mount: navigator and localStorage do not exist on the server,
   // and guessing wrong would flash the wrong language for a moment.
   useEffect(() => setLanguage(detectLanguage()), []);
+
+  // A visitor whose session cookie is still good has nothing to do on this
+  // page. Without this, it showed the connect form on every visit even
+  // though the credentials cookie was still valid for a month.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    router.replace(
+      resolveCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl")),
+    );
+  }, [status, router]);
 
   const chooseLanguage = (next: Language) => {
     setLanguage(next);
@@ -309,6 +320,14 @@ export default function Home() {
       ),
     },
   ];
+
+  if (status === "loading" || status === "authenticated") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0a0a0f] text-foreground">
