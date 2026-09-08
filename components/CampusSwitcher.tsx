@@ -22,9 +22,10 @@ import { MapPin, Check, Home } from "lucide-react"
  * student can now look at any of the 54 schools, so it is a plain picker: it
  * marks where they study and lets them go elsewhere.
  *
- * The list is long enough to need filtering, which is also why the count is
- * shown -- a campus of 3000 is a longer wait than one of 200, and that is
- * worth knowing before clicking.
+ * The list is long enough to need filtering, and the account counts are there
+ * to tell a large campus from a small one at a glance. They are 42's own
+ * figures for accounts, not students, which the header says plainly -- Paris
+ * reports 43225 of them and has 8402 people in the cursus.
  */
 export function CampusSwitcher() {
   const { selectedCampus, setSelectedCampus, campuses, userCampus } = useCampus()
@@ -64,7 +65,7 @@ export function CampusSwitcher() {
       <DropdownMenuContent align="start" className="w-64">
         <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
           {campuses.length > 0
-            ? `${campuses.length} campuses`
+            ? `${campuses.length} campuses · figures are total accounts`
             : "Loading the campus list…"}
         </DropdownMenuLabel>
 

@@ -43,11 +43,13 @@ export interface CampusInfo {
   id: number;
   name: string;
   /**
-   * Everyone with an account there, as 42 reports it on /campus.
+   * Every account 42 has on record there, as reported on /campus.
    *
-   * It counts more people than the rankings show -- piscines, staff, alumni --
-   * so it is not a student count. It is an order of magnitude, which is what
-   * the picker needs: a campus of 4000 is a longer wait than one of 200.
+   * Not a student count, and not close to one: Paris reports 43225 accounts
+   * against 8402 people in the main cursus. It counts piscines, alumni and
+   * staff too. What it is good for is relative size -- Paris is genuinely the
+   * largest and Nablus, at 2, the smallest -- so the picker shows it as what
+   * it is rather than passing it off as a roster.
    */
   usersCount?: number;
 }
