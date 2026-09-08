@@ -1,7 +1,18 @@
 import type { FortyTwoApi } from "@/lib/forty-two/api";
+import {
+  hasVendoredPlan,
+  hostsIn,
+  loadVendoredPlan,
+} from "@/lib/forty-two/vendored-plans";
 
 /**
- * A campus floor plan worked out from the names of its workstations.
+ * Where a campus floor plan comes from.
+ *
+ * Two sources, in this order. Twenty-five campuses have a real seat-by-seat
+ * layout in vendor/42-cluster-maps, drawn by the people who work there and
+ * exact where it is current -- 144 of 144 workstations at Nice. The rest, and
+ * any campus whose vendored map has aged out, get one worked out from the
+ * workstation names.
  *
  * 42 has a /v2/clusters endpoint and it is not available to us: it answers 403
  * to an application holding the `public` scope, which is the only scope
@@ -108,3 +119,72 @@ export const deriveFloorPlan = async (
 
 const compareNatural = (a: [string, unknown], b: [string, unknown]) =>
   a[0].localeCompare(b[0], undefined, { numeric: true });
+
+/**
+ * How much of a campus has to match a vendored map for it to be believed.
+ *
+ * The maps were last touched in December 2024 and campuses move. Paris is the
+ * one that shows why this check exists: its vendored map is `e1r13p1` and the
+ * campus now runs `f2r10s6`, so not one live host matches. A third is a
+ * deliberately low bar -- a map missing recent machines is still worth having,
+ * a map of a building nobody works in any more is not.
+ */
+const FRESH_ENOUGH = 0.3;
+
+/** Up to a hundred recent hosts is one request and plenty to judge on. */
+const SAMPLE_SIZE = 100;
+
+export interface ResolvedPlan {
+  plan: FloorPlan;
+  /** "vendored" when it came from a real layout, "derived" when worked out. */
+  source: "vendored" | "derived";
+  /** Workstations the plan names. */
+  hostCount: number;
+}
+
+export const resolveFloorPlan = async (
+  campusId: number,
+  api: FortyTwoApi,
+): Promise<ResolvedPlan | null> => {
+  if (hasVendoredPlan(campusId)) {
+    const plan = await loadVendoredPlan(campusId);
+
+    if (plan && (await matchesCampus(plan, campusId, api))) {
+      return { plan, source: "vendored", hostCount: hostsIn(plan).size };
+    }
+  }
+
+  const derived = await deriveFloorPlan(campusId, api);
+  return Object.keys(derived.plan).length > 0
+    ? { ...derived, source: "derived" }
+    : null;
+};
+
+/** Whether the machines a plan names are the machines students are sitting at. */
+const matchesCampus = async (
+  plan: FloorPlan,
+  campusId: number,
+  api: FortyTwoApi,
+): Promise<boolean> => {
+  const known = hostsIn(plan);
+  if (known.size === 0) return false;
+
+  const response = await api.fetch(
+    `/campus/${campusId}/locations?page[size]=${SAMPLE_SIZE}`,
+  );
+  if (!response.ok) {
+    // No way to judge is not a reason to throw away a real layout.
+    return true;
+  }
+
+  const live = new Set<string>();
+  for (const row of await response.json()) {
+    if (typeof row?.host === "string") live.add(row.host);
+  }
+
+  // A campus with nobody on it tells us nothing either way.
+  if (live.size === 0) return true;
+
+  const matched = [...live].filter((host) => known.has(host)).length;
+  return matched / live.size >= FRESH_ENOUGH;
+};

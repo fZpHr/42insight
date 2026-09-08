@@ -5,17 +5,17 @@ import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { cachedOnce } from "@/lib/memory-cache";
 import { resolveCampusId } from "@/lib/forty-two/live-campus";
-import { deriveFloorPlan } from "@/lib/forty-two/cluster-plan";
+import { resolveFloorPlan } from "@/lib/forty-two/cluster-plans";
 
 /**
  * A floor plan for a campus nobody drew one for.
  *
- * See lib/forty-two/cluster-plan.ts: 42's own /v2/clusters is closed to the
- * scope a student's key can hold, so the shape of the room is read out of the
- * workstation names instead.
+ * A real layout where one exists and still describes the building, and one
+ * worked out from the workstation names everywhere else. See
+ * lib/forty-two/cluster-plans.ts, and vendor/42-cluster-maps for the layouts.
  *
- * A room does not move, so this is cached for a day. Eight pages once a day is
- * cheaper than the campus roster every page already pays for.
+ * A room does not move, so this is cached for a day: at worst a couple of dozen
+ * pages once, which is less than the campus roster every page already pays for.
  */
 
 const CACHE_TTL = 24 * 60 * 60;
@@ -41,7 +41,7 @@ export async function GET(
   try {
     return NextResponse.json(
       await cachedOnce(`cluster-plan:${campus_name}`, CACHE_TTL, () =>
-        deriveFloorPlan(campusId, api),
+        resolveFloorPlan(campusId, api),
       ),
     );
   } catch (error: any) {

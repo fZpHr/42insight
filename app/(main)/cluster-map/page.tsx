@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ClusterUser } from "@/types";
 import { angoulemeMaps } from "./(maps)/angouleme";
 import { niceMaps } from "./(maps)/nice";
-import type { DerivedPlan, FloorPlan } from "@/lib/forty-two/cluster-plan";
+import type { FloorPlan, ResolvedPlan } from "@/lib/forty-two/cluster-plans";
 import { fetchJson } from "@/lib/api-client";
 import { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
@@ -98,12 +98,14 @@ function getMapByCampus(campus?: string) {
 }
 
 /**
- * The layout worked out from workstation names, for the campuses nobody drew.
- * See lib/forty-two/cluster-plan.ts for why it is derived rather than fetched.
+ * The layout for a campus without one of the hand-drawn plans above: a real
+ * one from vendor/42-cluster-maps where it exists and still describes the
+ * building, else one worked out from the workstation names. The route decides
+ * and says which, since the two deserve different amounts of trust.
  */
-const fetchDerivedPlan = async (campus?: string): Promise<DerivedPlan | null> => {
+const fetchCampusPlan = async (campus?: string): Promise<ResolvedPlan | null> => {
   if (!campus) return null;
-  return fetchJson<DerivedPlan>(`/api/cluster-map/${encodeURIComponent(campus)}`);
+  return fetchJson<ResolvedPlan>(`/api/cluster-map/${encodeURIComponent(campus)}`);
 };
 
 export default function ClusterMap() {
@@ -153,19 +155,18 @@ export default function ClusterMap() {
     staleTime: 10 * 60 * 1000,
   });
 
-  // Drawn by hand where somebody drew one, worked out from the workstation
-  // names everywhere else. Only the second costs a request, and only once a day.
+  // Hand-drawn where this repo has one; fetched otherwise, once a day.
   const drawnPlan = getMapByCampus(effectiveCampus);
 
-  const { data: derived, isLoading: isLoadingPlan } = useQuery({
+  const { data: fetchedPlan, isLoading: isLoadingPlan } = useQuery({
     queryKey: ["cluster-plan", effectiveCampus],
-    queryFn: () => fetchDerivedPlan(effectiveCampus),
+    queryFn: () => fetchCampusPlan(effectiveCampus),
     enabled:
       status === "authenticated" && !!effectiveCampus && drawnPlan === null,
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  const plan: FloorPlan | null = drawnPlan ?? derived?.plan ?? null;
+  const plan: FloorPlan | null = drawnPlan ?? fetchedPlan?.plan ?? null;
   const clusterKeys = plan
     ? Object.keys(plan).sort((a, b) =>
         a.localeCompare(b, undefined, { numeric: true }),
@@ -423,7 +424,10 @@ export default function ClusterMap() {
                   {clusterKeys.map((key) => (
                     <SelectItem key={key} value={key}>
                       <span className="hidden sm:inline">
-                        Cluster {key} ({getAvailablePC(key)} available)
+                        {/* The keys are already names where the plan had one:
+                            "C1" reads better than "Cluster C1". */}
+                        {/^c\d/i.test(key) ? key : `Cluster ${key}`} (
+                        {getAvailablePC(key)} available)
                       </span>
                       <span className="sm:hidden">
                         {key} ({getAvailablePC(key)})
@@ -443,19 +447,19 @@ export default function ClusterMap() {
         </div>
       ) : hasFloorPlan ? (
         <>
-          {!drawnPlan && (
+          {fetchedPlan?.source === "derived" && (
             <div className="max-w-7xl mx-auto mb-4">
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Layout read from the workstation names</AlertTitle>
                 <AlertDescription>
-                  Nobody drew a plan for {effectiveCampus}, and 42&apos;s own
-                  cluster endpoint is closed to student keys, so the rows and
-                  seats here come from the workstation names themselves
-                  {derived?.hostCount ? ` (${derived.hostCount} of them)` : ""}.
-                  Treat it as a seating chart rather than the room: seats run in
-                  numeric order, and a machine nobody has logged into recently
-                  is not in the names, so it shows as an empty square.
+                  There is no drawn plan for {effectiveCampus} that still
+                  matches the building, and 42&apos;s own cluster endpoint is
+                  closed to student keys, so the rows and seats here come from
+                  the workstation names themselves ({fetchedPlan.hostCount} of
+                  them). Treat it as a seating chart rather than the room: seats
+                  run in numeric order, and a machine nobody has logged into
+                  recently is not in the names, so it shows as an empty square.
                 </AlertDescription>
               </Alert>
             </div>

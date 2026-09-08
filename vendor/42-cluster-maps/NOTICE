@@ -1,0 +1,7 @@
+This directory contains work from the intra42 project
+(https://github.com/pvarry/intra42), Copyright the intra42 contributors,
+licensed under the Apache License, Version 2.0.
+
+Changes made by 42insight: the files were renamed from
+cluster_map_campus_<id>.json to campus_<id>.json, and cluster_map_campus_0.json
+was not included. The contents of the included files are unmodified.
