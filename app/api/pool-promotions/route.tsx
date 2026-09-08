@@ -7,7 +7,10 @@ import {
   campusForRequest,
   campusRequiredResponse,
 } from "@/lib/forty-two/campus-scope";
-import { listPoolPromotions } from "@/lib/forty-two/live-campus";
+import {
+  listPoolPromotions,
+  resolvePoolPromotion,
+} from "@/lib/forty-two/live-campus";
 
 /**
  * Which piscines a campus ran in a year, so the page can offer them rather
@@ -29,9 +32,21 @@ export async function GET(request: Request) {
   const campus = campusForRequest(request, session);
   if (!campus) return campusRequiredResponse();
 
-  const year =
-    new URL(request.url).searchParams.get("year") ??
-    String(new Date().getFullYear());
+  const { searchParams } = new URL(request.url);
+
+  // The page opens on a promotion it did not choose, so it asks which one
+  // rather than working it out again -- and getting it wrong every January,
+  // when the current year is empty and last December's piscine is running.
+  if (searchParams.get("current") === "1") {
+    try {
+      return NextResponse.json(await resolvePoolPromotion(campus, api));
+    } catch (error: any) {
+      console.error(`[pool-promotions] current failed for ${campus}:`, error.message);
+      return NextResponse.json({ error: "Failed" }, { status: 502 });
+    }
+  }
+
+  const year = searchParams.get("year") ?? String(new Date().getFullYear());
 
   if (!/^\d{4}$/.test(year)) {
     return NextResponse.json({ error: "year must be four digits" }, { status: 400 });

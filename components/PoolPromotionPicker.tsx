@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Waves } from "lucide-react";
+import { ChevronDown, Loader2, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -65,25 +65,28 @@ export function PoolPromotionPicker({
     String(Number(thisYear) - i),
   );
 
-  // The current year loads without being asked, because the page opens on its
-  // current promotion and needs to know which that is.
-  const { data: currentYear = [], isLoading } = usePromotions(
-    campus,
-    thisYear,
-    year !== ALL_PROMOTIONS,
-  );
+  // Which promotion to open on is the route's answer, not a rule repeated
+  // here: every January the current year is empty while December's piscine is
+  // still running, and the two would disagree.
+  const { data: current, isLoading } = useQuery({
+    queryKey: ["pool-promotion-current", campus],
+    queryFn: () =>
+      fetchJson<PoolPromotion | null>(
+        `/api/pool-promotions?campus=${encodeURIComponent(campus)}&current=1`,
+      ),
+    enabled: !!campus && month === null && year !== ALL_PROMOTIONS,
+    staleTime: 60 * 60 * 1000,
+  });
 
   useEffect(() => {
-    if (month !== null || currentYear.length === 0) return;
-
-    const current = currentYear.find((promotion) => promotion.isCurrent);
-    if (current) onChange({ year: current.year, month: current.month });
-  }, [month, currentYear, onChange]);
+    if (month !== null || !current) return;
+    onChange({ year: current.year, month: current.month });
+  }, [month, current, onChange]);
 
   const label = () => {
     if (year === ALL_PROMOTIONS) return "Every piscine";
     if (month === ALL_PROMOTIONS) return `All of ${year}`;
-    if (month === null) return isLoading ? "Reading…" : "Pick a piscine";
+    if (month === null) return isLoading ? "Finding it…" : "Pick a piscine";
     return `${titleCase(month)} ${year}`;
   };
 
@@ -174,9 +177,19 @@ function YearSubmenu({
         ))}
 
         {isLoading && (
-          <p className="px-2 py-2 text-xs text-muted-foreground">
-            Asking the campus…
-          </p>
+          <>
+            <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Reading {year}, a moment…
+            </div>
+            {/* Twelve months to ask about, one request each, so there is a
+                real wait here the first time a year is opened. */}
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="px-2 py-1.5">
+                <div className="h-3 w-full animate-pulse rounded bg-muted" />
+              </div>
+            ))}
+          </>
         )}
 
         {!isLoading && promotions.length === 0 && (

@@ -457,9 +457,12 @@ const dominantCursus = (
 };
 
 /**
- * The promotion to show when nobody has picked one: the most recent that has
- * begun. A campus with a piscine starting next month should not open on it and
- * report an empty ranking.
+ * The most recent promotion of a year that has actually begun, or null.
+ *
+ * Null rather than a future one: a campus whose next piscine starts in three
+ * weeks has nothing to rank yet, and saying so lets the caller look at the
+ * year before instead. That is what happens every January, when the new year
+ * is empty and December's piscine is still running.
  */
 export const currentPoolPromotion = (
   promotions: PoolPromotion[],
@@ -477,10 +480,8 @@ export const currentPoolPromotion = (
     return POOL_MONTHS.indexOf(promotion.month as any) <= now.getMonth();
   });
 
-  const pool = started.length > 0 ? started : candidates;
-
   return (
-    [...pool].sort(
+    [...started].sort(
       (a, b) =>
         Number(b.year) - Number(a.year) ||
         POOL_MONTHS.indexOf(b.month as any) - POOL_MONTHS.indexOf(a.month as any),
@@ -502,14 +503,14 @@ export const resolvePoolPromotion = async (
   asked: { month?: string | null; year?: string | null } = {},
 ): Promise<PoolPromotion | null> => {
   const month = asked.month?.toLowerCase();
-  const year = asked.year ?? String(new Date().getFullYear());
-
-  const promotions = await listPoolPromotions(campusName, year, api);
 
   // Even a promotion named outright is looked up rather than taken at face
   // value: which cursus it was decides which levels to read, and a Discovery
   // Piscine's members have none in the C Piscine.
   if (month) {
+    const year = asked.year ?? String(new Date().getFullYear());
+    const promotions = await listPoolPromotions(campusName, year, api);
+
     return (
       promotions.find((promotion) => promotion.month === month) ?? {
         month,
@@ -522,7 +523,18 @@ export const resolvePoolPromotion = async (
     );
   }
 
-  return currentPoolPromotion(promotions);
+  // Walk back until a year has a piscine that has begun. On the second of
+  // January the current year has none, and December's is still running.
+  const thisYear = Number(asked.year ?? new Date().getFullYear());
+
+  for (let year = thisYear; year > thisYear - YEARS_BACK; year--) {
+    const current = currentPoolPromotion(
+      await listPoolPromotions(campusName, String(year), api),
+    );
+    if (current) return current;
+  }
+
+  return null;
 };
 
 /**
