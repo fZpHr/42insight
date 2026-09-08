@@ -4,7 +4,10 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
-  CAMPUS_IDS,
+  campusForRequest,
+  campusRequiredResponse,
+} from "@/lib/forty-two/campus-scope";
+import {
   currentPool,
   getPoolUsers,
 } from "@/lib/forty-two/live-campus";
@@ -14,7 +17,7 @@ import {
 export const maxDuration = 60;
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ login: string }> },
 ) {
   const session = await getServerSession(authOptions);
@@ -25,17 +28,21 @@ export async function GET(
   const api = await getApi();
   if (!api) return keyRequiredResponse();
 
+  // Walked the static two-campus seed. With the live directory that would
+  // be 54 rosters in one request, so it answers for one campus: the one
+  // asked for, or the caller's own.
+  const campus = campusForRequest(request, session);
+  if (!campus) return campusRequiredResponse();
+
   try {
     const { login } = await params;
     const pool = currentPool();
+    const poolUsers = await getPoolUsers(campus, pool.month, pool.year, api);
+    const poolUser = poolUsers.find((candidate) => candidate.name === login);
 
-    for (const campus of Object.keys(CAMPUS_IDS)) {
-      const poolUsers = await getPoolUsers(campus, pool.month, pool.year, api);
-      const poolUser = poolUsers.find((candidate) => candidate.name === login);
-      if (poolUser) return NextResponse.json(poolUser);
-    }
-
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    return poolUser
+      ? NextResponse.json(poolUser)
+      : NextResponse.json({ error: "User not found" }, { status: 404 });
   } catch (error: any) {
 
     console.error("[pool] failed to fetch user:", error.message);

@@ -235,15 +235,6 @@ export default function PeersPage() {
                     </Button>
                 </div>
             </div>
-            {/* <div className="gap-6 mb-5">
-                {session?.user?.campus !== 'Angouleme' &&  session?.user.campus !== "Nice" && (
-                    <TransparentBadge
-                        text="⚠️ Only available for Angouleme campus for now"
-                        bgColor="bg-red-400/20"
-                        textColor="text-red-300"
-                    />
-                )}
-            </div> */}
             {/* load all people that dont have groups for your current project and make a tinder like choice to send a dm or a mail to the chosen group user */}
             {sortedProjects?.map((project) => {
                 const nonValidatedSubscribers = project.subscribers;

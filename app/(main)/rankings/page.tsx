@@ -75,8 +75,10 @@ import {
 import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
-import { fetchJson } from "@/lib/api-client";
+import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { readLogtimeIndex, withLogtime, type LogtimeIndex } from "@/lib/logtime-store";
+import { useCampus } from "@/contexts/CampusContext";
+import { GlobalFetchDialog } from "@/components/GlobalFetchDialog";
 
 const sortOptions: StudentSortOption[] = [
   { value: "level", label: "Level", key: "level" },
@@ -201,7 +203,37 @@ export default function Rankings() {
   const [sortHistory, setSortHistory] = useState<string[]>(["totalLoginTime", "avgDailyHours"]);
   const [loginTimeCategory, setLoginTimeCategory] = useState<string>("overview");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [selectedCampus, setSelectedCampus] = useState<string>("");
+  const {
+    selectedCampus: pickedCampus,
+    setSelectedCampus: pickCampus,
+    campuses,
+    userCampus,
+  } = useCampus();
+
+  /**
+   * Global belongs to this page alone -- every other page reads one campus --
+   * and it is deliberately not remembered. Reading all of 42 is minutes of the
+   * visitor's own quota, so it is asked for each time rather than resumed
+   * silently on the next visit.
+   */
+  const [globalMode, setGlobalMode] = useState(false);
+  const [confirmingGlobal, setConfirmingGlobal] = useState(false);
+  const [globalProgress, setGlobalProgress] = useState<{
+    done: number;
+    total: number;
+    campus: string;
+  } | null>(null);
+
+  const selectedCampus = globalMode ? "Global" : pickedCampus;
+
+  const setSelectedCampus = (value: string) => {
+    if (value === "Global") {
+      setConfirmingGlobal(true);
+      return;
+    }
+    setGlobalMode(false);
+    pickCampus(value);
+  };
   const [highlightUser, setHighlightUser] = useState(false);
   const userRowRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<HTMLDivElement>(null);
@@ -236,11 +268,30 @@ export default function Rankings() {
   }, [selectedCampus, user?.campus]);
 
 
-  const campusOptions = [
-    { value: "Global", label: "Global" },
-    { value: "Nice", label: "Nice" },
-    { value: "Angouleme", label: "Angoulême" },
-  ];
+  /**
+   * Every campus 42 has, the visitor's own first, and Global last.
+   *
+   * This was a hardcoded three -- Global, Nice, Angouleme -- from when the site
+   * read a database seeded for two schools. The list is now whatever the 42 API
+   * says it is, so a student from anywhere finds their own campus here.
+   */
+  const campusOptions = useMemo(() => {
+    const own = userCampus || user?.campus;
+
+    const schools = campuses
+      .map((campus) => ({ value: campus.name, label: campus.name }))
+      .sort((a, b) => {
+        if (a.value === own) return -1;
+        if (b.value === own) return 1;
+        return a.label.localeCompare(b.label);
+      });
+
+    // Before the directory arrives there is still one campus worth naming: the
+    // one the page is already loading.
+    if (schools.length === 0 && own) schools.push({ value: own, label: own });
+
+    return [...schools, { value: "Global", label: "Global (every campus)" }];
+  }, [campuses, userCampus, user?.campus]);
 
   const {
     data: rawStudents,
@@ -255,11 +306,32 @@ export default function Rankings() {
       const campus = selectedCampus || user?.campus;
       if (!campus) return [];
       if (campus === "Global") {
-        const [nice, angouleme] = await Promise.all([
-          fetchCampusStudents("Nice"),
-          fetchCampusStudents("Angouleme"),
-        ]);
-        const all = [...(nice || []), ...(angouleme || [])];
+        // 42 has no worldwide roster endpoint, and a single walk of fifty
+        // thousand students would outlive any serverless function anyway. So it
+        // goes campus by campus, through the same cached route the picker uses:
+        // a campus already opened costs nothing here, and a load interrupted
+        // halfway resumes rather than starts over.
+        const all: Student[] = [];
+
+        for (const [index, school] of campuses.entries()) {
+          setGlobalProgress({
+            done: index,
+            total: campuses.length,
+            campus: school.name,
+          });
+
+          try {
+            all.push(...((await fetchCampusStudents(school.name)) ?? []));
+          } catch (error) {
+            // A missing key is the same answer 54 times over, so stop and let
+            // the page ask for one. Anything else is one campus that will not
+            // answer, which should not cost the other 53.
+            if (isKeyRequired(error)) throw error;
+          }
+        }
+
+        setGlobalProgress(null);
+
         if (all.length === 0) {
           toast.error("No students found for Global", {
             duration: 2000,
@@ -294,7 +366,10 @@ export default function Rankings() {
         }));
       }
     },
-    enabled: !!(selectedCampus || user?.campus),
+    enabled:
+      selectedCampus === "Global"
+        ? campuses.length > 0
+        : !!(selectedCampus || user?.campus),
     staleTime: 10 * 60 * 1000,
   });
 
@@ -865,7 +940,13 @@ export default function Rankings() {
   // `enabled`) actually showed anything.
   if (!effectiveCampus || ((isLoading || isFetching) && !isSuccess)) {
     return (
-      <LoadingScreen message="Loading rankings..." />
+      <LoadingScreen
+        message={
+          globalProgress
+            ? `Loading ${globalProgress.campus} (${globalProgress.done + 1} of ${globalProgress.total} campuses)`
+            : "Loading rankings..."
+        }
+      />
     );
   }
 
@@ -2183,6 +2264,15 @@ export default function Rankings() {
           )}
         </DialogContent>
       </Dialog>
+
+      <GlobalFetchDialog
+        open={confirmingGlobal}
+        onOpenChange={setConfirmingGlobal}
+        onConfirm={() => {
+          setConfirmingGlobal(false);
+          setGlobalMode(true);
+        }}
+      />
     </div>
     </TooltipProvider>
   );

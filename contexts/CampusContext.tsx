@@ -3,11 +3,27 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 
+/**
+ * Which campus is being looked at.
+ *
+ * Switching used to be a staff privilege, from when the site read a database
+ * seeded for two campuses and there was nothing else to switch to. Every
+ * request now runs on the visitor's own key against the live 42 API, so any
+ * student can look at any of the 54 schools, and the only thing that makes
+ * their own special is that it is where they start.
+ */
+
+export interface Campus {
+  id: number
+  name: string
+  usersCount?: number
+}
+
 interface CampusContextType {
   selectedCampus: string
   setSelectedCampus: (campus: string) => void
-  availableCampuses: string[]
-  canChangeCampus: boolean
+  /** Every campus 42 has, once the directory has loaded. */
+  campuses: Campus[]
   userCampus: string
 }
 
@@ -16,72 +32,55 @@ const CampusContext = createContext<CampusContextType | undefined>(undefined)
 export function CampusProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
   const userCampus = session?.user?.campus || ''
-  const userRole = session?.user?.role || 'student'
-  
 
-  const canChangeCampus = userRole === 'staff' || userRole === 'admin'
+  const [campuses, setCampuses] = useState<Campus[]>([])
+  const [selectedCampus, setSelectedCampus] = useState<string>(userCampus)
 
-  // Seeded with the two this site started on so the switcher has something
-  // to show immediately; replaced with the real, full list once it loads.
-  const [availableCampuses, setAvailableCampuses] = useState<string[]>(['Angouleme', 'Nice'])
-
+  // The directory is one request, cached a day server-side. Everyone gets it:
+  // the picker has nothing to offer without it.
   useEffect(() => {
-    if (!canChangeCampus) return
+    if (!session) return
+
     fetch('/api/campuses')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setAvailableCampuses(data.map((campus: { name: string }) => campus.name))
-        }
+        if (Array.isArray(data) && data.length > 0) setCampuses(data)
       })
       .catch(() => {
-        // The seeded pair still works.
+        // The picker falls back to the visitor's own campus, which is the one
+        // they came for anyway.
       })
-  }, [canChangeCampus])
+  }, [session])
 
-
-  const [selectedCampus, setSelectedCampus] = useState<string>(userCampus)
-  
-
+  // Start where the visitor studies, and remember where they wandered.
   useEffect(() => {
-    if (userCampus && !selectedCampus) {
-      setSelectedCampus(userCampus)
+    if (!userCampus) return
+
+    let saved: string | null = null
+    try {
+      saved = window.localStorage.getItem('selected_campus')
+    } catch {
+      // Private browsing; the default below still applies.
     }
+
+    setSelectedCampus(saved || userCampus)
   }, [userCampus])
-  
-
-  useEffect(() => {
-    if (canChangeCampus && typeof window !== 'undefined') {
-      const saved = localStorage.getItem('staff_campus_bypass')
-      if (saved && availableCampuses.includes(saved)) {
-        setSelectedCampus(saved)
-      } else {
-
-        setSelectedCampus(userCampus)
-      }
-    } else {
-
-      setSelectedCampus(userCampus)
-    }
-  }, [canChangeCampus, userCampus])
-  
 
   const handleSetSelectedCampus = (campus: string) => {
-    if (canChangeCampus) {
-      setSelectedCampus(campus)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('staff_campus_bypass', campus)
-      }
+    setSelectedCampus(campus)
+    try {
+      window.localStorage.setItem('selected_campus', campus)
+    } catch {
+      // Not remembering it is a smaller failure than not honouring it.
     }
   }
-  
+
   return (
     <CampusContext.Provider
       value={{
-        selectedCampus: selectedCampus || userCampus,
+        selectedCampus,
         setSelectedCampus: handleSetSelectedCampus,
-        availableCampuses,
-        canChangeCampus,
+        campuses,
         userCampus,
       }}
     >

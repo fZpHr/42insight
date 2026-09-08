@@ -68,9 +68,8 @@ export default function ExamTracker() {
     const { data: students = [], isLoading, error, isSuccess, isFetching, refetch } = useQuery({
         queryKey: ['current_exam', effectiveCampus],
         queryFn: async () => {
-            // Without this, every visitor -- Nice or Angoulême -- walks both
-            // campuses and throws half the answer away in studentsFiltered
-            // below. One campus known up front is one exam sweep, not two.
+            // Naming the campus is what keeps this to one exam sweep. Without
+            // it the route has 54 to choose from and no way to choose.
             const query = effectiveCampus ? `?campus=${encodeURIComponent(effectiveCampus)}` : "";
             const response = await fetch(`/api/current_exam${query}`);
             if (!response.ok) {
@@ -101,12 +100,11 @@ export default function ExamTracker() {
         return 'bg-red-500'
     }
 
-    const studentsNice = students.filter((s: any) => s.campus === "Nice");
-    const studentsAngouleme = students.filter((s: any) => s.campus === "Angouleme");
-    const studentsFiltered = effectiveCampus === "Angouleme" ? studentsAngouleme : effectiveCampus === "Nice" ? studentsNice : students;
-
+    // The route is asked for one campus and answers for that campus, so there
+    // is nothing left to filter here. This used to sift Nice out of Angouleme
+    // client-side, from when both arrived in the same response.
     const studentsToShow = React.useMemo(() => {
-        return [...studentsFiltered].sort((a: ExamStudent, b: ExamStudent) => {
+        return [...students].sort((a: ExamStudent, b: ExamStudent) => {
             const aIsFriend = isFriend(a.id);
             const bIsFriend = isFriend(b.id);
 
@@ -115,7 +113,7 @@ export default function ExamTracker() {
 
             return b.grade - a.grade;
         });
-    }, [studentsFiltered, friends]);
+    }, [students, friends]);
 
     const averageGrade = Array.isArray(studentsToShow) && studentsToShow.length > 0
         ? studentsToShow.reduce((sum, student) => sum + (student.grade || 0), 0) / studentsToShow.length
@@ -152,7 +150,10 @@ export default function ExamTracker() {
             <Alert variant="default" className="mb-4">
                 <AlertTitle>Exam Schedule</AlertTitle>
                 <AlertDescription>
-                    <span>Exam scheduling information is only available for Nice and Angoulême campuses.</span>
+                    <span>
+                        No recurring schedule is written down here for {effectiveCampus || "this campus"}.
+                        The exams below are the ones 42 has on its agenda right now.
+                    </span>
                 </AlertDescription>
             </Alert>
         );

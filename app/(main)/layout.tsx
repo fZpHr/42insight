@@ -5,33 +5,22 @@ import { AppSidebar } from "@/components/navbar";
 import { Analytics } from "@vercel/analytics/next";
 import { TanstackProvider } from "@/lib/tanstack-provider";
 import { CommandMenu } from "@/components/CommandMenu";
-import { CampusInfoDialog } from "@/components/CampusInfoDialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useSession } from "next-auth/react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ApiStatusBar } from "@/components/ApiStatusBar";
-import { Info } from "lucide-react";
 import { isDevPreviewEnabled } from "@/lib/dev-preview";
 
-const supportedCampuses = ["Angouleme", "Nice"];
-
 function SidebarContent({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
-  const user = session?.user;
-  
   const [showShortcutTip, setShowShortcutTip] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("hide_shortcut_tip") !== "true";
   });
 
-  const [showCampusInfo, setShowCampusInfo] = useState(false);
-
   const handleDismissTip = () => {
     setShowShortcutTip(false);
     localStorage.setItem("hide_shortcut_tip", "true");
   };
-
-  const isRestrictedCampus = user?.campus && !supportedCampuses.includes(user.campus);
 
   return (
     <>
@@ -66,25 +55,6 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
               <ApiStatusBar />
             </div>
             <div className="flex items-center gap-2">
-              {/* Bouton Campus Info pour les campus non supportés */}
-              {isRestrictedCampus && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => setShowCampusInfo(true)}
-                        className="inline-flex items-center gap-1 cursor-pointer hover:opacity-70 transition-opacity"
-                      >
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>View campus information</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              
               {/* Command Menu shortcut */}
               <TooltipProvider>
                 <Tooltip>
@@ -104,7 +74,6 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
         </div>
         <div className="flex-1">
           <CommandMenu />
-          <CampusInfoDialog open={showCampusInfo} onOpenChange={setShowCampusInfo} />
           {children}
           <Analytics />
         </div>

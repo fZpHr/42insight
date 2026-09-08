@@ -42,6 +42,14 @@ export const POOL_CURSUS_ID = 9;
 export interface CampusInfo {
   id: number;
   name: string;
+  /**
+   * Everyone with an account there, as 42 reports it on /campus.
+   *
+   * It counts more people than the rankings show -- piscines, staff, alumni --
+   * so it is not a student count. It is an order of magnitude, which is what
+   * the picker needs: a campus of 4000 is a longer wait than one of 200.
+   */
+  usersCount?: number;
 }
 
 interface CampusDirectory {
@@ -58,22 +66,33 @@ let directory: CampusDirectory | null = null;
 const loadDirectory = async (api: FortyTwoApi): Promise<CampusDirectory> => {
   if (directory && directory.expiresAt > Date.now()) return directory;
 
-  const byName = new Map(Object.entries(CAMPUS_IDS));
+  const seen = new Map<string, CampusInfo>(
+    Object.entries(CAMPUS_IDS).map(([name, id]) => [name, { id, name }]),
+  );
+
   try {
     const rows = await api.fetchAllPages(`/campus`, { maxPages: 3 });
     for (const row of rows) {
-      if (row?.name && typeof row.id === "number") byName.set(row.name, row.id);
+      if (!row?.name || typeof row.id !== "number") continue;
+      seen.set(row.name, {
+        id: row.id,
+        name: row.name,
+        usersCount:
+          typeof row.users_count === "number" ? row.users_count : undefined,
+      });
     }
   } catch (error: any) {
     // The seed above still covers the two campuses this started on.
     console.error("[live-campus] fetching the campus directory failed:", error.message);
   }
 
-  const list = [...byName.entries()]
-    .map(([name, id]) => ({ id, name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const list = [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
 
-  directory = { byName, list, expiresAt: Date.now() + CAMPUS_DIRECTORY_TTL_MS };
+  directory = {
+    byName: new Map(list.map((campus) => [campus.name, campus.id])),
+    list,
+    expiresAt: Date.now() + CAMPUS_DIRECTORY_TTL_MS,
+  };
   return directory;
 };
 
@@ -86,6 +105,32 @@ export const resolveCampusId = async (
   name: string,
   api: FortyTwoApi,
 ): Promise<number | null> => (await loadDirectory(api)).byName.get(name) ?? null;
+
+/**
+ * How many students a campus has in a cursus, or the whole network when the
+ * campus is null.
+ *
+ * One request: 42 reports the size of a collection in X-Total, so asking for a
+ * single row is enough to learn the size of all of them. That is what makes it
+ * honest to quote a price before spending it -- the Global confirmation is
+ * showing a number 42 gave, not one this file remembers from a measurement
+ * that has since gone stale.
+ */
+export const countCursusStudents = async (
+  campusId: number | null,
+  api: FortyTwoApi,
+): Promise<number> => {
+  const scope = campusId ? `&filter[campus_id]=${campusId}` : "";
+  const response = await api.fetch(
+    `/cursus_users?filter[cursus_id]=${CURSUS_ID}${scope}&page[size]=1`,
+  );
+
+  if (!response.ok) {
+    throw new Error(`42 API responded ${response.status} counting students`);
+  }
+
+  return Number(response.headers.get("X-Total")) || 0;
+};
 
 /**
  * The rankings page hides the correction ratio column when it sees this value.

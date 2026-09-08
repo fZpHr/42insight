@@ -387,7 +387,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenu>
                 </SidebarGroupContent>
                 
-                {/* Campus Switcher - visible uniquement pour staff/admin, affiché après Dashboard */}
+                {/* Campus, sous le premier groupe. Ouvert a tout le monde
+                    maintenant que chaque requete part sur la cle du visiteur. */}
                 {groupIndex === 0 && open && (
                   <div className="px-2 pb-2">
                     <CampusSwitcher />

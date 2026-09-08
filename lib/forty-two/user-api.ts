@@ -53,7 +53,7 @@ export const CREDENTIALS_MAX_AGE = 60 * 60 * 24 * 30;
  * -- scheduling jitter, a slow event loop -- earns a 429 and a retry that costs
  * more than the wait saved. A little headroom is cheaper.
  */
-const REQUEST_SPACING_MS = 600;
+export const REQUEST_SPACING_MS = 600;
 
 export interface Credentials {
   clientId: string;

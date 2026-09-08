@@ -50,7 +50,7 @@ const PAUSE_STORAGE_KEY = "42insight:background-paused";
  */
 const homeCopy = {
   en: {
-    subtitle: "Student hub for Angoulême & Nice",
+    subtitle: "Student hub for every 42 campus",
     highlight1Title: "One key, signs you in and fetches your data",
     highlight1Text: "There is no separate 42 login anymore. The application you register below is both.",
     highlight2Title: "Nothing stored",
@@ -81,7 +81,7 @@ const homeCopy = {
     errorServer: "Could not reach the server",
   },
   fr: {
-    subtitle: "Espace étudiant pour Angoulême & Nice",
+    subtitle: "Espace étudiant pour toutes les écoles 42",
     highlight1Title: "Une seule clé, pour se connecter et pour récupérer vos données",
     highlight1Text: "Il n'y a plus de connexion 42 séparée. L'application que vous enregistrez ci-dessous fait les deux.",
     highlight2Title: "Rien n'est stocké",

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { fetchJson, isKeyRequired } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
+import { useCampus } from "@/contexts/CampusContext";
 import { Eye, EyeClosed, Star, Gamepad2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,10 +23,17 @@ const INITIAL_LOAD = 20;
 const LOAD_MORE = 10;
 
 
-const fetchPoolStudents = (): Promise<PoolUser[]> =>
-  fetchJson<PoolUser[]>("/api/users/pool");
+// The route answers for one campus now: there are 54, and sweeping them all
+// to show one piscine would spend most of an hour's quota.
+const fetchPoolStudents = (campus?: string): Promise<PoolUser[]> =>
+  fetchJson<PoolUser[]>(
+    `/api/users/pool${campus ? `?campus=${encodeURIComponent(campus)}` : ""}`,
+  );
 
 export default function Trombinoscope() {
+  // Which piscine to show: the one being browsed, else the visitor's own.
+  const { selectedCampus, userCampus } = useCampus();
+  const effectiveCampus = selectedCampus || userCampus;
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD);
   const [showingName, setShowingName] = useState(true);
   const [gameMode, setGameMode] = useState(false);
@@ -38,8 +46,8 @@ export default function Trombinoscope() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["students"],
-    queryFn: () => fetchPoolStudents(),
+    queryKey: ["students", effectiveCampus],
+    queryFn: () => fetchPoolStudents(effectiveCampus),
     staleTime: 10 * 60 * 1000,
   });
 
