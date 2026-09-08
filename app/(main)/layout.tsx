@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/navbar";
 import { Analytics } from "@vercel/analytics/next";
-import { Toaster } from "sonner";
 import { TanstackProvider } from "@/lib/tanstack-provider";
 import { CommandMenu } from "@/components/CommandMenu";
 import { CampusInfoDialog } from "@/components/CampusInfoDialog";
@@ -108,7 +107,6 @@ function SidebarContent({ children }: { children: React.ReactNode }) {
           {children}
           <Analytics />
         </div>
-        <Toaster />
       </main>
     </>
   );

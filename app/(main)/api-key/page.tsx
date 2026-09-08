@@ -18,6 +18,7 @@ import {
 import { hasApiKey } from "@/lib/api-client";
 import { IntraKeyGuide } from "@/components/IntraKeyGuide";
 import { ActivityGuide } from "@/components/ActivityGuide";
+import { LiveActivityLog } from "@/components/LiveActivityLog";
 import {
   LANGUAGE_STORAGE_KEY,
   REPO_URL,
@@ -131,7 +132,7 @@ export default function ApiKeyPage() {
     quota && quota.limit > 0 ? Math.min(100, (quota.used / quota.limit) * 100) : 0;
 
   return (
-    <div className="container mx-auto max-w-2xl p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -168,6 +169,8 @@ export default function ApiKeyPage() {
         <CardContent className="space-y-5">
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>{t.why}</p>
+            <p>{t.whyAutonomy}</p>
+            <p>{t.whyPrivacy}</p>
             <p>{t.quota}</p>
             <p>{t.transparency}</p>
             <p>
@@ -318,7 +321,11 @@ export default function ApiKeyPage() {
             </>
           )}
 
-          <ActivityGuide language={language} />
+          {keyPresent ? (
+            <LiveActivityLog language={language} />
+          ) : (
+            <ActivityGuide language={language} />
+          )}
 
           {!keyPresent && (
             <Button

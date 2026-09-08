@@ -21,7 +21,11 @@ export const copy = {
     titleConnect: "Connect your 42 API key",
     subtitle: "42Insight reads everything live from the 42 API, on your key.",
     why:
-      "I am trying to make the site run on its own, with no external resources: no database, no background jobs. Everything is read live from the 42 API, which is why it now needs your key.",
+      "I am trying to make the site run on its own, with no external resources. No database, no background jobs. Everything is read live from the 42 API, which is why it now needs your key.",
+    whyAutonomy:
+      "It also means the site doesn't depend on me. If I'm not at 42 anymore, or I don't have the time or the will to keep maintaining it, it keeps running exactly the same, because nothing here is tied to my own account or my own keys.",
+    whyPrivacy:
+      "There's a privacy angle too. Clicking \"share my public information\" to sign into a 42-related site isn't actually limited to public data. Any app you connect that way also gets your birth date, phone number, address, even an emergency contact, all sitting on your intra profile. Your key still goes through this site's own server to talk to 42, but nothing is stored there, and the code is open source if you want to check for yourself.",
     quota:
       "With your key you browse on your own budget: 1200 requests an hour.",
     transparency:
@@ -65,6 +69,10 @@ export const copy = {
     activityEmpty: "Nothing fetched yet on this server.",
     activityCaption:
       "Once your key is connected, click your quota and you can see everything the site has asked the 42 API for, on your key.",
+    activityReading: "Reading…",
+    activityLive: "Live",
+    activityCaptionLive:
+      "This is live: it refreshes every couple of seconds while you're on this page, so you can watch a page's fetch as it happens.",
     connectedUntil: (date: string) => `Connected until ${date}.`,
     connectedUntilNote:
       "Read from the cookie itself, not from a promise made here.",
@@ -83,6 +91,10 @@ export const copy = {
       "42Insight lit tout en direct depuis l'API 42, avec votre clé.",
     why:
       "J'essaie de rendre le site autonome, sans ressource externe, ni base de données, ni tâche de fond à faire tourner. Tout est lu en direct depuis l'API 42, et c'est pour ça qu'il faut maintenant votre clé.",
+    whyAutonomy:
+      "Ça veut aussi dire que le site ne dépend pas de moi. Si je ne suis plus à 42, ou que je n'ai plus le temps ou l'envie de m'en occuper, il continue de tourner exactement pareil, parce que rien ici n'est lié à mon propre compte ou à mes propres clés.",
+    whyPrivacy:
+      "Il y a aussi un aspect vie privée. Cliquer sur « partager mes informations publiques » pour se connecter à un site lié à 42 ne se limite pas vraiment aux infos publiques. N'importe quelle application connectée de cette façon récupère aussi votre date de naissance, votre téléphone, votre adresse, même un contact d'urgence, le tout stocké sur votre profil intra. Votre clé passe quand même par le serveur de ce site pour parler à 42, mais rien n'y est stocké, et le code est open source si vous voulez vérifier par vous-même.",
     quota:
       "Avec votre clé, vous naviguez sur votre propre budget : 1200 requêtes par heure.",
     transparency:
@@ -122,10 +134,14 @@ export const copy = {
     guideCaption:
       "Sur l'intra, la page de votre application ressemble à ceci. Copiez les deux champs indiqués ci-dessous.",
     guideNextSecret: "NEXT SECRET",
-    activityTitle: "Recent 42 API calls",
-    activityEmpty: "Nothing fetched yet on this server.",
+    activityTitle: "Appels API 42 récents",
+    activityEmpty: "Rien de fetché pour l'instant sur ce serveur.",
     activityCaption:
       "Une fois votre clé connectée, vous pouvez cliquer sur votre quota et voir tout ce que le site a demandé à l'API 42 avec votre clé.",
+    activityReading: "Lecture…",
+    activityLive: "En direct",
+    activityCaptionLive:
+      "C'est en direct : ça se rafraîchit toutes les deux secondes tant que vous êtes sur cette page, pour voir une page fetcher en temps réel.",
     connectedUntil: (date: string) => `Connectée jusqu'au ${date}.`,
     connectedUntilNote:
       "Lu dans le cookie lui-même, pas dans une promesse affichée ici.",

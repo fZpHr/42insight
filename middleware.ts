@@ -141,7 +141,7 @@ export default withAuth(
     // /api/auth/error?error=Configuration, right after a successful login.
     secret: process.env.JWT_SECRET,
     callbacks: {
-      authorized: ({ token }) => token && !token.error
+      authorized: ({ token }) => !!token
     },
   }
 )

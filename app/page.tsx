@@ -1,398 +1,219 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
+import { useState, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Loader2, Star, Activity, MousePointer, Bug, Pause, Play } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Loader2,
+  Star,
+  Bug,
+  KeyRound,
+  Database,
+  Github,
+  Pause,
+  Play,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  ChevronDown,
+} from "lucide-react";
 import { TransparentBadge } from "@/components/TransparentBadge";
+import { IntraKeyGuide } from "@/components/IntraKeyGuide";
+import {
+  copy,
+  detectLanguage,
+  LANGUAGE_STORAGE_KEY,
+  type Language,
+} from "@/lib/api-key-copy";
 import { signIn } from "next-auth/react";
-import { 
-  motion, 
-  useMotionValue, 
-  useTransform, 
-  MotionValue, 
-  useSpring, 
-  useAnimation 
-} from "framer-motion";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 /**
- * Whether the background is running.
+ * Whether the ambient background animates.
  *
- * The sign-in page animates a few hundred elements at once -- drifting stars,
- * black holes, shooting stars, floating stats. That is a fan spinning up on a
- * laptop and a distraction for anyone who just wants to read the page, so it
- * can be stopped. The choice is remembered, because having to stop it on every
- * visit would be worse than the animation.
- *
- * A context rather than a prop, because the animated pieces sit four levels
- * down and none of the layers in between have any business knowing about it.
+ * Cheap to run, but a fan spinning up on a laptop for a page someone is just
+ * reading is a bad trade -- so it can be paused, and the choice is
+ * remembered rather than asked again on every visit.
  */
-const MotionPausedContext = createContext(false);
-const usePaused = () => useContext(MotionPausedContext);
-
 const PAUSE_STORAGE_KEY = "42insight:background-paused";
 
-const allFloatingStats = [
-  // --- API & USERS (Blue) ---
-  { label: "Unique Users", value: "760", subtitle: "Total", color: "text-blue-400" },
-  { label: "API Requests", value: "7.4M+", subtitle: "Total", color: "text-blue-400" }, // 1,228,672 * 6
-  { label: "Tokens Generated", value: "17.1K", subtitle: "Total", color: "text-blue-400" },
-
-  // --- TRAFFIC GENERAL (Purple) ---
-  { label: "Visitors", value: "659", trend: "+204%", subtitle: "Last 30 days", color: "text-purple-400" },
-  { label: "Page Views", value: "2,908", trend: "+147%", subtitle: "Last 30 days", color: "text-purple-400" },
-  { label: "Bounce Rate", value: "21%", trend: "+9%", subtitle: "Last 30 days", color: "text-purple-400" },
-
-  // --- PAGES NAVIGATION (Cyan) ---
-  { label: "/dashboard", value: "73.1%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/rankings", value: "57.5%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/rncp-simulator", value: "39.8%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/cluster-map", value: "22.8%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/exam-tracker", value: "22.5%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/trombinoscope", value: "14.3%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/peers", value: "12.1%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/events", value: "5.3%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/links", value: "3.5%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/query", value: "3.2%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/piscine/rankings", value: "<0.5%", subtitle: "of visitors", color: "text-cyan-400" },
-  { label: "/contribute", value: "<0.5%", subtitle: "of visitors", color: "text-cyan-400" },
-
-  // --- GEOGRAPHY (Indigo) ---
-  { label: "France", value: "97%", subtitle: "636 visitors", color: "text-indigo-400" },
-  { label: "Netherlands", value: "1%", subtitle: "7 visitors", color: "text-indigo-400" },
-  { label: "New Caledonia", value: "1%", subtitle: "4 visitors", color: "text-indigo-400" },
-  { label: "Philippines", value: "1%", subtitle: "4 visitors", color: "text-indigo-400" },
-  { label: "USA", value: "<0.5%", subtitle: "3 visitors", color: "text-indigo-400" },
-  { label: "Spain", value: "<0.5%", subtitle: "2 visitors", color: "text-indigo-400" },
-  { label: "Morocco", value: "<0.5%", subtitle: "2 visitors", color: "text-indigo-400" },
-  { label: "Sweden", value: "<0.5%", subtitle: "1 visitor", color: "text-indigo-400" },
-
-  // --- DEVICES & OS (Emerald) ---
-  { label: "Desktop", value: "70%", subtitle: "Device", color: "text-emerald-400" },
-  { label: "Mobile", value: "30%", subtitle: "Device", color: "text-emerald-400" },
-  { label: "GNU/Linux", value: "40%", subtitle: "261 visitors", color: "text-emerald-400" },
-  { label: "Android", value: "16%", subtitle: "104 visitors", color: "text-emerald-400" },
-  { label: "Mac", value: "15%", subtitle: "101 visitors", color: "text-emerald-400" },
-  { label: "iOS", value: "14%", subtitle: "93 visitors", color: "text-emerald-400" },
-  { label: "Windows", value: "11%", subtitle: "71 visitors", color: "text-emerald-400" },
-  { label: "Ubuntu", value: "4%", subtitle: "29 visitors", color: "text-emerald-400" },
-
-  // --- BROWSERS (Orange) ---
-  { label: "Chrome", value: "42%", subtitle: "276 visitors", color: "text-orange-400" },
-  { label: "Firefox", value: "18%", subtitle: "118 visitors", color: "text-orange-400" },
-  { label: "Chrome Mobile", value: "15%", subtitle: "96 visitors", color: "text-orange-400" },
-  { label: "Mobile Safari", value: "12%", subtitle: "80 visitors", color: "text-orange-400" },
-  { label: "Safari", value: "5%", subtitle: "36 visitors", color: "text-orange-400" },
-  { label: "Opera", value: "3%", subtitle: "18 visitors", color: "text-orange-400" },
-  { label: "Edge", value: "1%", subtitle: "9 visitors", color: "text-orange-400" },
-  { label: "Chrome iOS", value: "1%", subtitle: "8 visitors", color: "text-orange-400" },
-  { label: "Firefox Mobile", value: "1%", subtitle: "6 visitors", color: "text-orange-400" },
-  { label: "Avast", value: "1%", subtitle: "5 visitors", color: "text-orange-400" },
-  { label: "Firefox iOS", value: "1%", subtitle: "5 visitors", color: "text-orange-400" },
-  { label: "Ecosia", value: "<0.5%", subtitle: "1 visitor", color: "text-orange-400" },
-  { label: "Samsung Browser", value: "<0.5%", subtitle: "1 visitor", color: "text-orange-400" },
-
-  // --- GITHUB (Pink) ---
-  { label: "Commits", value: "292", subtitle: "Total", color: "text-pink-400" },
-  { label: "Additions", value: "122.1K", subtitle: "Total", color: "text-pink-400" },
-  { label: "Suppressions", value: "76.7K", subtitle: "Total", color: "text-pink-400" },
-  { label: "Actions runs", value: "22,553 min", subtitle: "Last 30 days", color: "text-pink-400" },
-  { label: "Total job runs", value: "2,952", subtitle: "Last 30 days", color: "text-pink-400" },
-  { label: "Avg job run time", value: "8m 10s", subtitle: "Last 30 days", color: "text-pink-400" },
-];
-
-const useWrapPosition = (
-  initialPos: number, 
-  cameraValue: MotionValue<number>, 
-  parallaxFactor: number
-) => {
-  return useTransform(cameraValue, (v) => {
-    const pos = initialPos + (v * parallaxFactor);
-    return ((pos % 100) + 100) % 100; 
-  });
+/**
+ * Page-specific copy, in both languages. The longer explanatory paragraphs
+ * (why/whyAutonomy/whyPrivacy) and the plain field labels live in
+ * lib/api-key-copy.ts instead, and are reused here rather than duplicated,
+ * since this page and /api-key say the exact same thing about those.
+ */
+const homeCopy = {
+  en: {
+    subtitle: "Student hub for Angoulême & Nice",
+    highlight1Title: "One key, signs you in and fetches your data",
+    highlight1Text: "There is no separate 42 login anymore. The application you register below is both.",
+    highlight2Title: "Nothing stored",
+    highlight2Text: "No database, no cron, no background jobs. Every page reads the 42 API live.",
+    highlight3Title: "Open source",
+    highlight3Before: "Nothing hidden in how it works. Read the code on",
+    whySummary:
+      "Your key does three things at once. It keeps the site running with nothing stored anywhere, keeps it working even if I ever stop maintaining it, and keeps everything open source so you can check exactly what happens to it.",
+    moreDetail: "More detail",
+    connect: "Connect",
+    connecting: "Connecting…",
+    alreadyBefore: "Already registered one?",
+    alreadyLink: "Find it in your existing apps",
+    alreadyAfter: "and reuse its credentials.",
+    noKey: "Don't have a key, or not sure what this is?",
+    stepOpenBefore: "Open",
+    stepOpenAfter: "on the intra.",
+    stepCopy: "Copy its UID and secret above.",
+    star: "Star",
+    issues: "Issues",
+    createdBy: "Created by",
+    pauseAnimation: "Pause animation",
+    animationOff: "Animation off",
+    pauseTitle: "Pause the background animation",
+    resumeTitle: "Resume the background animation",
+    errorGeneric: "42 didn't accept that client ID and secret",
+    errorPrivate: "That application is private on the intra. Make it public (your app → Public) and try again.",
+    errorServer: "Could not reach the server",
+  },
+  fr: {
+    subtitle: "Espace étudiant pour Angoulême & Nice",
+    highlight1Title: "Une seule clé, pour se connecter et pour récupérer vos données",
+    highlight1Text: "Il n'y a plus de connexion 42 séparée. L'application que vous enregistrez ci-dessous fait les deux.",
+    highlight2Title: "Rien n'est stocké",
+    highlight2Text: "Pas de base de données, pas de tâche planifiée, pas de job en arrière-plan. Chaque page lit l'API 42 en direct.",
+    highlight3Title: "Open source",
+    highlight3Before: "Rien n'est caché dans son fonctionnement. Consultez le code sur",
+    whySummary:
+      "Votre clé fait trois choses à la fois. Elle fait tourner le site sans rien stocker nulle part, elle continue de fonctionner même si j'arrête un jour de le maintenir, et tout reste open source pour que vous puissiez vérifier exactement ce qu'il en advient.",
+    moreDetail: "Plus de détails",
+    connect: "Se connecter",
+    connecting: "Connexion…",
+    alreadyBefore: "Déjà inscrit une application ?",
+    alreadyLink: "Retrouvez-la dans vos applications",
+    alreadyAfter: "et réutilisez ses identifiants.",
+    noKey: "Pas encore de clé, ou pas sûr de ce que c'est ?",
+    stepOpenBefore: "Ouvrez",
+    stepOpenAfter: "sur l'intra.",
+    stepCopy: "Copiez son UID et son secret ci-dessus.",
+    star: "Star",
+    issues: "Issues",
+    createdBy: "Créé par",
+    pauseAnimation: "Mettre en pause",
+    animationOff: "Animation coupée",
+    pauseTitle: "Mettre en pause l'animation de fond",
+    resumeTitle: "Reprendre l'animation de fond",
+    errorGeneric: "42 n'a pas accepté ce client ID et ce secret",
+    errorPrivate: "Cette application est privée sur l'intra. Passez-la en publique (votre appli → Public) puis réessayez.",
+    errorServer: "Impossible de contacter le serveur",
+  },
 };
 
-const ShootingStarItem = ({ delay }: { delay: number }) => {
-  const controls = useAnimation();
-  const paused = usePaused();
+const highlightIcons = [KeyRound, Database, Github];
 
-  useEffect(() => {
-    if (paused) {
-      controls.stop();
-      return;
-    }
-    let isMounted = true;
+const tutorialSteps: Record<Language, React.ReactNode[]> = {
+  en: [
+    <>Give it any <strong>name</strong>.</>,
+    <>Pick any <strong>application type</strong>.</>,
+    <>
+      Check <strong>Public</strong>. Signing in works by looking up who owns the
+      application, and 42 only lists public ones.
+    </>,
+    <>
+      Set any valid <strong>redirect URI</strong> (for example,{" "}
+      <code className="rounded bg-black/40 px-1 py-0.5">http://localhost</code>).
+    </>,
+  ],
+  fr: [
+    <>Donnez-lui n&apos;importe quel <strong>nom</strong>.</>,
+    <>Choisissez n&apos;importe quel <strong>type d&apos;application</strong>.</>,
+    <>
+      Cochez <strong>Public</strong> : la connexion fonctionne en retrouvant qui
+      possède l&apos;application, et 42 ne liste que les applications publiques.
+    </>,
+    <>
+      Renseignez une <strong>redirect URI</strong> valide (exemple :{" "}
+      <code className="rounded bg-black/40 px-1 py-0.5">http://localhost</code>).
+    </>,
+  ],
+};
 
-    const sequence = async () => {
-      await new Promise(r => setTimeout(r, delay * 2000 + Math.random() * 2000));
-
-      while (isMounted) {
-        const isVerticalStart = Math.random() > 0.5;
-        
-        let startX, startY, endX, endY;
-
-        if (isVerticalStart) {
-          startX = Math.random() * 120 - 10;
-          startY = -10;
-          
-          endX = Math.random() * 120 - 10;
-          endY = 120;
-        } else {
-          const fromLeft = Math.random() > 0.5;
-          
-          startX = fromLeft ? -10 : 110;
-          startY = Math.random() * 80; 
-          
-          endX = fromLeft ? 110 : -10;
-          endY = Math.random() * 100 + 20; 
-        }
-        const angle = Math.atan2(endY - startY, (endX - startX) * 1.7) * (180 / Math.PI);
-
-        if (!isMounted) break;
-        await controls.set({
-          left: `${startX}%`,
-          top: `${startY}%`,
-          rotate: angle, 
-          opacity: 0,
-          scale: 0.5,
-          width: Math.random() * 100 + 50 + "px",
-        });
-
-        const duration = Math.random() * 0.7 + 0.8;
-        
-        
-        controls.start({
-          left: `${endX}%`,
-          top: `${endY}%`,
-          opacity: [0, 1, 0], 
-          scale: [1, 1.2, 0.5],
-          transition: { duration: duration, ease: "easeIn" }
-        });
-
-        await new Promise(r => setTimeout(r, duration * 1000));
-
-        const waitTime = Math.random() * 10000 + 5000;
-        await new Promise(r => setTimeout(r, waitTime));
-      }
-    };
-
-    sequence();
-    return () => { isMounted = false; };
-  }, [delay, controls, paused]);
-
-  return (
-    <motion.div
-      className="absolute z-0 pointer-events-none"
-      animate={controls}
-      style={{
-        height: "2px", 
-        background: "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 100%)",
-        boxShadow: "0 0 15px 1px rgba(255, 255, 255, 0.5)",
-        transformOrigin: "left center"
-      }}
-    />
+const StarFieldImpl = ({ paused }: { paused: boolean }) => {
+  const stars = useMemo(
+    () =>
+      Array.from({ length: 90 }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        size: Math.random() * 2 + 0.5,
+        opacity: Math.random() * 0.5 + 0.2,
+        duration: 2 + Math.random() * 3,
+        delay: Math.random() * 2,
+      })),
+    [],
   );
-};
-
-const StarItem = ({ data, cameraX, cameraY }: { data: any, cameraX: MotionValue, cameraY: MotionValue }) => {
-  const paused = usePaused();
-  const x = useWrapPosition(data.x, cameraX, 0.05);
-  const y = useWrapPosition(data.y, cameraY, 0.05);
 
   return (
-    <motion.div
-      className="absolute rounded-full bg-white shadow-[0_0_2px_rgba(255,255,255,0.8)]"
-      style={{
-        left: useTransform(x, v => `${v}%`),
-        top: useTransform(y, v => `${v}%`),
-        width: data.size,
-        height: data.size,
-      }}
-      animate={paused ? undefined : {
-        opacity: [data.opacity, 1, data.opacity],
-        scale: [1, 1.2, 1],
-      }}
-      transition={{
-        duration: data.duration,
-        repeat: Infinity,
-        delay: data.delay,
-        ease: "easeInOut",
-      }}
-    />
-  );
-};
-
-const BlackHole = ({ data, cameraX, cameraY }: { data: any, cameraX: MotionValue, cameraY: MotionValue }) => {
-  const paused = usePaused();
-  const x = useWrapPosition(data.x, cameraX, 0.02);
-  const y = useWrapPosition(data.y, cameraY, 0.02);
-
-  return (
-    <motion.div
-      className="absolute flex items-center justify-center pointer-events-none"
-      style={{
-        left: useTransform(x, v => `${v}%`),
-        top: useTransform(y, v => `${v}%`),
-        width: 100, 
-        height: 100,
-      }}
-    >
-      <motion.div 
-        className="absolute w-24 h-24 rounded-full border-[1px] border-white/10 blur-sm"
-        animate={paused ? undefined : { rotate: 360, scale: [1, 1.05, 1] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        style={{
-          boxShadow: "0 0 40px 10px rgba(100, 0, 150, 0.1), inset 0 0 20px rgba(0,0,0,1)"
-        }}
-      />
-      <div className="absolute w-12 h-12 bg-black rounded-full shadow-[0_0_30px_rgba(0,0,0,1)] z-10" />
-    </motion.div>
-  );
-};
-
-const StatItem = ({ stat, cameraX, cameraY }: { stat: any, cameraX: MotionValue, cameraY: MotionValue }) => {
-  const [pos, setPos] = useState({ 
-    x: Math.random() * 90 + 5, 
-    y: Math.random() * 80 + 10 
-  });
-
-  const controls = useAnimation();
-  const paused = usePaused();
-
-  const x = useWrapPosition(pos.x, cameraX, 0.15);
-  const y = useWrapPosition(pos.y, cameraY, 0.15);
-
-  useEffect(() => {
-    if (paused) {
-      controls.stop();
-      return;
-    }
-    let isMounted = true;
-
-    const sequence = async () => {
-      await new Promise(r => setTimeout(r, Math.random() * 1000));
-
-      while (isMounted) {
-        setPos({
-          x: Math.random() * 90 + 5,
-          y: Math.random() * 80 + 10
-        });
-
-        if (!isMounted) break;
-        await controls.start({
-          opacity: 1,
-          scale: 1,
-          filter: "blur(0px)",
-          y: 0,
-          transition: { duration: 1.5, ease: "easeOut" }
-        });
-
-        const waitTime = Math.random() * 3000 + 6000;
-        await new Promise(r => setTimeout(r, waitTime));
-        if (!isMounted) break;
-
-        await controls.start({
-          opacity: 0,
-          scale: 0.8,
-          filter: "blur(8px)",
-          y: -20,
-          transition: { duration: 1, ease: "easeIn" }
-        });
-
-        await new Promise(r => setTimeout(r, Math.random() * 2000 + 500));
-      }
-    };
-
-    sequence();
-
-    return () => { isMounted = false; };
-  }, [controls, paused]);
-
-  return (
-    <motion.div
-      className="absolute will-change-transform"
-      style={{
-        left: useTransform(x, v => `${v}%`),
-        top: useTransform(y, v => `${v}%`),
-        zIndex: 0 
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.5, filter: "blur(10px)", y: 20 }}
-        animate={controls}
-        className="relative"
-      >
-        <div className="bg-card/60 dark:bg-card/40 backdrop-blur-md border border-border/50 dark:border-white/10 rounded-lg px-3 py-2 shadow-2xl whitespace-nowrap hover:bg-card/80 dark:hover:bg-card/60 transition-colors duration-500 cursor-default">
-          <div className="flex flex-col gap-0.5">
-            <span className={`text-[10px] font-bold tracking-wider uppercase opacity-80 ${stat.color}`}>
-              {stat.label}
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm font-bold text-foreground">{stat.value}</span>
-              {stat.trend && (
-                <span className={`text-[10px] font-semibold ${stat.trend.startsWith('+') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {stat.trend}
-                </span>
-              )}
-            </div>
-            {stat.subtitle && (
-              <p className="text-[9px] text-muted-foreground">{stat.subtitle}</p>
-            )}
-          </div>
-          <motion.div 
-            className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${stat.color.replace('text-', 'bg-')} blur-[2px]`}
-            animate={paused ? undefined : { opacity: [0.2, 0.8, 0.2] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
-
-const HeartExplosion = ({ isHovered }: { isHovered: boolean }) => {
-  const hearts = useMemo(() => 
-    Array.from({ length: 15 }).map((_, i) => ({
-      id: i,
-      x: (Math.random() - 0.5) * 60,
-      y: (Math.random() - 0.5) * 30 - 50,
-      scale: Math.random() * 2.5 + 5,
-      duration: Math.random() * 0.4 + 0.5,
-      delay: Math.random() * 0.2,
-    })), 
-  []);
-
-  return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      {isHovered && hearts.map(heart => (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      {stars.map((star) => (
         <motion.div
-          key={heart.id}
-          initial={{ y: 0, x: 0, opacity: 1, scale: 0.5 }}
-          animate={{ 
-            y: heart.y, 
-            x: heart.x, 
-            opacity: 0, 
-            scale: heart.scale 
-          }}
-          transition={{ 
-            duration: heart.duration, 
-            delay: heart.delay, 
-            ease: "easeOut" 
-          }}
-          className="absolute text-red-400"
-        >
-          ♥
-        </motion.div>
+          key={star.id}
+          className="absolute rounded-full bg-white shadow-[0_0_2px_rgba(255,255,255,0.8)]"
+          style={{ left: `${star.x}%`, top: `${star.y}%`, width: star.size, height: star.size }}
+          animate={
+            paused
+              ? undefined
+              : { opacity: [star.opacity, 1, star.opacity], scale: [1, 1.2, 1] }
+          }
+          transition={{ duration: star.duration, repeat: Infinity, delay: star.delay, ease: "easeInOut" }}
+        />
       ))}
     </div>
   );
 };
 
+// Client-only: the positions are random on every render, so a server-rendered
+// copy can never match what the client generates on hydration.
+const StarField = dynamic(() => Promise.resolve(StarFieldImpl), { ssr: false });
+
+/**
+ * middleware.ts sends a visitor here with ?callbackUrl=<the page they wanted>
+ * when they hit a protected route signed out -- an absolute URL, not a path,
+ * so this can't just check for a leading "/" (that still accepts the
+ * protocol-relative "//evil.example", which resolves to a different origin).
+ * Resolving against the current origin and comparing origins catches every
+ * shape at once; a mismatch or a malformed value both fall back to /dashboard
+ * rather than ever handing router.push() something that could navigate away
+ * from this site right after a visitor signs in.
+ */
+const resolveCallbackUrl = (raw: string | null): string => {
+  if (!raw) return "/dashboard";
+  try {
+    const resolved = new URL(raw, window.location.origin);
+    if (resolved.origin === window.location.origin) {
+      return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+    }
+  } catch {
+    // Malformed URL; fall through to the safe default.
+  }
+  return "/dashboard";
+};
+
 export default function Home() {
-  const [loader, setLoader] = useState(false);
-  // Read after mount: localStorage does not exist during the server render,
-  // and guessing wrong would flash the animation at someone who turned it off.
+  const router = useRouter();
   const [paused, setPaused] = useState(false);
+  const [language, setLanguage] = useState<Language>("en");
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [showWhyDetail, setShowWhyDetail] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+
+  const t = homeCopy[language];
+  const tKey = copy[language];
 
   useEffect(() => {
     try {
@@ -401,6 +222,19 @@ export default function Home() {
       // Private browsing, or storage refused. The animation simply runs.
     }
   }, []);
+
+  // Read after mount: navigator and localStorage do not exist on the server,
+  // and guessing wrong would flash the wrong language for a moment.
+  useEffect(() => setLanguage(detectLanguage()), []);
+
+  const chooseLanguage = (next: Language) => {
+    setLanguage(next);
+    try {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
+    } catch {
+      // Not remembering it is a smaller failure than not honouring it.
+    }
+  };
 
   const togglePaused = () => {
     setPaused((wasPaused) => {
@@ -413,328 +247,304 @@ export default function Home() {
       return next;
     });
   };
-  const [isDragging, setIsDragging] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isStarHovered, setIsStarHovered] = useState(false);
-  const [showApiWarning, setShowApiWarning] = useState(false);
 
-  const cameraX = useMotionValue(0);
-  const cameraY = useMotionValue(0);
-  
-  const smoothX = useSpring(cameraX, { damping: 30, stiffness: 200, mass: 0.8 });
-  const smoothY = useSpring(cameraY, { damping: 30, stiffness: 200, mass: 0.8 });
+  const handleConnect = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!clientId.trim() || !clientSecret.trim()) return;
 
-  const stars = useMemo(() => Array.from({ length: 80 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 2 + 0.5,
-    opacity: Math.random() * 0.5 + 0.2,
-    duration: 2 + Math.random() * 3,
-    delay: Math.random() * 2
-  })), []);
-  
-  const blackHoles = useMemo(() => Array.from({ length: 1 }, (_, i) => ({
-    id: `bh-${i}`,
-    x: Math.random() * 10000,
-    y: Math.random() * 10000,
-  })), []);
+    setConnecting(true);
+    try {
+      // Identity: who this application belongs to, per 42.
+      const result = await signIn("credentials", {
+        clientId: clientId.trim(),
+        clientSecret: clientSecret.trim(),
+        redirect: false,
+      });
 
-  const shootingStarsData = useMemo(() => Array.from({ length: 3 }, (_, i) => ({
-    id: `ss-${i}`,
-    initialDelay: Math.random() * 10 
-  })), []);
-
-  useEffect(() => {
-
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('error') === 'OAuthCallback') {
-        setShowApiWarning(true);
-
-        const timer = setTimeout(() => setShowApiWarning(false), 15000);
-        return () => clearTimeout(timer);
+      if (!result || result.error) {
+        // 42 never lists a private application's owner, so this is the one
+        // failure worth naming instead of folding into the generic message.
+        const message =
+          result?.error === "private-application" ? t.errorPrivate : t.errorGeneric;
+        toast.error(message, { duration: 5000, position: "bottom-right" });
+        return;
       }
+
+      // Data: the same credentials, sealed for every page that reads the
+      // 42 API. Two calls, because signing in and connecting a key are
+      // still two different systems underneath -- just one form now.
+      await fetch("/api/byok/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: clientId.trim(), client_secret: clientSecret.trim() }),
+      });
+
+      router.push(resolveCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl")));
+    } catch {
+      toast.error(t.errorServer, { duration: 3000, position: "bottom-right" });
+    } finally {
+      setConnecting(false);
     }
-  }, []);
-
-  useEffect(() => {
-    let animationFrameId: number;
-    let velocity = { x: 0, y: 0 };
-    let lastMouse = { x: 0, y: 0 };
-    let isMouseDown = false;
-
-    const handleMouseDown = (e: MouseEvent) => {
-      isMouseDown = true;
-      setIsDragging(true);
-      lastMouse = { x: e.clientX, y: e.clientY };
-      velocity = { x: 0, y: 0 };
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isMouseDown) return;
-      const deltaX = e.clientX - lastMouse.x;
-      const deltaY = e.clientY - lastMouse.y;
-      const sensitivity = 0.2;
-      cameraX.set(cameraX.get() + deltaX * sensitivity);
-      cameraY.set(cameraY.get() + deltaY * sensitivity);
-      velocity = { x: deltaX * sensitivity, y: deltaY * sensitivity };
-      lastMouse = { x: e.clientX, y: e.clientY };
-    };
-
-    const handleMouseUp = () => {
-      isMouseDown = false;
-      setIsDragging(false);
-    };
-
-    const loop = () => {
-      if (!isMouseDown) {
-        velocity.x *= 0.95;
-        velocity.y *= 0.95;
-        if (Math.abs(velocity.x) > 0.01 || Math.abs(velocity.y) > 0.01) {
-          cameraX.set(cameraX.get() + velocity.x);
-          cameraY.set(cameraY.get() + velocity.y);
-        }
-      }
-      animationFrameId = requestAnimationFrame(loop);
-    };
-
-    window.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    loop();
-
-    return () => {
-      window.removeEventListener("mousedown", handleMouseDown);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [cameraX, cameraY]);
-
-  const handleLogin = async () => {
-    setLoader(true);
-    document.body.style.cursor = "wait";
-    
-    const warningTimer = setTimeout(() => {
-      setShowApiWarning(true);
-    }, 5000);
-    
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const callbackUrl = urlParams.get('callbackUrl') || `${window.location.origin}/dashboard`;
-    
-    signIn("42-school", { callbackUrl });
-    
-    return () => clearTimeout(warningTimer);
   };
 
+  const highlights = [
+    { icon: highlightIcons[0], title: t.highlight1Title, text: t.highlight1Text },
+    { icon: highlightIcons[1], title: t.highlight2Title, text: t.highlight2Text },
+    {
+      icon: highlightIcons[2],
+      title: t.highlight3Title,
+      text: (
+        <>
+          {t.highlight3Before}{" "}
+          <a
+            href="https://github.com/fzphr/42insight"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-300 hover:underline"
+          >
+            GitHub
+          </a>
+          .
+        </>
+      ),
+    },
+  ];
+
   return (
-    <MotionPausedContext.Provider value={paused}>
-    <div 
-      ref={containerRef} 
-      className={`relative min-h-screen overflow-hidden bg-[#0a0a0f] text-foreground select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-    >
+    <div className="relative min-h-screen overflow-hidden bg-[#0a0a0f] text-foreground">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900/50 via-[#050505] to-black pointer-events-none" />
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-         <motion.div
-          className="absolute w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] rounded-full blur-[120px] opacity-20"
-          style={{ 
-            background: 'radial-gradient(circle, rgba(60, 50, 255, 0.4), transparent 70%)',
-            top: '50%', left: '50%',
-            x: '-50%', y: '-50%'
+        <motion.div
+          className="absolute w-[70vw] h-[70vw] max-w-[700px] max-h-[700px] rounded-full blur-[120px] opacity-20"
+          style={{
+            background: "radial-gradient(circle, rgba(60, 50, 255, 0.4), transparent 70%)",
+            top: "20%",
+            left: "50%",
+            x: "-50%",
           }}
-          animate={paused ? undefined : { scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          animate={paused ? undefined : { scale: [1, 1.15, 1] }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] rounded-full blur-[100px] opacity-15"
-          style={{ background: 'radial-gradient(circle, rgba(180, 50, 255, 0.4), transparent 70%)' }}
-          animate={paused ? undefined : { x: [0, 100, -100, 0], y: [0, -100, 100, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute w-[50vw] h-[50vw] max-w-[550px] max-h-[550px] rounded-full blur-[110px] opacity-15"
+          style={{ background: "radial-gradient(circle, rgba(180, 50, 255, 0.4), transparent 70%)", bottom: "5%", right: "10%" }}
+          animate={paused ? undefined : { x: [0, 60, 0], y: [0, -40, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
         />
       </div>
 
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        {blackHoles.map((bh) => (
-          <BlackHole key={bh.id} data={bh} cameraX={smoothX} cameraY={smoothY} />
-        ))}
-      </div>
+      <StarField paused={paused} />
 
-      {/* --- LAYER DES ÉTOILES STATIQUES --- */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        {stars.map((star) => (
-          <StarItem key={star.id} data={star} cameraX={smoothX} cameraY={smoothY} />
-        ))}
-      </div>
-
-      {/* --- NOUVELLE LAYER : ÉTOILES FILANTES --- */}
-      {/* Elles sont indépendantes du mouvement de la caméra (parallax) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        {shootingStarsData.map((ss) => (
-          <ShootingStarItem key={ss.id} delay={ss.initialDelay} />
-        ))}
-      </div>
-
-      {/* --- STATS SECTION --- */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 hidden lg:block">
-        {allFloatingStats.map((stat, index) => (
-          <StatItem 
-            key={index}
-            stat={stat}
-            cameraX={smoothX}
-            cameraY={smoothY}
-          />
-        ))}
-      </div>
-
-      {!showApiWarning && (
-        <motion.div
-          className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: [0, 1, 1, 0] }}
-          transition={{ duration: 4, delay: 1, times: [0, 0.2, 0.8, 1] }}
-        >
-          <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 shadow-xl">
-            <p className="text-[10px] text-muted-foreground flex items-center gap-2 uppercase tracking-widest">
-              <MousePointer className="h-3 w-3" />
-              Drag Space
-            </p>
-          </div>
-        </motion.div>
-      )}
-
-      {showApiWarning && (
-        <motion.div
-          className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-auto max-w-md"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div className="bg-yellow-500/10 backdrop-blur-md border border-yellow-500/30 rounded-lg px-4 py-3 shadow-xl">
-              <div className="flex items-start gap-3">
-              <Activity className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-yellow-200 mb-1">42 API Rate Limit</p>
-                <p className="text-xs text-yellow-100/80 leading-relaxed">
-                  The 42 API has a rate limit of 2 requests per second. We&apos;re managing requests to stay within this limit. The page may take a few moments to load completely.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowApiWarning(false)}
-                className="text-yellow-400/60 hover:text-yellow-400 transition-colors"
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      <div className="relative z-10 grid min-h-dvh grid-rows-[1fr_auto] items-center justify-items-center p-8 pb-12 gap-12 sm:p-20 sm:pb-20 sm:gap-16">
-        <main className="flex flex-col gap-8 row-start-1 items-center relative w-full max-w-2xl">
-          <motion.div 
-            className="text-center space-y-6 relative z-10"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+      <div className="absolute top-4 right-4 z-50 inline-flex overflow-hidden rounded-md border border-white/15 bg-black/40 text-xs backdrop-blur-sm">
+        {(["fr", "en"] as const).map((code) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => chooseLanguage(code)}
+            aria-pressed={language === code}
+            className={`px-2 py-1 transition-colors ${
+              language === code
+                ? "bg-white text-black"
+                : "text-white/60 hover:bg-white/10 hover:text-white"
+            }`}
           >
-            <motion.div 
-              className="inline-block relative"
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 200 }}
-            >
-              <h1 className="text-6xl sm:text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/40 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]">
-                42 Insight
-              </h1>
-              <div className="absolute -inset-10 bg-blue-500/20 blur-3xl rounded-full -z-10 opacity-50" />
-            </motion.div>
+            {code.toUpperCase()}
+          </button>
+        ))}
+      </div>
 
-              <div className="flex flex-row items-center justify-center gap-2 text-lg text-muted-foreground">
-                <TransparentBadge
-                  text="🌐 One for All"
-                  bgColor="bg-blue-500/10"
-                  textColor="text-blue-300"
-                />
-                <span className="text-sm">Student Hub</span>
-              </div>
-          </motion.div>
-
-          <motion.div 
-            className="flex flex-col items-center gap-6 w-full max-w-xs sm:max-w-sm relative z-10"
-            initial={{ opacity: 0, y: 30 }}
+      <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center gap-16 p-8 py-16">
+        <main className="flex w-full max-w-2xl flex-col items-center gap-10">
+          <motion.div
+            className="text-center space-y-4"
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
           >
-            <motion.div className="w-full" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                onClick={handleLogin}
-                className="w-full h-12 text-base font-medium bg-white text-black hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all duration-300 relative overflow-hidden group"
-                disabled={loader}
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  {loader ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  {loader ? "Connecting..." : "Connect with Intra"}
-                </span>
-              </Button>
-            </motion.div>
-            
-            <div className="flex flex-wrap gap-2 justify-center w-full">
-               {[
-                 { icon: Star, text: "Star", href: "https://github.com/fzphr/42insight", color: "text-yellow-400" },
-                 { icon: Bug, text: "Issues", href: "https://github.com/fzphr/42insight/issues", color: "text-red-400" },
-                 { icon: Activity, text: "Status", href: "https://monitor.bapasqui.duckdns.org/status/42insight", color: "text-green-400" }
-               ].map((item, idx) => (
-                 <motion.a
-                   key={idx}
-                   href={item.href}
-                   target="_blank"
-                   whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
-                   whileTap={{ scale: 0.95 }}
-                   onHoverStart={() => item.text === 'Star' && setIsStarHovered(true)}
-                   onHoverEnd={() => item.text === 'Star' && setIsStarHovered(false)}
-                   className="relative flex-1 min-w-[80px] flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border border-white/5 bg-white/5 backdrop-blur-sm transition-colors text-xs text-muted-foreground hover:text-white"
-                 >
-                   {/* Affiche l'explosion uniquement pour le bouton "Star" */}
-                   {item.text === 'Star' && <HeartExplosion isHovered={isStarHovered} />}
-                   <item.icon className={`h-4 w-4 ${item.color}`} />
-                   <span>{item.text}</span>
-                 </motion.a>
-               ))}
+            <h1 className="text-6xl sm:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/40 drop-shadow-[0_0_30px_rgba(255,255,255,0.25)]">
+              42 Insight
+            </h1>
+            <div className="flex items-center justify-center gap-2">
+              <TransparentBadge text="🌐 One for All" bgColor="bg-blue-500/10" textColor="text-blue-300" />
+              <span className="text-sm text-muted-foreground">{t.subtitle}</span>
             </div>
           </motion.div>
+
+          <motion.div
+            className="w-full space-y-3"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+          >
+            {highlights.map((item) => (
+              <div
+                key={item.title}
+                className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm"
+              >
+                <item.icon className="h-4 w-4 shrink-0 mt-0.5 text-blue-300" />
+                <div>
+                  <p className="text-sm font-medium text-white">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">{item.text}</p>
+                </div>
+              </div>
+            ))}
+          </motion.div>
+
+          <motion.form
+            onSubmit={handleConnect}
+            className="w-full space-y-3 rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
+          >
+            <div className="space-y-2 border-b border-white/10 pb-3 text-sm text-muted-foreground">
+              <p>{t.whySummary}</p>
+              <button
+                type="button"
+                onClick={() => setShowWhyDetail((shown) => !shown)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-white transition-colors"
+              >
+                {t.moreDetail}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showWhyDetail ? "rotate-180" : ""}`} />
+              </button>
+              {showWhyDetail && (
+                <div className="space-y-2 border-t border-white/10 pt-2">
+                  <p>{tKey.why}</p>
+                  <p>{tKey.whyAutonomy}</p>
+                  <p>{tKey.whyPrivacy}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="client-id" className="text-xs font-medium text-white/70">
+                {tKey.clientId}
+              </label>
+              <Input
+                id="client-id"
+                value={clientId}
+                onChange={(event) => setClientId(event.target.value)}
+                autoComplete="off"
+                placeholder="u-s4t2ud-…"
+                className="border-white/10 bg-black/30 text-white placeholder:text-white/30"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="client-secret" className="text-xs font-medium text-white/70">
+                {tKey.clientSecret}
+              </label>
+              <div className="relative">
+                <Input
+                  id="client-secret"
+                  type={showSecret ? "text" : "password"}
+                  value={clientSecret}
+                  onChange={(event) => setClientSecret(event.target.value)}
+                  autoComplete="off"
+                  placeholder="s-s4t2ud-…"
+                  className="border-white/10 bg-black/30 pr-9 text-white placeholder:text-white/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecret((shown) => !shown)}
+                  aria-label={showSecret ? tKey.hideSecret : tKey.showSecret}
+                  className="absolute inset-y-0 right-0 flex items-center px-2 text-white/40 transition-colors hover:text-white"
+                >
+                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="h-11 w-full text-base font-medium bg-white text-black hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all duration-300"
+              disabled={connecting || !clientId.trim() || !clientSecret.trim()}
+            >
+              <span className="flex items-center justify-center gap-2">
+                {connecting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {connecting ? t.connecting : t.connect}
+              </span>
+            </Button>
+
+            <p className="text-center text-xs text-muted-foreground">
+              {t.alreadyBefore}{" "}
+              <a
+                href="https://profile.intra.42.fr/oauth/applications"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-blue-300 hover:underline"
+              >
+                {t.alreadyLink}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+              {" "}{t.alreadyAfter}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowGuide((shown) => !shown)}
+              className="flex w-full items-center justify-center gap-1.5 border-t border-white/10 pt-3 text-xs text-muted-foreground hover:text-white transition-colors"
+            >
+              {t.noKey}
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showGuide ? "rotate-180" : ""}`} />
+            </button>
+
+            {showGuide && (
+              <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+                <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+                  <li>
+                    {t.stepOpenBefore}{" "}
+                    <a
+                      href="https://profile.intra.42.fr/oauth/applications/new"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-300 hover:underline"
+                    >
+                      Settings → API → Register a new app
+                      <ExternalLink className="h-3 w-3" />
+                    </a>{" "}
+                    {t.stepOpenAfter}
+                  </li>
+                  {tutorialSteps[language].map((step, index) => (
+                    <li key={index}>{step}</li>
+                  ))}
+                  <li>{t.stepCopy}</li>
+                </ol>
+                <IntraKeyGuide language={language} />
+              </div>
+            )}
+          </motion.form>
+
+          <div className="flex w-full flex-wrap justify-center gap-2">
+            {[
+              { icon: Star, text: t.star, href: "https://github.com/fzphr/42insight" },
+              { icon: Bug, text: t.issues, href: "https://github.com/fzphr/42insight/issues" },
+            ].map((item) => (
+              <a
+                key={item.text}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-1 min-w-[80px] items-center justify-center gap-1.5 rounded-xl border border-white/5 bg-white/5 px-2 py-2.5 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <item.icon className="h-3.5 w-3.5" />
+                {item.text}
+              </a>
+            ))}
+          </div>
         </main>
 
-        <footer className="row-start-2 flex gap-6 flex-wrap items-center justify-center z-10">
-          <motion.p 
-            className="text-[10px] uppercase tracking-widest text-muted-foreground/60"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-          >
-            Created by{' '}
-            <a 
-              href="https://github.com/fzphr" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-white/80 hover:text-white transition-colors"
-            >
+        <footer className="flex flex-wrap items-center justify-center gap-6">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
+            {t.createdBy}{" "}
+            <a href="https://github.com/fzphr" target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-white transition-colors">
               Zeph
-            </a>{' '}
-            &{' '}
-            <a 
-              href="https://github.com/Haletran" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-white/80 hover:text-white transition-colors"
-            >
+            </a>{" "}
+            &{" "}
+            <a href="https://github.com/Haletran" target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-white transition-colors">
               Haletran
             </a>
-          </motion.p>
+          </p>
         </footer>
       </div>
 
@@ -742,26 +552,21 @@ export default function Home() {
         type="button"
         onClick={togglePaused}
         aria-pressed={paused}
-        title={
-          paused
-            ? "Resume the background animation"
-            : "Pause the background animation"
-        }
+        title={paused ? t.resumeTitle : t.pauseTitle}
         className="absolute bottom-4 right-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
       >
         {paused ? (
           <>
             <Play className="h-3.5 w-3.5" />
-            Animation off
+            {t.animationOff}
           </>
         ) : (
           <>
             <Pause className="h-3.5 w-3.5" />
-            Pause animation
+            {t.pauseAnimation}
           </>
         )}
       </button>
     </div>
-    </MotionPausedContext.Provider>
   );
 }

@@ -1,6 +1,7 @@
 import "./globals.css";
 import Providers from "./providers";
 import { Outfit } from "next/font/google";
+import { Toaster } from "sonner";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${outfit.variable} `}>
         <Providers>{children}</Providers>
+        <Toaster />
       </body>
     </html>
   );
