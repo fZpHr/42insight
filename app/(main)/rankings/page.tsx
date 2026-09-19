@@ -1815,7 +1815,7 @@ export default function Rankings() {
                           </span>
                         )}
                         <Badge variant="outline" className="text-xs">
-                          Level {student.level}
+                          Level {typeof student.level === "number" ? parseFloat(student.level.toFixed(2)) : student.level}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
