@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Clock,
   RefreshCw,
+  Users,
 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -214,12 +215,37 @@ const fetchCampusStudents = (
 
 type SortDirection = "asc" | "desc";
 
+/** Which accounts the list is about. "student" is the ranking proper. */
+type AccountFilter = "student" | "all42" | "staff" | "test" | "external";
+
+/**
+ * The route answers with the students or with everything else, so one kind of
+ * 42 account is picked out of that second list here rather than by a third
+ * shape of request.
+ */
+const keepChosenAccounts = (
+  students: Student[],
+  filter: AccountFilter,
+): Student[] =>
+  filter === "student" || filter === "all42"
+    ? students
+    : students.filter((student) => student.accountType === filter);
+
+const ACCOUNT_FILTERS: { value: AccountFilter; label: string }[] = [
+  { value: "student", label: "Students" },
+  { value: "all42", label: "All 42 accounts" },
+  { value: "staff", label: "Staff" },
+  { value: "test", label: "Test accounts" },
+  { value: "external", label: "External" },
+];
+
 export default function Rankings() {
   const [searchTerm, setSearchTerm] = useState("");
-  // The rankings are for students. This lists 42's own accounts instead --
-  // staff, the ones it marks as tests, the odd external one -- which is a
-  // curiosity rather than a ranking, and how you check the filter works.
-  const [showFortyTwoAccounts, setShowFortyTwoAccounts] = useState(false);
+  // The rankings are for students. The other values list 42's own accounts
+  // instead -- staff, the ones it marks as tests, the external ones -- which
+  // is a curiosity rather than a ranking, and how you check the filter works.
+  const [accountFilter, setAccountFilter] = useState<AccountFilter>("student");
+  const showFortyTwoAccounts = accountFilter !== "student";
   const [sortBy, setSortBy] = useState<string>("level");
   const [sortHistory, setSortHistory] = useState<string[]>(["totalLoginTime", "avgDailyHours"]);
   const [loginTimeCategory, setLoginTimeCategory] = useState<string>("overview");
@@ -350,6 +376,7 @@ export default function Rankings() {
       cursus,
       selectedCampus || user?.campus,
       showFortyTwoAccounts ? "42-accounts" : "students",
+      accountFilter,
       ...(cursus === "piscine" ? [poolYear, poolMonth] : []),
     ],
     queryFn: async () => {
@@ -410,13 +437,16 @@ export default function Rankings() {
           return [];
         }
         
-        return all.map((student: Student) => ({
-          ...student,
-          activityData:
-            typeof student.activityData === "string"
-              ? JSON.parse(student.activityData)
-              : student.activityData,
-        }));
+        return keepChosenAccounts(
+          all.map((student: Student) => ({
+            ...student,
+            activityData:
+              typeof student.activityData === "string"
+                ? JSON.parse(student.activityData)
+                : student.activityData,
+          })),
+          accountFilter,
+        );
       } else {
         const response = await fetchCampusStudents(campus, showFortyTwoAccounts);
         if (!response || response.length === 0) {
@@ -429,13 +459,16 @@ export default function Rankings() {
           return [];
         }
         
-        return response.map((student: Student) => ({
-          ...student,
-          activityData:
-            typeof student.activityData === "string"
-              ? JSON.parse(student.activityData)
-              : student.activityData,
-        }));
+        return keepChosenAccounts(
+          response.map((student: Student) => ({
+            ...student,
+            activityData:
+              typeof student.activityData === "string"
+                ? JSON.parse(student.activityData)
+                : student.activityData,
+          })),
+          accountFilter,
+        );
       }
     },
     enabled:
@@ -1177,20 +1210,29 @@ export default function Rankings() {
                   </Select>
                 </div>
                 {cursus === "cursus" && (
-                  <Button
-                    variant={showFortyTwoAccounts ? "secondary" : "outline"}
-                    onClick={() => setShowFortyTwoAccounts((shown) => !shown)}
-                    aria-pressed={showFortyTwoAccounts}
-                    title={
-                      showFortyTwoAccounts
-                        ? "Back to the students"
-                        : "Show 42's own accounts: staff, test and external"
-                    }
-                    className="w-full sm:w-auto"
-                    type="button"
-                  >
-                    {showFortyTwoAccounts ? "Students" : "42 accounts"}
-                  </Button>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <Select
+                      value={accountFilter}
+                      onValueChange={(value) =>
+                        setAccountFilter(value as AccountFilter)
+                      }
+                    >
+                      <SelectTrigger
+                        className="w-full sm:w-44"
+                        title="Which accounts to list"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ACCOUNT_FILTERS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
