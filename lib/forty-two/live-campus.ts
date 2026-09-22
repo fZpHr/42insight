@@ -177,6 +177,42 @@ const daysUntil = (date: string | null): number => {
 const isStudentAccount = (user: any): boolean =>
   Boolean(user) && !user["staff?"] && (user.kind ?? "student") === "student";
 
+/**
+ * The accounts 42 marks as tests, which the intra shows as a "Test account"
+ * badge beside the login.
+ *
+ * Kind is not enough on its own: six of these sat in Lyon's rankings and one
+ * in Angoulême's, all of them kind "student" with no staff flag, one as high
+ * as level 16.36. The badge comes from the account's groups, and a profile's
+ * groups are not in a campus listing -- reading them per student would cost a
+ * request each, a campus's whole hourly budget.
+ *
+ * The group itself can be read from the other end, though: 787 members network
+ * wide, eight pages, once a week for everyone.
+ */
+const TEST_ACCOUNT_GROUP_ID = 119;
+const TEST_ACCOUNTS_TTL = 7 * 24 * 60 * 60;
+
+const testAccountIds = async (api: FortyTwoApi): Promise<Set<number>> =>
+  cachedOnce("test-accounts", TEST_ACCOUNTS_TTL, async () => {
+    try {
+      const rows = await api.fetchAllPages(
+        `/groups/${TEST_ACCOUNT_GROUP_ID}/groups_users`,
+        { maxPages: 12 },
+      );
+
+      return new Set<number>(
+        rows
+          .map((row) => row?.user_id)
+          .filter((id): id is number => typeof id === "number"),
+      );
+    } catch (error: any) {
+      // A roster with a few test accounts in it beats no roster at all.
+      console.error("[live-campus] test accounts failed:", error.message);
+      return new Set<number>();
+    }
+  });
+
 const toStudent = (cursusUser: any, campusName: string): Student => {
   const user = cursusUser.user ?? {};
 
@@ -219,16 +255,20 @@ export const getCampusStudents = async (
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
   return cachedOnce(studentsCacheKey(campusName), STUDENTS_TTL, async () => {
-    const [cursusUsers, work] = await Promise.all([
+    const [cursusUsers, work, tests] = await Promise.all([
       api.fetchAllPages(
         `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
         { maxPages: ROSTER_MAX_PAGES },
       ),
       getWorkStatus(campusId, api),
+      testAccountIds(api),
     ]);
 
     return cursusUsers
-      .filter((cursusUser) => isStudentAccount(cursusUser.user))
+      .filter(
+        (cursusUser) =>
+          isStudentAccount(cursusUser.user) && !tests.has(cursusUser.user.id),
+      )
       .map((cursusUser) => {
         const student = toStudent(cursusUser, campusName);
         student.work = work.get(student.id) ?? 0;
@@ -672,7 +712,10 @@ export const getPoolUsers = async (
 
     // Belt and braces: the filter above is what makes the count agree with the
     // roster, and this makes a filter 42 might one day stop honouring harmless.
-    const pisciners = users.filter(isStudentAccount);
+    const tests = await testAccountIds(api);
+    const pisciners = users.filter(
+      (user) => isStudentAccount(user) && !tests.has(user.id),
+    );
     if (pisciners.length === 0) return [];
 
     const levels = await getPoolLevels(
