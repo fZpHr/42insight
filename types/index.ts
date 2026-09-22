@@ -443,6 +443,8 @@ export interface Commit {
 	avatar: string;
 	date: string;
 	new: boolean;
+	/** The commit's page on GitHub; null when the API did not give one. */
+	url: string | null;
 }
 
 export interface Coalition {
