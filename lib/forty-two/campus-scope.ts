@@ -23,6 +23,23 @@ export const campusForRequest = (
   return own && own !== "no-campus" ? own : null;
 };
 
+/**
+ * The campus a 42 profile belongs to.
+ *
+ * `is_primary` lives on campus_users, not on the campus objects themselves --
+ * looking for it on `campus[]` never matches, and the fallback then picks
+ * whichever campus 42 happens to list first. For anyone who has transferred
+ * that is their old campus, so their own roster no longer contains them.
+ */
+export const primaryCampusName = (profile: any): string | null => {
+  const primaryId = profile?.campus_users?.find((c: any) => c.is_primary)?.campus_id;
+  const campuses = profile?.campus ?? [];
+
+  return (
+    campuses.find((c: any) => c.id === primaryId)?.name ?? campuses[0]?.name ?? null
+  );
+};
+
 export const campusRequiredResponse = () =>
   Response.json(
     {
