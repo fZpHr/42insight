@@ -31,6 +31,7 @@ import {
 } from "@/lib/api-key-copy";
 import { signIn, useSession } from "next-auth/react";
 import { isDevPreviewEnabled, setDevPreview as persistDevPreview } from "@/lib/dev-preview";
+import { announceKeyChange } from "@/lib/api-client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -317,6 +318,7 @@ export default function Home() {
         body: JSON.stringify({ client_id: clientId.trim(), client_secret: clientSecret.trim() }),
       });
       if (!sealed.ok) throw new Error(`byok token ${sealed.status}`);
+      announceKeyChange();
 
       router.push(resolveCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl")));
     } catch {

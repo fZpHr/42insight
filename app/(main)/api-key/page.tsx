@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { hasApiKey } from "@/lib/api-client";
+import { announceKeyChange, hasApiKey } from "@/lib/api-client";
 import { IntraKeyGuide } from "@/components/IntraKeyGuide";
 import { ActivityGuide } from "@/components/ActivityGuide";
 import { LiveActivityLog } from "@/components/LiveActivityLog";
@@ -106,6 +106,7 @@ export default function ApiKeyPage() {
       setClientId("");
       setClientSecret("");
       toast.success(t.connected);
+      announceKeyChange();
       await queryClient.invalidateQueries();
       refresh();
       router.push("/dashboard");
@@ -119,6 +120,7 @@ export default function ApiKeyPage() {
   const forget = async () => {
     try {
       await fetch("/api/byok/token", { method: "DELETE" });
+      announceKeyChange();
       await queryClient.invalidateQueries();
       setQuota(null);
       setKeyPresent(false);

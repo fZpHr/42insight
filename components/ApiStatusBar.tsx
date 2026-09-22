@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { hasApiKey } from "@/lib/api-client";
+import { hasApiKey, KEY_CHANGED_EVENT } from "@/lib/api-client";
 import { readable, type ApiCall } from "@/lib/forty-two/activity";
 import { isDevPreviewEnabled } from "@/lib/dev-preview";
 
@@ -66,11 +66,11 @@ export function ApiStatusBar() {
   const lastRefresh = useRef(0);
   const wasFetching = useRef(false);
 
-  const refresh = () => {
+  const refresh = (force = false) => {
     // useIsFetching changes on every query start and stop, so an unthrottled
     // refresh turns the header into a firehose against /api/quota.
     const now = Date.now();
-    if (now - lastRefresh.current < MIN_REFRESH_MS) return;
+    if (!force && now - lastRefresh.current < MIN_REFRESH_MS) return;
     lastRefresh.current = now;
 
     setKeyPresent(hasApiKey());
@@ -89,6 +89,17 @@ export function ApiStatusBar() {
     refresh();
     const timer = setInterval(refresh, POLL_MS);
     return () => clearInterval(timer);
+  }, []);
+
+  // A new key has a budget of its own, and the figure on screen belongs to the
+  // old one. Nothing else tells this bar: the quota it holds is read on a
+  // throttle and at the end of a page's requests, and an index build never has
+  // one -- so switching keys mid-build left "0/1200" up for two minutes on a
+  // key that had spent nothing. The pages that connect a key say so instead.
+  useEffect(() => {
+    const onKeyChange = () => refresh(true);
+    window.addEventListener(KEY_CHANGED_EVENT, onKeyChange);
+    return () => window.removeEventListener(KEY_CHANGED_EVENT, onKeyChange);
   }, []);
 
   // While the panel is open, keep it current. A diagnostic that needs closing
