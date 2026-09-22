@@ -38,9 +38,11 @@ import { motion } from "framer-motion";
 /**
  * Whether the ambient background animates.
  *
- * Cheap to run, but a fan spinning up on a laptop for a page someone is just
- * reading is a bad trade -- so it can be paused, and the choice is
- * remembered rather than asked again on every visit.
+ * Off unless asked for. Ninety animated stars and two 700px shapes under a
+ * 120px blur are cheap on a Mac and not on Chrome for Windows, where animating
+ * a blurred surface that size re-rasterises it every frame -- and this is the
+ * first page anyone sees. The choice is remembered rather than asked again on
+ * every visit.
  */
 const PAUSE_STORAGE_KEY = "42insight:background-paused";
 
@@ -216,7 +218,7 @@ const resolveCallbackUrl = (raw: string | null): string => {
 export default function Home() {
   const router = useRouter();
   const { status } = useSession();
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(true);
   const [language, setLanguage] = useState<Language>("en");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -232,9 +234,10 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      setPaused(window.localStorage.getItem(PAUSE_STORAGE_KEY) === "true");
+      // Only a stored "false" starts it: no answer means off.
+      setPaused(window.localStorage.getItem(PAUSE_STORAGE_KEY) !== "false");
     } catch {
-      // Private browsing, or storage refused. The animation simply runs.
+      // Private browsing, or storage refused. The animation stays off.
     }
   }, []);
 
