@@ -5,12 +5,13 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useFortyTwoStore } from "@/providers/forty-two-store-provider"
 import type { FortyTwoProject } from "@/types/forty-two"
-import { CircleCheck, CircleDashed, ChevronsUpDownIcon, CornerDownRightIcon, StarIcon, UsersIcon } from "lucide-react"
+import { CircleCheck, CircleDashed, ChevronsUpDownIcon, CornerDownRightIcon, HistoryIcon, StarIcon, UsersIcon } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { LEGACY_PROJECT_IDS } from "@/lib/forty-two/forty-two-rncp";
 
 function ProjectSideIcon({ project, depth }: { project: FortyTwoProject; depth: number }) {
   if (project.children?.length > 0) {
@@ -202,6 +203,24 @@ function Project({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              {LEGACY_PROJECT_IDS.has(project.id) && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="secondary"
+                        className="rounded-md text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 whitespace-nowrap gap-1 border border-amber-500 bg-amber-400 text-amber-950 dark:border-amber-400 dark:bg-amber-500/25 dark:text-amber-200"
+                      >
+                        <HistoryIcon className="size-3" />
+                        Legacy
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Retired by 42, still counts if you validated it</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

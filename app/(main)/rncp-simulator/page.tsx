@@ -18,8 +18,11 @@ import ReactConfetti from "react-confetti"
 import { useSession, signIn } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
-import { Loader2, GraduationCap, Trophy, Award, RefreshCw } from "lucide-react"
+import { Loader2, GraduationCap, Trophy, Award, RefreshCw, History } from "lucide-react"
 import { isDevPreviewEnabled } from "@/lib/dev-preview"
+import { LEGACY_PROJECT_IDS } from "@/lib/forty-two/forty-two-rncp"
+
+const SHOW_LEGACY_STORAGE_KEY = "rncp_show_legacy"
 
 function getManualProjectsKey(session: any) {
   return session?.user?.login ? `manualProjects_${session.user.login}` : undefined
@@ -49,6 +52,29 @@ export default function RNCPSimulator() {
 
 
   const [showConfetti, setShowConfetti] = useState(false)
+  const [showLegacy, setShowLegacy] = useState(false)
+
+  // Read after mount rather than in the initializer: the server renders the
+  // toggle off, and starting on here would mismatch hydration.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SHOW_LEGACY_STORAGE_KEY) === "true") setShowLegacy(true)
+    } catch {
+      // Private browsing, or storage refused. The toggle just starts off.
+    }
+  }, [])
+
+  const toggleShowLegacy = () => {
+    setShowLegacy((shown) => {
+      const next = !shown
+      try {
+        localStorage.setItem(SHOW_LEGACY_STORAGE_KEY, String(next))
+      } catch {
+        // Not remembering it is a smaller failure than not toggling.
+      }
+      return next
+    })
+  }
   const [optionStatuses, setOptionStatuses] = useState<Record<string, boolean>>({})
   const manualProjectsKey = getManualProjectsKey(session)
 
@@ -121,9 +147,27 @@ export default function RNCPSimulator() {
       projects: state.projects,
       projectMarks: state.projectMarks,
       coalitionProjects: state.coalitionProjects,
+      isProjectModuleComplete: state.isProjectModuleComplete,
     }),
     shallow,
   )
+
+  // Legacy projects this title accepts that the visitor has already validated,
+  // so the hidden ones still announce themselves on the toggle.
+  const validatedLegacyCount = useMemo(() => {
+    if (!activeTitle) return 0
+    const titleProjectIds = new Set(
+      [...activeTitle.options, (activeTitle as any).suite ?? { projects: [] }].flatMap((option: any) =>
+        Array.isArray(option.projects) ? option.projects : Object.keys(option.projects).map(Number),
+      ),
+    )
+    let count = 0
+    for (const id of LEGACY_PROJECT_IDS) {
+      const project = storeState.projects[id]
+      if (titleProjectIds.has(id) && project && storeState.isProjectModuleComplete(project)) count += 1
+    }
+    return count
+  }, [activeTitle, storeState])
 
   const {
     data: userIntraInfo,
@@ -306,6 +350,52 @@ export default function RNCPSimulator() {
           >
             Reset
           </Button>
+          <Button
+            variant="outline"
+            onClick={toggleShowLegacy}
+            role="switch"
+            aria-checked={showLegacy}
+            title={showLegacy ? "Hide legacy projects" : "Show legacy projects: retired by 42, but still counted"}
+            type="button"
+            className={`relative gap-2 transition-colors ${
+              showLegacy
+                ? "border-amber-500 bg-amber-400 text-amber-950 hover:bg-amber-300 hover:text-amber-950 dark:border-amber-400 dark:bg-amber-500/25 dark:text-amber-100 dark:hover:bg-amber-500/35"
+                : "text-muted-foreground"
+            }`}
+          >
+            <History className="h-4 w-4" />
+            Legacy
+            <span
+              aria-hidden
+              className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
+                showLegacy ? "bg-amber-700 dark:bg-amber-400" : "bg-muted-foreground/30"
+              }`}
+            >
+              <span
+                className={`absolute h-3 w-3 rounded-full bg-white shadow transition-transform ${
+                  showLegacy ? "translate-x-3.5" : "translate-x-0.5"
+                }`}
+              />
+            </span>
+            <span className="w-6 text-left text-[11px] font-semibold uppercase">{showLegacy ? "On" : "Off"}</span>
+            {validatedLegacyCount > 0 && (
+              <span
+                className="absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground"
+                aria-label={`${validatedLegacyCount} legacy project${validatedLegacyCount > 1 ? "s" : ""} validated`}
+              >
+                {validatedLegacyCount}
+              </span>
+            )}
+          </Button>
+          <Link
+            className="self-center text-muted-foreground text-sm underline underline-offset-1 transition-colors hover:text-foreground"
+            prefetch={false}
+            href="https://meta.intra.42.fr/articles/legacy-projects"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            What are legacy projects?
+          </Link>
         </div>
       </div>
 
@@ -316,7 +406,7 @@ export default function RNCPSimulator() {
         className="my-6"
         autoExtraProjects={persistedOldProjects}
       />
-      {activeTitle && <TitleOptions title={activeTitle} onCompletionChange={setOptionStatuses} />}
+      {activeTitle && <TitleOptions title={activeTitle} onCompletionChange={setOptionStatuses} showLegacy={showLegacy} />}
       <div className="text-center text-xs text-muted-foreground">
         This project is inspired by a similar tool from the staff of 42 Angoulême, with their agreement.
       </div>
