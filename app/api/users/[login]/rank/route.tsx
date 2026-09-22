@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
+import { primaryCampusName } from "@/lib/forty-two/campus-scope";
 import {
   resolvePoolPromotion,
   getCampusStudents,
@@ -61,9 +62,7 @@ export async function GET(
     }
 
     const profile = await userResponse.json();
-    const campusName =
-      profile.campus?.find((c: any) => c.is_primary)?.name ??
-      profile.campus?.[0]?.name;
+    const campusName = primaryCampusName(profile);
     if (!campusName) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }

@@ -17,6 +17,12 @@ import { POOL_CURSUS_ID } from "@/lib/forty-two/live-campus";
  *   - a pass is a positive flag AND a final mark of 80 or more
  *   - everything else that counts is a fail
  *
+ * One addition: the evaluations that belong to a work experience -- the peer
+ * video of an internship, an apprenticeship's company reviews -- are left out
+ * too. They are presentations, not corrections of code, and they are nearly
+ * always passed: kiroussa's nine of them alone moved the figure from 58% to
+ * 60%.
+ *
  * The flag is the part a mark alone misses. "Crash", "Cheat", "Leaks",
  * "Norme", "Forbidden Function", "Empty work" are all verdicts, and a mark on
  * its own does not say which of them happened.
@@ -70,17 +76,46 @@ const piscineProjectIds = async (api: FortyTwoApi): Promise<Set<number>> =>
     );
   });
 
+/**
+ * The work experiences, as the parents of the evaluations they carry.
+ *
+ * Their sub-projects are not in the cursus listing this site ships, so they
+ * are asked for -- one request, since filter[id] takes the lot, and the answer
+ * changes about as often as the piscine's.
+ */
+const EXPERIENCE_PROJECT_IDS = [1638, 1644, 1662, 1873, 1857, 1865];
+
+const experienceProjectIds = async (api: FortyTwoApi): Promise<Set<number>> =>
+  cachedOnce("experience-projects", PISCINE_PROJECTS_TTL, async () => {
+    const response = await api.fetch(
+      `/projects?filter[id]=${EXPERIENCE_PROJECT_IDS.join(",")}&page[size]=100`,
+    );
+    const rows = response.ok ? await response.json() : [];
+
+    const ids = new Set<number>(EXPERIENCE_PROJECT_IDS);
+    for (const row of Array.isArray(rows) ? rows : []) {
+      for (const child of row?.children ?? []) {
+        if (typeof child?.id === "number") ids.add(child.id);
+      }
+    }
+
+    return ids;
+  });
+
 export const getCorrectionRatio = async (
   userId: number,
   api: FortyTwoApi,
 ): Promise<CorrectionRatio> =>
-  cachedOnce(`correction-ratio:v2:${userId}`, CACHE_TTL, async () => {
-    const [excluded, rows] = await Promise.all([
+  cachedOnce(`correction-ratio:v3:${userId}`, CACHE_TTL, async () => {
+    const [piscine, experience, rows] = await Promise.all([
       piscineProjectIds(api),
+      experienceProjectIds(api),
       api.fetchAllPages(`/users/${userId}/scale_teams/as_corrector`, {
         maxPages: MAX_PAGES,
       }),
     ]);
+
+    const excluded = new Set<number>([...piscine, ...experience]);
 
     let positive = 0;
     let negative = 0;

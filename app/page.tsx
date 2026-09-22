@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
 } from "@/lib/api-key-copy";
 import { signIn, useSession } from "next-auth/react";
 import { isDevPreviewEnabled, setDevPreview as persistDevPreview } from "@/lib/dev-preview";
+import { announceKeyChange } from "@/lib/api-client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -223,6 +224,7 @@ export default function Home() {
   const [showGuide, setShowGuide] = useState(false);
   const [showWhyDetail, setShowWhyDetail] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const connectingRef = useRef(false);
   const [devPreview, setDevPreview] = useState(false);
 
   const t = homeCopy[language];
@@ -249,7 +251,14 @@ export default function Home() {
   // page. Without this, it showed the connect form on every visit even
   // though the credentials cookie was still valid for a month. Preview mode
   // gets the same shortcut, since its whole point is skipping this form.
+  //
+  // Not while the form is connecting, though: signIn turns the session
+  // authenticated before the key is sealed, and leaving right then landed on
+  // the dashboard with no key cookie -- every query answered 428 and the
+  // sidebar said "no key" until a full reload. handleConnect navigates itself
+  // once both steps are done.
   useEffect(() => {
+    if (connectingRef.current) return;
     if (status !== "authenticated" && !devPreview) return;
     router.replace(
       resolveCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl")),
@@ -281,6 +290,7 @@ export default function Home() {
     event.preventDefault();
     if (!clientId.trim() || !clientSecret.trim()) return;
 
+    connectingRef.current = true;
     setConnecting(true);
     try {
       // Identity: who this application belongs to, per 42.
@@ -302,16 +312,19 @@ export default function Home() {
       // Data: the same credentials, sealed for every page that reads the
       // 42 API. Two calls, because signing in and connecting a key are
       // still two different systems underneath -- just one form now.
-      await fetch("/api/byok/token", {
+      const sealed = await fetch("/api/byok/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ client_id: clientId.trim(), client_secret: clientSecret.trim() }),
       });
+      if (!sealed.ok) throw new Error(`byok token ${sealed.status}`);
+      announceKeyChange();
 
       router.push(resolveCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl")));
     } catch {
       toast.error(t.errorServer, { duration: 3000, position: "bottom-right" });
     } finally {
+      connectingRef.current = false;
       setConnecting(false);
     }
   };

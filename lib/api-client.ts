@@ -8,6 +8,20 @@
 
 export const KEY_PRESENT_COOKIE = "byok_key_present";
 
+/**
+ * Fired on the window once a key has been connected, replaced or forgotten.
+ *
+ * The cookie only says whether there is a key, not which one, so nothing on
+ * screen can notice a swap on its own.
+ */
+export const KEY_CHANGED_EVENT = "byok:key-changed";
+
+export const announceKeyChange = (): void => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(KEY_CHANGED_EVENT));
+  }
+};
+
 export class KeyRequiredError extends Error {
   constructor() {
     super("key_required");

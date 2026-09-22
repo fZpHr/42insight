@@ -4,6 +4,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { getEnrichedCampusStudents } from "@/lib/forty-two/live-campus";
+import { primaryCampusName } from "@/lib/forty-two/campus-scope";
 
 // A cold campus walk runs ten seconds or so, past Vercel's default function
 // timeout.
@@ -35,9 +36,7 @@ export async function GET(
     }
 
     const profile = await userResponse.json();
-    const campusName =
-      profile.campus?.find((c: any) => c.is_primary)?.name ??
-      profile.campus?.[0]?.name;
+    const campusName = primaryCampusName(profile);
     if (!campusName) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
