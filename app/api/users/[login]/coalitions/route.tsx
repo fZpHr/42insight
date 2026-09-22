@@ -4,17 +4,12 @@ import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import { getServerSession } from "next-auth";
 import { cached } from "@/lib/memory-cache";
+import { campusCoalitionIds } from "@/lib/forty-two/coalitions";
 
 /** A student's coalition: two 42 requests, on the visitor's key. */
 
 const CACHE_TTL = 1800;
 
-const COALITIONS_BY_CAMPUS: { [campus: string]: string[] } = {
-  Nice: ["Corrino", "Atreides", "Harkonnen"],
-  Angouleme: ["Analyst", "Architect", "Seeker"],
-};
-
-const DEFAULT_COALITIONS = ["Alliance", "Assembly", "Federation", "Order"];
 
 export async function GET(
   _request: Request,
@@ -36,7 +31,7 @@ export async function GET(
     // Keyed by campus as well: which of a student's coalitions is the relevant
     // one depends on who is looking.
     const result = await cached(
-      `coalitions:v1:${campus}:${login}`,
+      `coalitions:v2:${campus}:${login}`,
       CACHE_TTL,
       async () => {
         const userResponse = await api.fetch(`/users/${encodeURIComponent(login)}`);
@@ -54,11 +49,23 @@ export async function GET(
         }
 
         const coalitions = await coalitionResponse.json();
-        const names = COALITIONS_BY_CAMPUS[campus] ?? DEFAULT_COALITIONS;
+
+        // Which of a student's coalitions to show is the one from the campus
+        // being looked at. A student of two campuses has one of each, and a
+        // pisciner carries a piscine coalition on top.
+        let campusCoalitions = new Set<number>();
+        try {
+          campusCoalitions = await campusCoalitionIds(campus, api);
+        } catch (error: any) {
+          // Falling through to the last coalition is what this did before the
+          // campus was asked about at all.
+          console.error(`[coalitions] campus ${campus}:`, error.message);
+        }
 
         const selected =
-          coalitions.find((coalition: any) => names.includes(coalition.name)) ??
-          coalitions[coalitions.length - 1];
+          coalitions.find((coalition: any) =>
+            campusCoalitions.has(coalition.id),
+          ) ?? coalitions[coalitions.length - 1];
 
         return selected ? [selected] : [];
       },
