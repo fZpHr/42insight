@@ -165,6 +165,18 @@ const daysUntil = (date: string | null): number => {
   return remaining <= 0 ? 0 : Math.ceil(remaining / 86_400_000);
 };
 
+/**
+ * Whether an account belongs on a leaderboard.
+ *
+ * The staff flag alone missed accounts 42 keeps for its own purposes: Lyon's
+ * `vpeople` is kind "external", not staff, and sat in the rankings at level
+ * 2.61 like any student. Kinds seen on a roster are "student", "admin" and
+ * "external"; a missing kind is treated as a student, since the flag is what
+ * the old filter trusted.
+ */
+const isStudentAccount = (user: any): boolean =>
+  Boolean(user) && !user["staff?"] && (user.kind ?? "student") === "student";
+
 const toStudent = (cursusUser: any, campusName: string): Student => {
   const user = cursusUser.user ?? {};
 
@@ -216,7 +228,7 @@ export const getCampusStudents = async (
     ]);
 
     return cursusUsers
-      .filter((cursusUser) => cursusUser.user && !cursusUser.user["staff?"])
+      .filter((cursusUser) => isStudentAccount(cursusUser.user))
       .map((cursusUser) => {
         const student = toStudent(cursusUser, campusName);
         student.work = work.get(student.id) ?? 0;
@@ -660,7 +672,7 @@ export const getPoolUsers = async (
 
     // Belt and braces: the filter above is what makes the count agree with the
     // roster, and this makes a filter 42 might one day stop honouring harmless.
-    const pisciners = users.filter((user) => user && !user["staff?"]);
+    const pisciners = users.filter(isStudentAccount);
     if (pisciners.length === 0) return [];
 
     const levels = await getPoolLevels(
