@@ -106,6 +106,12 @@ export interface Student {
   relation: any;
   work: number;
   has_validated : boolean;
+  /**
+   * What kind of account this is. Rankings show students; the rest are 42's
+   * own -- staff, the accounts it marks as tests, and a few external ones --
+   * and are only listed when someone asks to see them.
+   */
+  accountType?: "student" | "staff" | "test" | "external";
 }
 
 export interface ExamStudent {

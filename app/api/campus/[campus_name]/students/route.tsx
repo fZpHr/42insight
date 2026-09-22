@@ -6,6 +6,7 @@ import { keyRequiredResponse } from "@/lib/forty-two/user-api";
 import {
   resolveCampusId,
   getEnrichedCampusStudents,
+  getCampusOutsiders,
 } from "@/lib/forty-two/live-campus";
 
 // A cold cache walks the whole campus in paginated 42 API calls, roughly ten
@@ -15,7 +16,7 @@ import {
 export const maxDuration = 60;
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campus_name: string }> },
 ) {
   const session = await getServerSession(authOptions);
@@ -31,7 +32,17 @@ export async function GET(
     return NextResponse.json({ error: "Campus not found" }, { status: 404 });
   }
 
+  // ?accounts=42 answers with the accounts the rankings leave out -- staff,
+  // 42's test accounts, the odd external one. Same cached walk, so asking for
+  // them costs nothing beyond the roster the page already built.
+  const wantsOutsiders =
+    new URL(request.url).searchParams.get("accounts") === "42";
+
   try {
+    if (wantsOutsiders) {
+      return NextResponse.json(await getCampusOutsiders(campus_name, api));
+    }
+
     return NextResponse.json(await getEnrichedCampusStudents(campus_name, api));
   } catch (error: any) {
 

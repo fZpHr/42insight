@@ -177,6 +177,15 @@ const daysUntil = (date: string | null): number => {
 const isStudentAccount = (user: any): boolean =>
   Boolean(user) && !user["staff?"] && (user.kind ?? "student") === "student";
 
+/** Which of those an account is, for the ones that are not students. */
+const accountTypeOf = (user: any, tests: Set<number>): Student["accountType"] => {
+  if (!user) return "external";
+  if (user["staff?"] || user.kind === "admin") return "staff";
+  if (tests.has(user.id)) return "test";
+  if ((user.kind ?? "student") !== "student") return "external";
+  return "student";
+};
+
 /**
  * The accounts 42 marks as tests, which the intra shows as a "Test account"
  * badge beside the login.
@@ -244,10 +253,11 @@ const toStudent = (cursusUser: any, campusName: string): Student => {
 };
 
 /**
- * The whole campus from one paginated call. Served from the shared cache when
- * it is warm; building it cold requires the visitor to have a key.
+ * Everyone the campus lists, students and 42's own accounts alike, each
+ * tagged with what it is. Kept whole in the cache so that showing the staff
+ * and test accounts costs no second walk.
  */
-export const getCampusStudents = async (
+const getCampusRoster = async (
   campusName: string,
   api: FortyTwoApi,
 ): Promise<Student[]> => {
@@ -265,17 +275,38 @@ export const getCampusStudents = async (
     ]);
 
     return cursusUsers
-      .filter(
-        (cursusUser) =>
-          isStudentAccount(cursusUser.user) && !tests.has(cursusUser.user.id),
-      )
+      .filter((cursusUser) => cursusUser.user)
       .map((cursusUser) => {
         const student = toStudent(cursusUser, campusName);
         student.work = work.get(student.id) ?? 0;
+        student.accountType = accountTypeOf(cursusUser.user, tests);
         return student;
       });
   });
 };
+
+/**
+ * The campus as every page reads it: students only.
+ *
+ * Staff, 42's test accounts and the odd external one sat in the rankings
+ * beside real students, one of the test accounts at level 16.36.
+ */
+export const getCampusStudents = async (
+  campusName: string,
+  api: FortyTwoApi,
+): Promise<Student[]> =>
+  (await getCampusRoster(campusName, api)).filter(
+    (student) => student.accountType === "student",
+  );
+
+/** The accounts the rankings leave out, for when somebody asks to see them. */
+export const getCampusOutsiders = async (
+  campusName: string,
+  api: FortyTwoApi,
+): Promise<Student[]> =>
+  (await getCampusRoster(campusName, api)).filter(
+    (student) => student.accountType !== "student",
+  );
 
 /**
  * Who is on an internship or an apprenticeship, as a student id -> work code.

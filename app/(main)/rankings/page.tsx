@@ -203,13 +203,23 @@ const CORRECTION_RATIOS_ENABLED = true;
 /** What the route accepts at once, and about a screenful. */
 const CORRECTION_BATCH = 30;
 
-const fetchCampusStudents = (campus: string): Promise<Student[]> =>
-  fetchJson<Student[]>(`/api/campus/${campus}/students`);
+const fetchCampusStudents = (
+  campus: string,
+  /** 42's own accounts -- staff, test, external -- instead of the students. */
+  fortyTwoAccounts = false,
+): Promise<Student[]> =>
+  fetchJson<Student[]>(
+    `/api/campus/${campus}/students${fortyTwoAccounts ? "?accounts=42" : ""}`,
+  );
 
 type SortDirection = "asc" | "desc";
 
 export default function Rankings() {
   const [searchTerm, setSearchTerm] = useState("");
+  // The rankings are for students. This lists 42's own accounts instead --
+  // staff, the ones it marks as tests, the odd external one -- which is a
+  // curiosity rather than a ranking, and how you check the filter works.
+  const [showFortyTwoAccounts, setShowFortyTwoAccounts] = useState(false);
   const [sortBy, setSortBy] = useState<string>("level");
   const [sortHistory, setSortHistory] = useState<string[]>(["totalLoginTime", "avgDailyHours"]);
   const [loginTimeCategory, setLoginTimeCategory] = useState<string>("overview");
@@ -339,6 +349,7 @@ export default function Rankings() {
       "campus-students",
       cursus,
       selectedCampus || user?.campus,
+      showFortyTwoAccounts ? "42-accounts" : "students",
       ...(cursus === "piscine" ? [poolYear, poolMonth] : []),
     ],
     queryFn: async () => {
@@ -375,7 +386,12 @@ export default function Rankings() {
           });
 
           try {
-            all.push(...((await fetchCampusStudents(school.name)) ?? []));
+            all.push(
+              ...((await fetchCampusStudents(
+                school.name,
+                showFortyTwoAccounts,
+              )) ?? []),
+            );
           } catch (error) {
             // A missing key is the same answer 54 times over, so stop and let
             // the page ask for one. Anything else is one campus that will not
@@ -402,12 +418,14 @@ export default function Rankings() {
               : student.activityData,
         }));
       } else {
-        const response = await fetchCampusStudents(campus);
+        const response = await fetchCampusStudents(campus, showFortyTwoAccounts);
         if (!response || response.length === 0) {
-          toast.error("No students found for this campus", {
-            duration: 2000,
-            position: "bottom-right",
-          });
+          toast.error(
+            showFortyTwoAccounts
+              ? "No 42 accounts on this campus"
+              : "No students found for this campus",
+            { duration: 2000, position: "bottom-right" },
+          );
           return [];
         }
         
@@ -1158,6 +1176,22 @@ export default function Rankings() {
                     </SelectContent>
                   </Select>
                 </div>
+                {cursus === "cursus" && (
+                  <Button
+                    variant={showFortyTwoAccounts ? "secondary" : "outline"}
+                    onClick={() => setShowFortyTwoAccounts((shown) => !shown)}
+                    aria-pressed={showFortyTwoAccounts}
+                    title={
+                      showFortyTwoAccounts
+                        ? "Back to the students"
+                        : "Show 42's own accounts: staff, test and external"
+                    }
+                    className="w-full sm:w-auto"
+                    type="button"
+                  >
+                    {showFortyTwoAccounts ? "Students" : "42 accounts"}
+                  </Button>
+                )}
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
                   <DropdownMenu>
@@ -1817,6 +1851,16 @@ export default function Rankings() {
                         <Badge variant="outline" className="text-xs">
                           Level {student.level}
                         </Badge>
+                        {student.accountType &&
+                          student.accountType !== "student" && (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs capitalize"
+                              title="Not a student account"
+                            >
+                              {student.accountType}
+                            </Badge>
+                          )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                         {/* Column 1: Wallet & Correction Points */}
