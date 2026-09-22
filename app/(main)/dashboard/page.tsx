@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import {
   Trophy,
@@ -289,6 +296,9 @@ export function SkillBar({
   );
 }
 
+/** 42cursus: the cursus this whole site reports on. */
+const MAIN_CURSUS_ID = 21;
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const user = session?.user;
@@ -378,13 +388,69 @@ export default function Dashboard() {
     }
   }, [intraLoading, userIntraInfo, intraError]);
 
-  const currentCursus = useMemo(() => {
+  /**
+   * The cursus this header is about.
+   *
+   * It used to take cursus_users[1], which is a guess about the order 42
+   * happens to answer in: right for an account whose piscine comes first,
+   * wrong for anyone with a Discovery Piscine, an event cursus or a second
+   * campus's piscine in between -- they were shown that cursus's name, level
+   * and Piscine badge instead of their own.
+   *
+   * Nor is `kind === "main"` enough on its own: 42Senior and 42.zip carry that
+   * kind too. So the cursus this site is built around comes first, then a main
+   * cursus still running, then whatever there is.
+   */
+  const defaultCursus = useMemo(() => {
+    const cursusUsers = userIntraInfo?.cursus_users;
+    if (!cursusUsers?.length) return null;
+
     return (
-      userIntraInfo?.cursus_users?.[1] ||
-      userIntraInfo?.cursus_users?.[0] ||
-      null
+      cursusUsers.find((c: any) => c.cursus_id === MAIN_CURSUS_ID) ??
+      cursusUsers.find((c: any) => c.cursus?.kind === "main" && !c.end_at) ??
+      cursusUsers.find((c: any) => c.cursus?.kind === "main") ??
+      cursusUsers[cursusUsers.length - 1]
     );
   }, [userIntraInfo]);
+
+  // Someone with a piscine, a 42Senior or another campus's cursus may want to
+  // look at one of those rather than the default. Read after mount, since
+  // localStorage does not exist during the server render.
+  const [chosenCursusId, setChosenCursusId] = useState<number | null>(null);
+  const cursusChoiceKey = session?.user?.login
+    ? `dashboard_cursus_${session.user.login}`
+    : null;
+
+  useEffect(() => {
+    if (!cursusChoiceKey) return;
+    try {
+      const saved = Number(localStorage.getItem(cursusChoiceKey));
+      if (Number.isFinite(saved) && saved > 0) setChosenCursusId(saved);
+    } catch {
+      // Private browsing, or storage refused. The default applies.
+    }
+  }, [cursusChoiceKey]);
+
+  const chooseCursus = (cursusId: number) => {
+    setChosenCursusId(cursusId);
+    if (!cursusChoiceKey) return;
+    try {
+      localStorage.setItem(cursusChoiceKey, String(cursusId));
+    } catch {
+      // Not remembering it is a smaller failure than not honouring it.
+    }
+  };
+
+  // A remembered cursus the account no longer has falls back to the default.
+  const currentCursus = useMemo(() => {
+    const cursusUsers = userIntraInfo?.cursus_users;
+    if (!cursusUsers?.length) return null;
+
+    return (
+      cursusUsers.find((c: any) => c.cursus_id === chosenCursusId) ??
+      defaultCursus
+    );
+  }, [userIntraInfo, chosenCursusId, defaultCursus]);
 
   const stats = useMemo(
     () => [
@@ -503,6 +569,7 @@ export default function Dashboard() {
     );
   }
 
+  const cursusChoices: any[] = userIntraInfo?.cursus_users ?? [];
   const levelProgress = ((currentCursus?.level || 0) % 1) * 100;
   const recentProjects = userIntraInfo?.projects_users?.slice(0, 10) || [];
   const recentAchievements = userIntraInfo?.achievements?.slice(0, 10) || [];
@@ -527,11 +594,36 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight">
             Welcome back, {user?.name}!
           </h1>
-          <p className="text-muted-foreground text-lg">
-            {user?.campus || userIntraInfo?.campus?.[0]?.name} •{" "}
-            {isStaff && "Admin"}
-            {!isStaff && (currentCursus?.cursus?.name || "Common Core")}
-          </p>
+          <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-lg">
+            <span>{user?.campus || userIntraInfo?.campus?.[0]?.name} •</span>
+            {isStaff ? (
+              <span>Admin</span>
+            ) : cursusChoices.length > 1 ? (
+              <Select
+                value={String(currentCursus?.cursus_id ?? "")}
+                onValueChange={(value) => chooseCursus(Number(value))}
+              >
+                <SelectTrigger
+                  className="h-8 w-auto gap-1 border-none bg-transparent px-1 text-lg shadow-none focus:ring-0"
+                  aria-label="Cursus shown on this page"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {cursusChoices.map((cursusUser: any) => (
+                    <SelectItem
+                      key={cursusUser.cursus_id}
+                      value={String(cursusUser.cursus_id)}
+                    >
+                      {cursusUser.cursus?.name ?? `Cursus ${cursusUser.cursus_id}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <span>{currentCursus?.cursus?.name || "Common Core"}</span>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2 mt-3">
             {isAdmin && (
               <TransparentBadge
