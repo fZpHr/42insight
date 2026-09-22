@@ -289,6 +289,9 @@ export function SkillBar({
   );
 }
 
+/** 42cursus: the cursus this whole site reports on. */
+const MAIN_CURSUS_ID = 21;
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const user = session?.user;
@@ -378,11 +381,28 @@ export default function Dashboard() {
     }
   }, [intraLoading, userIntraInfo, intraError]);
 
+  /**
+   * The cursus this header is about.
+   *
+   * It used to take cursus_users[1], which is a guess about the order 42
+   * happens to answer in: right for an account whose piscine comes first,
+   * wrong for anyone with a Discovery Piscine, an event cursus or a second
+   * campus's piscine in between -- they were shown that cursus's name, level
+   * and Piscine badge instead of their own.
+   *
+   * Nor is `kind === "main"` enough on its own: 42Senior and 42.zip carry that
+   * kind too. So the cursus this site is built around comes first, then a main
+   * cursus still running, then whatever there is.
+   */
   const currentCursus = useMemo(() => {
+    const cursusUsers = userIntraInfo?.cursus_users;
+    if (!cursusUsers?.length) return null;
+
     return (
-      userIntraInfo?.cursus_users?.[1] ||
-      userIntraInfo?.cursus_users?.[0] ||
-      null
+      cursusUsers.find((c: any) => c.cursus_id === MAIN_CURSUS_ID) ??
+      cursusUsers.find((c: any) => c.cursus?.kind === "main" && !c.end_at) ??
+      cursusUsers.find((c: any) => c.cursus?.kind === "main") ??
+      cursusUsers[cursusUsers.length - 1]
     );
   }, [userIntraInfo]);
 
