@@ -38,8 +38,13 @@ export function CampusProvider({ children }: { children: React.ReactNode }) {
 
   // The directory is one request, cached a day server-side. Everyone gets it:
   // the picker has nothing to offer without it.
+  //
+  // Keyed on the login rather than the session object: useSession hands back a
+  // fresh object on every session refresh, and depending on it re-ran this
+  // fetch each time -- four to six calls in a row on a single navigation.
+  const sessionLogin = session?.user?.login ?? null
   useEffect(() => {
-    if (!session) return
+    if (!sessionLogin) return
 
     fetch('/api/campuses')
       .then((res) => (res.ok ? res.json() : null))
@@ -50,7 +55,7 @@ export function CampusProvider({ children }: { children: React.ReactNode }) {
         // The picker falls back to the visitor's own campus, which is the one
         // they came for anyway.
       })
-  }, [session])
+  }, [sessionLogin])
 
   // Start where the visitor studies, and remember where they wandered.
   useEffect(() => {
