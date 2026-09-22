@@ -74,8 +74,11 @@ export function Changelog() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <div className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
+                {/* The subject line only. A commit message may carry a body
+                    of any length, and this panel used to print the whole of
+                    it -- one detailed commit filled the card on its own. */}
                 <p className="text-sm font-medium text-foreground whitespace-normal break-words flex-1">
-                  {commit.message}
+                  {commit.message.split("\n")[0]}
                 </p>
                 {commit.new && (
                   <Badge variant="default" className="flex items-center gap-1 text-xs flex-shrink-0">
