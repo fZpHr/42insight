@@ -2,6 +2,14 @@ import NextAuth from "next-auth";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { UserApi, exchangeForToken } from "@/lib/forty-two/user-api";
+import { primaryCampusName } from "@/lib/forty-two/campus-scope";
+import { primaryCursusUser } from "@/lib/forty-two/cursus";
+
+/**
+ * The two people who wrote this site. Neither is staff at 42, so there is no
+ * flag to read: this is the only place that knows.
+ */
+const ADMIN_LOGINS = ["bapasqui", "hbelle"];
 
 /**
  * Signs a visitor in on the same 42 application they use for data.
@@ -57,11 +65,23 @@ async function resolveProfile(clientId: string, clientSecret: string) {
   }
   const profile = await userResponse.json();
 
-  const cursusName =
-    profile.cursus_users?.[1]?.cursus?.name ??
-    profile.cursus_users?.[0]?.cursus?.name ??
-    "no-cursus";
-  const isPisciner = cursusName === "C Piscine" && profile.staff === false;
+  // Which cursus and campus a person is in decided by array position, which
+  // is a guess about the order 42 answers in rather than a lookup. Anyone with
+  // a Discovery Piscine, an event cursus or a second campus in the wrong slot
+  // was signed in as belonging somewhere they had left, or never were.
+  const cursusUser = primaryCursusUser(profile);
+  const cursusName = cursusUser?.cursus?.name ?? "no-cursus";
+
+  // 42 spells it "staff?", with the question mark, so `profile.staff` was
+  // always undefined and no one was ever staff: they were signed in as
+  // students, which is why two logins had to be named here to get an admin in.
+  const isStaff = profile["staff?"] === true;
+
+  // The same typo made "pisciner" unreachable, and the pages a pisciner is
+  // kept out of -- rankings, trombinoscope, query -- have therefore been open
+  // to them for as long as this has been running. Fixing the flag without
+  // saying so would shut those pages on them overnight, so the role stays
+  // unassigned: piscine or not, a visitor is a student here.
 
   return {
     id: profile.id.toString(),
@@ -69,19 +89,16 @@ async function resolveProfile(clientId: string, clientSecret: string) {
     email: profile.email,
     image: profile.image?.link,
     login: profile.login,
-    campus: profile.campus?.[1]?.name ?? profile.campus?.[0]?.name ?? "no-campus",
+    campus: primaryCampusName(profile) ?? "no-campus",
     cursus: cursusName,
     correction_point: profile.correction_point ?? 0,
     wallet: profile.wallet ?? 0,
-    level: profile.cursus_users?.[1]?.level ?? profile.cursus_users?.[0]?.level,
-    role:
-      profile.login === "bapasqui" || profile.login === "hbelle"
-        ? "admin"
-        : profile.staff
-          ? "staff"
-          : isPisciner
-            ? "pisciner"
-            : "student",
+    level: cursusUser?.level,
+    role: ADMIN_LOGINS.includes(profile.login)
+      ? "admin"
+      : isStaff
+        ? "staff"
+        : "student",
   };
 }
 
