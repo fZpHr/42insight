@@ -4,6 +4,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { UserApi, exchangeForToken } from "@/lib/forty-two/user-api";
 import { primaryCampusName } from "@/lib/forty-two/campus-scope";
 import { primaryCursusUser } from "@/lib/forty-two/cursus";
+import { getApi } from "@/lib/forty-two/api";
+import { cachedOnce } from "@/lib/memory-cache";
 
 /**
  * The two people who wrote this site. Neither is staff at 42, so there is no
@@ -102,6 +104,63 @@ async function resolveProfile(clientId: string, clientSecret: string) {
   };
 }
 
+/**
+ * The claims that go stale: what a profile says today rather than on the day
+ * someone signed in.
+ *
+ * A session lasts a month and its contents were written once, at sign-in, so
+ * the level in the sidebar was frozen from that moment: validate three
+ * projects and it still showed the old number until the cookie expired.
+ *
+ * The 42 request is behind the cache rather than behind a timestamp in the
+ * token, and that is the whole trick. The jwt callback below runs on every
+ * session read, but next-auth only writes the cookie back on its own session
+ * endpoint -- so a timestamp set during getServerSession in some API route is
+ * thrown away, and the "have I refreshed today?" question would answer no
+ * forever. The cache answers it instead, per server instance: one request a
+ * day per login, however many times the callback runs.
+ */
+const CLAIMS_TTL = 60 * 60 * 24;
+
+interface ProfileClaims {
+  campus: string;
+  cursus: string;
+  level: number | undefined;
+  correction_point: number;
+  wallet: number;
+  role: string;
+}
+
+async function freshClaims(login: string): Promise<ProfileClaims | null> {
+  // On the visitor's own key, like every other request for data. Without one
+  // there is nothing to read, and the session keeps what it has.
+  const api = await getApi();
+  if (!api) return null;
+
+  return cachedOnce(`session-claims:v1:${login}`, CLAIMS_TTL, async () => {
+    const response = await api.fetch(`/users/${encodeURIComponent(login)}`);
+    if (!response.ok) {
+      throw new Error(`42 API responded ${response.status}`);
+    }
+
+    const profile = await response.json();
+    const cursusUser = primaryCursusUser(profile);
+
+    return {
+      campus: primaryCampusName(profile) ?? "no-campus",
+      cursus: cursusUser?.cursus?.name ?? "no-cursus",
+      level: cursusUser?.level,
+      correction_point: profile.correction_point ?? 0,
+      wallet: profile.wallet ?? 0,
+      role: ADMIN_LOGINS.includes(profile.login)
+        ? "admin"
+        : profile["staff?"] === true
+          ? "staff"
+          : "student",
+    };
+  });
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -153,7 +212,23 @@ export const authOptions: NextAuthOptions = {
         token.wallet = (user as any).wallet;
         token.level = (user as any).level;
         token.role = (user as any).role;
+        return token;
       }
+
+      // Every later read: whatever has moved since, once a day. A token from
+      // before logins were stored has nothing to look up.
+      if (!token.login) return token;
+
+      try {
+        const claims = await freshClaims(token.login as string);
+        if (claims) Object.assign(token, claims);
+      } catch (error: any) {
+        // A 42 blip, an expired key, a rate limit. The session is still good
+        // and its numbers are still roughly right -- signing someone out over
+        // a stale level would be the larger failure.
+        console.error(`[auth] could not refresh ${token.login}:`, error.message);
+      }
+
       return token;
     },
 
