@@ -457,12 +457,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         {/* The two sets of colours the dark theme comes in, as the colours
             themselves: a swatch says what it does faster than a menu item
-            naming it, and signing out beside them rather than buried in a
-            hover menu on the user card, which is where it used to be and
-            where nobody found it. Both hidden when the sidebar is collapsed
-            to icons, where there is no room for either. */}
-        {open && (
-          <div className="flex items-center gap-2 px-2 pb-1">
+            naming it. Signing out sits beside them rather than in the hover
+            menu on the user card, which is where it used to be and where
+            nobody found it.
+
+            Both survive the sidebar collapsing to icons, stacked and shrunk
+            rather than dropped: the rail is 3rem across, so two 16px swatches
+            and a gap fit on one line with room to spare, and the button keeps
+            its icon and loses only its label. */}
+        <div
+          className={
+            open
+              ? "flex items-center gap-2 px-2 pb-1"
+              : "flex flex-col items-center gap-2 px-1 pb-1"
+          }
+        >
+          <div className="flex items-center gap-1.5">
             {(
               [
                 // Each square shows the two colours that palette is made of --
@@ -487,25 +497,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 title={option.label}
                 aria-label={option.label}
                 aria-pressed={palette === option.value}
-                className={`size-5 rounded-[6px] border border-white/10 transition-all ${option.swatch} ${
+                className={`${open ? "size-5" : "size-4"} rounded-[6px] border border-white/10 transition-all ${option.swatch} ${
                   palette === option.value
                     ? "ring-2 ring-offset-1 ring-offset-sidebar"
                     : "opacity-60 hover:opacity-100"
                 }`}
               />
             ))}
-
-            <button
-              type="button"
-              onClick={signOutfunc}
-              title="Sign out"
-              className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-destructive"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Sign out
-            </button>
           </div>
-        )}
+
+          <button
+            type="button"
+            onClick={signOutfunc}
+            title="Sign out"
+            aria-label="Sign out"
+            className={`inline-flex items-center gap-1.5 rounded-md text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-destructive ${
+              open ? "ml-auto px-2 py-1" : "p-1.5"
+            }`}
+          >
+            <LogOut className="h-3.5 w-3.5 shrink-0" />
+            {open && <span>Sign out</span>}
+          </button>
+        </div>
 
         {/* Social Links */}
         <SidebarMenu>
