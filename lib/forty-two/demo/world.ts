@@ -620,3 +620,39 @@ export const demoEvents = (campus: DemoCampus): any[] => {
     };
   });
 };
+
+/**
+ * What a campus is working on right now, as projects_users rows.
+ *
+ * Find Peers asks 42 for every in-progress registration on a campus and groups
+ * them by project, which is how it knows who to put you in touch with. Each
+ * demo student has walked the core path as far as their level allows, so the
+ * one they are on is the next one along -- that single row per student is the
+ * whole page.
+ */
+export const demoInProgress = (campus: DemoCampus): any[] =>
+  demoRoster(campus)
+    .map((student, index) => {
+      const project = CORE_PATH[student.done];
+      if (!project) return null;
+
+      return {
+        id: student.id * 1000 + student.done,
+        occurrence: 0,
+        final_mark: null,
+        status: "in_progress",
+        "validated?": null,
+        current_team_id: student.id * 1000 + student.done,
+        project: { id: project.id, name: project.name, slug: project.slug, parent_id: null },
+        cursus_ids: [CURSUS_ID],
+        marked: false,
+        marked_at: null,
+        retriable_at: null,
+        created_at: new Date(Date.now() - 12 * 86400000).toISOString(),
+        // Recent, because the page only counts registrations touched inside
+        // its own window and would otherwise drop every one of them.
+        updated_at: new Date(Date.now() - (index % 6) * 86400000).toISOString(),
+        user: demoUserSummary(student),
+      };
+    })
+    .filter(Boolean);

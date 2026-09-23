@@ -21,6 +21,7 @@ import {
   demoEveryone,
   demoExamResults,
   demoExams,
+  demoInProgress,
   demoLocations,
   demoRoster,
   demoStudentById,
@@ -143,17 +144,23 @@ const route = (path: string, params: URLSearchParams): Response => {
   }
 
   /* --------------------------------------------------------- projects_users */
-  // The exam tracker's second call: everyone's mark on the projects the
-  // campus's exams are sat on. It filters by campus rather than by roster, so
-  // the rows have to come from the campus the ids belong to.
+  // Two pages ask for these and want opposite halves of them. The exam
+  // tracker wants finished rows on the exam projects; Find Peers wants
+  // in-progress rows on the core path, which is how it knows who to put you
+  // in touch with. Both filter by campus rather than by roster, so the rows
+  // come from the campus the id belongs to, and then by status and project.
   if (path === "/projects_users") {
     const campus = demoCampusById(Number(params.get("filter[campus]")));
     if (!campus) return paged([], params);
 
+    const status = params.get("filter[status]");
     const wanted = new Set(idsFrom(params.get("filter[project_id]")));
-    const rows = demoExamResults(campus).filter(
-      (row) => wanted.size === 0 || wanted.has(row.project.id),
-    );
+
+    const rows = [
+      ...(status === "finished" || !status ? demoExamResults(campus) : []),
+      ...(status === "in_progress" || !status ? demoInProgress(campus) : []),
+    ].filter((row) => wanted.size === 0 || wanted.has(row.project.id));
+
     return paged(rows, params);
   }
 
