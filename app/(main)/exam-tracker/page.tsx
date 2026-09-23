@@ -233,24 +233,24 @@ export default function ExamTracker() {
                                     <TableRow key={index}>
                                         <TableCell>
                                             <div className="flex items-center space-x-3">
-                                                <div className="w-10 h-10 bg-gray-500 rounded-full animate-pulse"></div>
-                                                <div className="h-4 bg-gray-500 rounded w-24 animate-pulse"></div>
+                                                <div className="w-10 h-10 bg-muted rounded-full animate-pulse"></div>
+                                                <div className="h-4 bg-muted rounded w-24 animate-pulse"></div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="h-4 bg-gray-500 rounded w-12 animate-pulse"></div>
+                                            <div className="h-4 bg-muted rounded w-12 animate-pulse"></div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="h-4 bg-gray-500 rounded w-20 animate-pulse"></div>
+                                            <div className="h-4 bg-muted rounded w-20 animate-pulse"></div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
+                                            <div className="h-4 bg-muted rounded w-16 animate-pulse"></div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
+                                            <div className="h-4 bg-muted rounded w-16 animate-pulse"></div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="h-4 bg-gray-500 rounded w-16 animate-pulse"></div>
+                                            <div className="h-4 bg-muted rounded w-16 animate-pulse"></div>
                                         </TableCell>
                                     </TableRow>
                                 ))}

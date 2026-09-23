@@ -43,29 +43,29 @@ export function LiveActivityLog({ language }: { language: Language }) {
 
   return (
     <figure className="space-y-2">
-      <div className="overflow-hidden rounded-lg border bg-zinc-950 p-4">
-        <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300">
+      <div className="overflow-hidden rounded-lg border bg-card p-4">
+        <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
           </span>
           <span>{t.activityLive}</span>
         </div>
 
-        <div className="rounded-md border border-zinc-800 bg-zinc-900">
-          <div className="flex items-baseline justify-between border-b border-zinc-800 px-3 py-2">
-            <span className="text-xs font-medium text-zinc-200">
+        <div className="rounded-md border border-border bg-muted">
+          <div className="flex items-baseline justify-between border-b border-border px-3 py-2">
+            <span className="text-xs font-medium text-foreground">
               {t.activityTitle}
             </span>
-            <span className="text-xs text-zinc-500">42 API</span>
+            <span className="text-xs text-muted-foreground">42 API</span>
           </div>
 
           {calls === null ? (
-            <p className="px-3 py-4 text-xs text-zinc-500">
+            <p className="px-3 py-4 text-xs text-muted-foreground">
               {t.activityReading}
             </p>
           ) : calls.length === 0 ? (
-            <p className="px-3 py-4 text-xs text-zinc-500">
+            <p className="px-3 py-4 text-xs text-muted-foreground">
               {t.activityEmpty}
             </p>
           ) : (
@@ -77,18 +77,18 @@ export function LiveActivityLog({ language }: { language: Language }) {
                 >
                   <span
                     className={`tabular-nums ${
-                      call.status >= 400 ? "text-red-400" : "text-zinc-500"
+                      call.status >= 400 ? "text-red-400" : "text-muted-foreground"
                     }`}
                   >
                     {call.status}
                   </span>
                   <span
-                    className="flex-1 truncate font-mono text-zinc-300"
+                    className="flex-1 truncate font-mono text-muted-foreground"
                     title={call.path}
                   >
                     {readable(call.path)}
                   </span>
-                  <span className="tabular-nums text-zinc-500">
+                  <span className="tabular-nums text-muted-foreground">
                     {call.durationMs}ms
                   </span>
                 </li>

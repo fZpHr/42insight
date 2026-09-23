@@ -55,6 +55,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Moon, Sun } from "lucide-react";
+import { applyPalette, readPalette, type Palette } from "@/lib/palette";
 import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react"
@@ -213,6 +214,21 @@ const bottomLinks = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { setTheme } = useTheme();
+
+  // The dark theme comes in two sets of colours, and the choice lives on the
+  // document rather than in React: read after mount, since the server never
+  // sees localStorage and guessing would flash the wrong one.
+  const [palette, setPalette] = useState<Palette>("space");
+  useEffect(() => {
+    const saved = readPalette();
+    setPalette(saved);
+    applyPalette(saved);
+  }, []);
+
+  const choosePalette = (next: Palette) => {
+    setPalette(next);
+    applyPalette(next);
+  };
   const { data: session, status } = useSession();
   const user = session?.user;
   const { open } = useSidebar();
@@ -437,6 +453,47 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <SidebarSeparator />
+
+        {/* The two sets of colours the dark theme comes in, as the colours
+            themselves: a swatch says what it does faster than a menu item
+            naming it. Hidden when the sidebar is collapsed to icons, where
+            there is no room for a choice nobody is looking for. */}
+        {open && (
+          <div className="flex items-center gap-2 px-2 pb-1">
+            <span className="text-[11px] text-sidebar-foreground/70">Colours</span>
+            {(
+              [
+                // Each square shows the two colours that palette is made of --
+                // its surface and its accent -- since a swatch of the surface
+                // alone is near-black either way and tells nobody anything.
+                {
+                  value: "space",
+                  label: "Space: near-black and blue",
+                  swatch: "bg-[linear-gradient(135deg,#0b0e16_50%,#3b82f6_50%)] ring-[#3b82f6]",
+                },
+                {
+                  value: "classic",
+                  label: "Classic: greys and green",
+                  swatch: "bg-[linear-gradient(135deg,#2b2b2b_50%,#22c55e_50%)] ring-[#9ca3af]",
+                },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => choosePalette(option.value)}
+                title={option.label}
+                aria-label={option.label}
+                aria-pressed={palette === option.value}
+                className={`size-5 rounded-[6px] border border-white/10 transition-all ${option.swatch} ${
+                  palette === option.value
+                    ? "ring-2 ring-offset-1 ring-offset-sidebar"
+                    : "opacity-60 hover:opacity-100"
+                }`}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Social Links */}
         <SidebarMenu>

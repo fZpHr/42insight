@@ -206,7 +206,7 @@ export default function ClusterMap() {
                       return (
                         <div
                           key={colIndex}
-                          className="aspect-square w-9 sm:w-8 md:w-10 lg:w-20 bg-zinc-800 text-white flex items-center justify-center text-[0.6rem]"
+                          className="aspect-square w-9 sm:w-8 md:w-10 lg:w-20 bg-muted text-foreground flex items-center justify-center text-[0.6rem]"
                         >
                           {cell.split(":")[1]}
                         </div>
@@ -224,7 +224,7 @@ export default function ClusterMap() {
                             className={`aspect-square w-9 sm:w-8 md:w-10 lg:w-20 rounded-md overflow-hidden flex items-center justify-center text-[0.6rem] ${
                               student
                                 ? "text-white cursor-pointer"
-                                : "bg-gray-200 text-gray-500"
+                                : "bg-muted text-muted-foreground"
                             } hover:shadow-lg transition-shadow`}
                             onClick={() => {
                               if (student) {
@@ -446,7 +446,7 @@ export default function ClusterMap() {
       </div>
 
       {isLoading || isLoadingPlan ? (
-        <div className="text-center text-sm text-gray-500 py-8">
+        <div className="text-center text-sm text-muted-foreground py-8">
           {isLoadingPlan ? "Working out the layout…" : "Loading cluster…"}
         </div>
       ) : hasFloorPlan ? (

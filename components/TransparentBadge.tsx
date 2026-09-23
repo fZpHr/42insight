@@ -5,7 +5,7 @@ export const TransparentBadge: React.FC<{
 }> = ({ text, bgColor, textColor }) => {
   return (
     <span
-      className={`backdrop-blur-sm px-3 py-1 rounded-md transition-colors cursor-default ${bgColor} ${textColor}`}
+      className={`px-3 py-1 rounded-md transition-colors cursor-default ${bgColor} ${textColor}`}
     >
       {text}
     </span>
