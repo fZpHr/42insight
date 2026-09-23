@@ -228,6 +228,17 @@ export default function Rankings() {
    * silently on the next visit.
    */
   const [globalMode, setGlobalMode] = useState(false);
+  /**
+   * Whether anything has been asked for yet.
+   *
+   * A campus is a page walk on the visitor's own key, and opening this page
+   * used to spend it before anyone had said which campus, which cursus or
+   * which piscine promotion they meant -- then spend it again on the answer
+   * they actually wanted. So the pickers come up first and nothing is fetched
+   * until they ask; after that, changing a picker refetches as before, since
+   * by then they are looking rather than arriving.
+   */
+  const [armed, setArmed] = useState(false);
 
   /**
    * 42cursus or the piscine. Not persisted either: somebody who came to look
@@ -421,11 +432,20 @@ export default function Rankings() {
       }
     },
     enabled:
-      selectedCampus === "Global"
+      armed &&
+      (selectedCampus === "Global"
         ? campuses.length > 0
-        : !!(selectedCampus || user?.campus),
+        : !!(selectedCampus || user?.campus)),
     staleTime: 10 * 60 * 1000,
   });
+
+  // Coming back to a campus already in the cache costs nothing, so there is
+  // nothing to ask permission for: the list is there, and the invitation to
+  // pick one would sit above it saying otherwise. Arming it also means a
+  // change of campus from here fetches straight away, as it did before.
+  useEffect(() => {
+    if (rawStudents && rawStudents.length > 0) setArmed(true);
+  }, [rawStudents]);
 
   const effectiveCampus = selectedCampus || user?.campus || "";
 
@@ -890,7 +910,7 @@ export default function Rankings() {
       case 1:
         return <Trophy className="h-6 w-6 text-yellow-500" />;
       case 2:
-        return <Medal className="h-6 w-6 text-gray-400" />;
+        return <Medal className="h-6 w-6 text-muted-foreground" />;
       case 3:
         return <Award className="h-6 w-6 text-amber-600" />;
       default:
@@ -1018,7 +1038,7 @@ export default function Rankings() {
   // isFetching both read false in that window and the page fell through to
   // an empty "0 students" render until a manual refetch (which ignores
   // `enabled`) actually showed anything.
-  if (!effectiveCampus || ((isLoading || isFetching) && !isSuccess)) {
+  if (armed && (!effectiveCampus || ((isLoading || isFetching) && !isSuccess))) {
     return (
       <LoadingScreen
         message={
@@ -1690,7 +1710,29 @@ export default function Rankings() {
         </Card>
       )}
 
-      {!isLoading && processedStudents.length === 0 && (
+      {/* Nothing asked for yet: the pickers above are the point of this
+          screen, since what is chosen there decides what the fetch costs. */}
+      {!armed && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="mx-auto max-w-md py-8 text-center">
+              <Trophy className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="mb-2 text-lg font-medium">
+                {cursus === "piscine" ? "Pick a promotion" : "Pick a campus"}
+              </h3>
+              <p className="mb-5 text-sm text-muted-foreground">
+                Choose above what you want to see. Reading a campus spends your
+                own 42 budget, so nothing is fetched until you ask.
+              </p>
+              <Button onClick={() => setArmed(true)} className="min-w-40">
+                Load the rankings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {armed && !isLoading && processedStudents.length === 0 && (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
@@ -1815,7 +1857,7 @@ export default function Rankings() {
                           </span>
                         )}
                         <Badge variant="outline" className="text-xs">
-                          Level {student.level}
+                          Level {typeof student.level === "number" ? parseFloat(student.level.toFixed(2)) : student.level}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
