@@ -33,7 +33,7 @@ import { toast } from "sonner";
 import { WORLD_LAND_PATH } from "@/lib/forty-two/data/world-land";
 import campusCoords from "@/lib/forty-two/data/campus-coords.json";
 
-type CampusPoint = { name: string; lat: number; lon: number };
+type CampusPoint = { name: string; lat: number; lon: number; users: number };
 
 /**
  * Every campus 42 has, with the coordinates of the city it is in.
@@ -191,20 +191,29 @@ const MAP_CENTRE_LAT =
   2;
 const MAP_SHIFT = MAP_CENTRE_LAT / 180;
 
+/** The largest campus there is, which every other one is drawn against. */
+const BIGGEST_CAMPUS = Math.max(...CAMPUS_COORDS.map((point) => point.users));
+
 /**
- * How lively a campus looks on the map: dim, awake, or busy.
+ * How big and how bright a campus is drawn: 0 for the smallest, 1 for Paris.
  *
- * Decoration, not data. Telling anyone how busy a campus really is would mean
- * reading fifty-four rosters before they have even signed in, which is the
- * whole thing this page exists to avoid. So it is a number derived from the
- * name -- stable, so a campus keeps its colour from one visit to the next,
- * and varied enough that the map does not look like a grid of identical pins.
+ * This used to be a hash of the campus name -- three tiers of colour, chosen
+ * so the map had some life in it rather than a grid of identical pins, and
+ * meaning nothing at all. It is the account count now, from the same /campus
+ * call the rest of the site runs on, stored beside the coordinates so the
+ * page still fetches nothing before anyone signs in.
+ *
+ * Square root, not the count itself: a dot's *area* is what the eye reads as
+ * quantity, so the diameter has to go as the square root or Paris, at forty
+ * thousand against Nablus's two, would be two hundred times as wide. As it is
+ * it comes out about ten pixels against three.
+ *
+ * The count 42 gives is cumulative -- everyone who has ever held an account
+ * there, not who is in the building today -- so this is the size of a campus
+ * over its life, which is the honest thing for a map to show.
  */
-const busyness = (name: string): "dim" | "awake" | "busy" => {
-  let sum = 0;
-  for (const letter of name) sum = (sum * 31 + letter.charCodeAt(0)) % 997;
-  return sum % 3 === 0 ? "busy" : sum % 3 === 1 ? "awake" : "dim";
-};
+const campusWeight = (users: number): number =>
+  Math.sqrt(Math.max(users, 0)) / Math.sqrt(BIGGEST_CAMPUS);
 
 const Globe = ({ focus }: { focus: CampusPoint | null }) => {
   const track = useRef<HTMLDivElement>(null);
@@ -257,10 +266,12 @@ const Globe = ({ focus }: { focus: CampusPoint | null }) => {
             {CAMPUS_COORDS.map((campus) => (
               <span
                 key={campus.name}
-                className={`campus campus-${busyness(campus.name)} ${focus?.name === campus.name ? "campus-yours" : ""}`}
+                className={`campus ${focus?.name === campus.name ? "campus-yours" : ""}`}
                 style={{
                   left: `${((campus.lon + 180) / 360) * 100}%`,
                   top: `${((90 - campus.lat) / 180) * 100}%`,
+                  // The one number the rules below are written in terms of.
+                  ["--weight" as string]: campusWeight(campus.users).toFixed(3),
                 }}
               />
             ))}
@@ -368,37 +379,36 @@ const skyStyles = `
   }
   .campus {
     position: absolute;
-    width: 3px;
-    height: 3px;
-    margin: -1.5px 0 0 -1.5px;
     border-radius: 50%;
-    background: rgba(191, 219, 254, 0.9);
-    box-shadow: 0 0 5px rgba(96, 165, 250, 0.8);
-  }
-  /* Three tiers, so the map has some life in it rather than one flat colour.
-     Decorative: see busyness() for why this is not real activity. */
-  .campus-dim {
-    background: rgba(148, 163, 184, 0.55);
-    box-shadow: 0 0 4px rgba(100, 116, 139, 0.5);
-  }
-  .campus-awake {
-    background: rgba(125, 211, 252, 0.85);
-    box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
-  }
-  .campus-busy {
-    width: 4px;
-    height: 4px;
-    margin: -2px 0 0 -2px;
-    background: rgba(253, 224, 71, 0.95);
-    box-shadow: 0 0 8px rgba(250, 204, 21, 0.8);
+
+    /* Everything here is written against --weight, which each dot carries:
+       0 for the smallest campus, 1 for Paris. Size, colour and glow all move
+       together, so a big campus reads as big from any one of the three.
+       Slate at the bottom end, near-white blue at the top. */
+    width: calc(2.6px + var(--weight) * 8px);
+    height: calc(2.6px + var(--weight) * 8px);
+    margin: calc(-1.3px - var(--weight) * 4px) 0 0
+      calc(-1.3px - var(--weight) * 4px);
+    background: color-mix(
+      in oklab,
+      rgb(130 150 180) calc(100% - var(--weight) * 100%),
+      rgb(226 242 255)
+    );
+    opacity: calc(0.55 + var(--weight) * 0.45);
+    box-shadow: 0 0 calc(3px + var(--weight) * 10px)
+      rgb(96 165 250 / calc(0.3 + var(--weight) * 0.55));
   }
 
-  /* The one the visitor belongs to, once 42 has said which it is. */
+  /* The one the visitor belongs to, once 42 has said which it is. Never
+     smaller than the size its own campus earns, so signing in from Paris does
+     not shrink the dot the map has just flown to. */
   .campus-yours {
-    width: 6px;
-    height: 6px;
-    margin: -3px 0 0 -3px;
+    width: max(6px, calc(2.6px + var(--weight) * 8px));
+    height: max(6px, calc(2.6px + var(--weight) * 8px));
+    margin: min(-3px, calc(-1.3px - var(--weight) * 4px)) 0 0
+      min(-3px, calc(-1.3px - var(--weight) * 4px));
     background: #eaffea;
+    opacity: 1;
     box-shadow: 0 0 12px 3px rgba(74, 222, 128, 0.95);
   }
   /* A green light opening out from it, once, as the map flies in. */
