@@ -216,16 +216,50 @@ const campusWeight = (users: number): number =>
   Math.sqrt(Math.max(users, 0)) / Math.sqrt(BIGGEST_CAMPUS);
 
 /**
- * The same thing again, for colour rather than for size.
+ * Where a campus places among the fifty-four: 0 for the smallest, 1 for Paris.
  *
- * Square root is right for area and wrong for a colour ramp: it leaves most
- * campuses between 0.15 and 0.4, which over any two colours is a band of
- * near-identical dots. The gamma pulls that band open -- Quebec lands at
- * 0.33, Helsinki 0.42, Madrid 0.71 -- so the ramp is actually travelled
- * instead of being crowded into its first third.
+ * Size comes off the count itself and stays literal -- Paris really is four
+ * times Nice across. Colour comes off the rank instead, because the counts
+ * pile up: three quarters of 42 sits between a thousand and six thousand
+ * accounts, so a ramp laid over the raw numbers hands that whole crowd the
+ * same shade and spends its range on Paris alone. By rank the ramp is walked
+ * evenly, and what a colour says is where a campus places, not how many
+ * people have passed through it.
  */
-const campusLight = (users: number): number =>
-  Math.pow(campusWeight(users), 0.6);
+const CAMPUS_RANK = new Map<string, number>(
+  [...CAMPUS_COORDS]
+    .sort((a, b) => a.users - b.users)
+    .map((point, index, all) => [point.name, index / (all.length - 1)]),
+);
+
+/**
+ * The ramp itself, as stops along that rank.
+ *
+ * Indigo, blue, cyan, pale, gold. It goes to gold through white rather than
+ * straight from cyan, since mixing cyan with gold passes through green on the
+ * way -- and green is the visitor's own campus, which has to stay the one
+ * colour nothing else on the map wears.
+ */
+const CAMPUS_RAMP: Array<[number, [number, number, number]]> = [
+  [0, [70, 84, 138]],
+  [0.3, [84, 132, 226]],
+  [0.58, [56, 189, 248]],
+  [0.82, [186, 230, 253]],
+  [1, [253, 200, 88]],
+];
+
+const campusColour = (rank: number): string => {
+  const at = Math.min(Math.max(rank, 0), 1);
+  let index = 0;
+  while (index < CAMPUS_RAMP.length - 2 && at > CAMPUS_RAMP[index + 1][0]) index++;
+
+  const [from, lower] = CAMPUS_RAMP[index];
+  const [to, upper] = CAMPUS_RAMP[index + 1];
+  const along = to === from ? 0 : (at - from) / (to - from);
+  const channel = (i: number) => Math.round(lower[i] + (upper[i] - lower[i]) * along);
+
+  return `rgb(${channel(0)} ${channel(1)} ${channel(2)})`;
+};
 
 const Globe = ({ focus }: { focus: CampusPoint | null }) => {
   const track = useRef<HTMLDivElement>(null);
@@ -282,10 +316,11 @@ const Globe = ({ focus }: { focus: CampusPoint | null }) => {
                 style={{
                   left: `${((campus.lon + 180) / 360) * 100}%`,
                   top: `${((90 - campus.lat) / 180) * 100}%`,
-                  // The two numbers the rules below are written in terms of:
-                  // how big the dot is, and how far up the colour ramp it is.
+                  // What the rules below are written in terms of: how big
+                  // the dot is, where it places, and the colour that earns.
                   ["--weight" as string]: campusWeight(campus.users).toFixed(3),
-                  ["--lit" as string]: campusLight(campus.users).toFixed(3),
+                  ["--lit" as string]: (CAMPUS_RANK.get(campus.name) ?? 0).toFixed(3),
+                  ["--tint" as string]: campusColour(CAMPUS_RANK.get(campus.name) ?? 0),
                 }}
               />
             ))}
@@ -395,36 +430,20 @@ const skyStyles = `
     position: absolute;
     border-radius: 50%;
 
-    /* Size from --weight, colour and glow from --lit: both come off the same
-       account count, and both are 0 for the smallest campus and 1 for Paris.
-
-       Three stops rather than two, because a ramp between two neighbouring
-       blues is a ramp nobody can see. Cold slate at the bottom, a real sky
-       blue through the middle, white-hot at the top -- the first half of
-       --lit travels the first mix, the second half the second. */
-    --cold: rgb(88 106 134);
-    --mid: rgb(56 176 255);
-    --hot: rgb(240 250 255);
-
+    /* Size from --weight, which is the account count. Colour from --tint and
+       how far it carries from --lit, which are the campus's rank among the
+       fifty-four. Each dot brings all three with it. */
     width: calc(2.6px + var(--weight) * 8px);
     height: calc(2.6px + var(--weight) * 8px);
     margin: calc(-1.3px - var(--weight) * 4px) 0 0
       calc(-1.3px - var(--weight) * 4px);
-    background: color-mix(
-      in oklab,
-      color-mix(
-        in oklab,
-        var(--cold),
-        var(--mid) calc(clamp(0, var(--lit) * 2, 1) * 100%)
-      ),
-      var(--hot) calc(clamp(0, var(--lit) * 2 - 1, 1) * 100%)
-    );
+    background: var(--tint);
     opacity: calc(0.5 + var(--lit) * 0.5);
     box-shadow: 0 0 calc(2px + var(--lit) * 11px)
       color-mix(
-        in oklab,
-        rgb(59 130 246 / 0.35),
-        rgb(125 211 252 / 0.95) calc(var(--lit) * 100%)
+        in srgb,
+        var(--tint) calc(30% + var(--lit) * 55%),
+        transparent
       );
   }
 
