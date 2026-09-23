@@ -34,14 +34,12 @@ const adminStaffOnlyRoutes = [
 ]
 
 /**
- * Set by the DevPreviewToggle button, to look at a page's layout during
- * `npm run dev` without signing in. Gated on NODE_ENV so it does nothing on
- * Vercel, where every deployment -- production and preview alike -- runs
- * with NODE_ENV=production.
+ * Demo mode, set by the button on the sign-in page. It carries a real session
+ * too, so the authorisation check below passes on the token like anyone's --
+ * this is only about the key, which a demo visitor does not have and does not
+ * need, since getApi() serves them an invented network instead.
  */
-const isDevPreview = (req: NextRequest) =>
-  process.env.NODE_ENV !== "production" &&
-  req.cookies.get("dev_preview")?.value === "1"
+const isDemo = (req: NextRequest) => req.cookies.get("demo")?.value === "1"
 
 
 export default withAuth(
@@ -89,7 +87,7 @@ export default withAuth(
       (route) => pathname === route || pathname.startsWith(route + "/"),
     )
 
-    if (needsKey && !hasKey && !isDevPreview(req)) {
+    if (needsKey && !hasKey && !isDemo(req)) {
       return NextResponse.redirect(new URL(API_KEY_PAGE, req.url))
     }
 
@@ -112,7 +110,7 @@ export default withAuth(
     // /api/auth/error?error=Configuration, right after a successful login.
     secret: process.env.JWT_SECRET,
     callbacks: {
-      authorized: ({ token, req }) => !!token || isDevPreview(req)
+      authorized: ({ token, req }) => !!token || isDemo(req)
     },
   }
 )

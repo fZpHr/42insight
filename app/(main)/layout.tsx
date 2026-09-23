@@ -9,7 +9,7 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useSession } from "next-auth/react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ApiStatusBar } from "@/components/ApiStatusBar";
-import { isDevPreviewEnabled } from "@/lib/dev-preview";
+import { isDemoEnabled } from "@/lib/demo-mode";
 
 function SidebarContent({ children }: { children: React.ReactNode }) {
   const [showShortcutTip, setShowShortcutTip] = useState(() => {
@@ -101,7 +101,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     } else if (status === "unauthenticated") {
       // Preview mode never gets a session, so waiting for one here would
       // spin forever -- fall back to a plain, unpersisted open sidebar.
-      if (isDevPreviewEnabled()) {
+      if (isDemoEnabled()) {
         setSidebarOpen(true);
         setIsInitialized(true);
       } else {

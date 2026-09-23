@@ -1,4 +1,7 @@
 import { UserApi, getUserApi } from "@/lib/forty-two/user-api";
+import { cookies } from "next/headers";
+import { DEMO_COOKIE } from "@/lib/demo-mode";
+import { demoApi } from "@/lib/forty-two/demo/api";
 
 /**
  * Which key a request travels on: the visitor's, or none at all.
@@ -34,4 +37,14 @@ export interface FortyTwoApi {
  * fallback: falling back to the site key is the exact failure this design
  * exists to prevent.
  */
-export const getApi = async (): Promise<UserApi | null> => getUserApi();
+export const getApi = async (): Promise<FortyTwoApi | null> => {
+  const own = await getUserApi();
+  if (own) return own;
+
+  // Only once there is no key of their own. A visitor who has connected one
+  // is never served invented rows, whatever cookies they are carrying.
+  const store = await cookies();
+  if (store.get(DEMO_COOKIE)?.value === "1") return demoApi();
+
+  return null;
+};

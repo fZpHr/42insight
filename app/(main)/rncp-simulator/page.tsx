@@ -19,7 +19,7 @@ import { useSession, signIn } from "next-auth/react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
 import { Loader2, GraduationCap, Trophy, Award, RefreshCw, History } from "lucide-react"
-import { isDevPreviewEnabled } from "@/lib/dev-preview"
+import { isDemoEnabled } from "@/lib/demo-mode"
 import { LEGACY_PROJECT_IDS } from "@/lib/forty-two/forty-two-rncp"
 
 const SHOW_LEGACY_STORAGE_KEY = "rncp_show_legacy"
@@ -46,7 +46,7 @@ export default function RNCPSimulator() {
   // preview bypass.
   const { data: session, status } = useSession()
   useEffect(() => {
-    if (status === "unauthenticated" && !isDevPreviewEnabled()) signIn()
+    if (status === "unauthenticated" && !isDemoEnabled()) signIn()
   }, [status])
   const { width, height } = useWindowSize()
 

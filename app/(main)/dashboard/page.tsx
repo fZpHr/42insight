@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/tooltip";
 import { TransparentBadge } from "@/components/TransparentBadge";
 import { useSession, signOut } from "next-auth/react";
-import { isDevPreviewEnabled } from "@/lib/dev-preview";
+import { isDemoEnabled } from "@/lib/demo-mode";
 import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 import { Changelog } from "@/components/Changelog";
@@ -312,7 +312,7 @@ export default function Dashboard() {
   const effectiveCampus = selectedCampus || user?.campus || "";
 
   useEffect(() => {
-    if (status === "unauthenticated" && !isDevPreviewEnabled()) {
+    if (status === "unauthenticated" && !isDemoEnabled()) {
       signOut({ callbackUrl: '/', redirect: true });
     }
   }, [status]);

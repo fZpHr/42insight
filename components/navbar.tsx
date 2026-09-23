@@ -23,6 +23,7 @@ import {
   GamepadIcon,
   Award,
   KeyRound,
+  LogOut,
   Bug,
 } from "lucide-react";
 
@@ -61,7 +62,7 @@ import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react"
 import { hasApiKey } from "@/lib/api-client"
 import { CampusSwitcher } from "@/components/CampusSwitcher";
-import { isDevPreviewEnabled } from "@/lib/dev-preview";
+import { isDemoEnabled } from "@/lib/demo-mode";
 
 
 const hasAccessToRoute = (url: string, role?: string | null) => {
@@ -257,7 +258,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   useEffect(() => {
     setKeyPresent(hasApiKey())
-    setPreviewBypass(isDevPreviewEnabled())
+    setPreviewBypass(isDemoEnabled())
   }, [pathname])
 
   const signOutfunc = async () => {
@@ -456,10 +457,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         {/* The two sets of colours the dark theme comes in, as the colours
             themselves: a swatch says what it does faster than a menu item
-            naming it. Hidden when the sidebar is collapsed to icons, where
-            there is no room for a choice nobody is looking for. */}
-        {open && (
-          <div className="flex items-center gap-2 px-2 pb-1">
+            naming it. Signing out sits beside them rather than in the hover
+            menu on the user card, which is where it used to be and where
+            nobody found it.
+
+            Both survive the sidebar collapsing to icons rather than being
+            dropped. On the 3rem rail the swatches stack instead of sitting
+            side by side -- two squares abreast there read as one wide button
+            rather than a choice -- and the sign-out keeps its icon and loses
+            only its label. */}
+        <div
+          className={
+            open
+              ? "flex items-center gap-2 px-2 pb-1"
+              : "flex flex-col items-center gap-2 px-1 pb-1"
+          }
+        >
+          <div
+            className={
+              open ? "flex items-center gap-1.5" : "flex flex-col gap-1.5"
+            }
+          >
             {(
               [
                 // Each square shows the two colours that palette is made of --
@@ -492,7 +510,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               />
             ))}
           </div>
-        )}
+
+          <button
+            type="button"
+            onClick={signOutfunc}
+            title="Sign out"
+            aria-label="Sign out"
+            className={`inline-flex items-center gap-1.5 rounded-md text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-destructive ${
+              open ? "ml-auto px-2 py-1" : "p-1.5"
+            }`}
+          >
+            <LogOut className="h-3.5 w-3.5 shrink-0" />
+            {open && <span>Sign out</span>}
+          </button>
+        </div>
 
         {/* Social Links */}
         <SidebarMenu>

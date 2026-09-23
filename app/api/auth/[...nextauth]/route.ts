@@ -6,6 +6,7 @@ import { primaryCampusName } from "@/lib/forty-two/campus-scope";
 import { primaryCursusUser } from "@/lib/forty-two/cursus";
 import { getApi } from "@/lib/forty-two/api";
 import { cachedOnce } from "@/lib/memory-cache";
+import { demoViewer, demoCampusById } from "@/lib/forty-two/demo/world";
 
 /**
  * The two people who wrote this site. Neither is staff at 42, so there is no
@@ -186,6 +187,43 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+
+    /**
+     * Demo mode's sign-in: no credentials, no 42 request, no key.
+     *
+     * A visitor who has never registered an application cannot see a single
+     * page here, which makes the first visit a form asking for credentials
+     * for a site they have not been allowed to look at. This signs them in as
+     * one of the invented students instead, and the demo cookie set alongside
+     * it makes getApi() serve the invented network (lib/forty-two/demo).
+     *
+     * It grants nothing. The session carries `demo`, the pages label
+     * themselves with it, and no request made under it reaches 42.
+     */
+    CredentialsProvider({
+      id: "demo",
+      name: "Demo",
+      credentials: {},
+      async authorize() {
+        const viewer = demoViewer();
+        const campus = demoCampusById(viewer.campusId);
+
+        return {
+          id: String(viewer.id),
+          name: viewer.display,
+          email: `${viewer.login}@demo.42insight`,
+          image: viewer.image,
+          login: viewer.login,
+          campus: campus?.name ?? "Paris",
+          cursus: "42cursus",
+          correction_point: viewer.correctionPoint,
+          wallet: viewer.wallet,
+          level: viewer.level,
+          role: "student",
+          demo: true,
+        } as any;
+      },
+    }),
   ],
 
   secret: process.env.JWT_SECRET,
@@ -212,8 +250,13 @@ export const authOptions: NextAuthOptions = {
         token.wallet = (user as any).wallet;
         token.level = (user as any).level;
         token.role = (user as any).role;
+        token.demo = (user as any).demo === true;
         return token;
       }
+
+      // A demo session has nothing to refresh: its numbers came from a world
+      // this machine made up, and re-reading them would only spend a request.
+      if (token.demo) return token;
 
       // Every later read: whatever has moved since, once a day. A token from
       // before logins were stored has nothing to look up.
@@ -241,6 +284,7 @@ export const authOptions: NextAuthOptions = {
       session.user.wallet = token.wallet as number;
       session.user.level = token.level as number;
       session.user.role = token.role as string;
+      (session.user as any).demo = token.demo === true;
       return session;
     },
 
