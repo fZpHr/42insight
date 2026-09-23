@@ -170,6 +170,14 @@ export const copy = {
  * not reason enough to greet everyone in French; whoever wants French says so
  * once, and that choice is what counts from then on.
  */
+/**
+ * Which language the page opens in.
+ *
+ * English unless the visitor has picked otherwise. 42 is a network of 54
+ * campuses and this site is no longer only for the two French ones, so the
+ * browser's own preference is not a good enough reason to greet someone in
+ * French; whoever wants French says so once and is remembered.
+ */
 export const detectLanguage = (): Language => {
   if (typeof window === "undefined") return "en";
 

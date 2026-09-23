@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { primaryCampusName } from "@/lib/forty-two/campus-scope";
 import { useQuery } from "@tanstack/react-query";
 import {
   Trophy,
@@ -595,7 +596,9 @@ export default function Dashboard() {
             Welcome back, {user?.name}!
           </h1>
           <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-lg">
-            <span>{user?.campus || userIntraInfo?.campus?.[0]?.name} •</span>
+            {/* campus[0] is whichever campus 42 lists first, which for anyone
+                who has transferred is the one they left. */}
+            <span>{user?.campus || primaryCampusName(userIntraInfo)} •</span>
             {isStaff ? (
               <span>Admin</span>
             ) : cursusChoices.length > 1 ? (

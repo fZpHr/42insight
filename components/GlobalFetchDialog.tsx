@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { fetchJson } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 
 /**
  * Asks before reading all 42 at once.
@@ -34,6 +35,21 @@ interface GlobalCost {
 }
 
 const minutes = (seconds: number) => Math.max(1, Math.round(seconds / 60));
+
+/**
+ * Roughly what Global weighs in the tab, which is the cost the other figures
+ * miss: the requests are spent once, this sits there for as long as the page
+ * is open.
+ *
+ * 415 bytes is a real student as this site serves one, measured over a
+ * hundred of them; parsed into objects a browser holds something like two and
+ * a half times that, so the figure is deliberately a round "about".
+ */
+const BYTES_PER_STUDENT = 415;
+const IN_MEMORY_FACTOR = 2.5;
+
+const memoryMb = (students: number) =>
+  Math.round((students * BYTES_PER_STUDENT * IN_MEMORY_FACTOR) / 1_048_576);
 
 export function GlobalFetchDialog({
   open,
@@ -89,6 +105,11 @@ export function GlobalFetchDialog({
                   : `requests, ${share}% of your hour`
               }
             />
+            <Figure
+              className="col-span-2"
+              value={`~${memoryMb(cost.students)} MB`}
+              label="held in this tab until you leave the page"
+            />
           </div>
         )}
 
@@ -111,8 +132,16 @@ export function GlobalFetchDialog({
   );
 }
 
-const Figure = ({ value, label }: { value: string; label: string }) => (
-  <div className="rounded-md border bg-muted/40 px-3 py-2">
+const Figure = ({
+  value,
+  label,
+  className,
+}: {
+  value: string;
+  label: string;
+  className?: string;
+}) => (
+  <div className={cn("rounded-md border bg-muted/40 px-3 py-2", className)}>
     <p className="text-lg font-semibold leading-none tabular-nums">{value}</p>
     <p className="mt-1 text-[11px] text-muted-foreground">{label}</p>
   </div>

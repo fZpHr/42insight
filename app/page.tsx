@@ -528,7 +528,7 @@ const resolveCallbackUrl = (raw: string | null): string => {
 export default function Home() {
   const router = useRouter();
   const { status } = useSession();
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(true);
   const [language, setLanguage] = useState<Language>("en");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -545,7 +545,9 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      setPaused(window.localStorage.getItem(PAUSE_STORAGE_KEY) === "true");
+      // Only a stored "false" starts it: no answer means off, as it has been
+      // since the background stopped being the point of this page.
+      setPaused(window.localStorage.getItem(PAUSE_STORAGE_KEY) !== "false");
     } catch {
       // Private browsing, or storage refused. The animation simply runs.
     }
