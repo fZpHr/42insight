@@ -11,8 +11,6 @@ import {
   KeyRound,
   Database,
   Github,
-  Pause,
-  Play,
   Eye,
   EyeOff,
   ExternalLink,
@@ -35,7 +33,7 @@ import { toast } from "sonner";
 import { WORLD_LAND_PATH } from "@/lib/forty-two/data/world-land";
 import campusCoords from "@/lib/forty-two/data/campus-coords.json";
 
-type CampusPoint = { name: string; lat: number; lon: number };
+type CampusPoint = { name: string; lat: number; lon: number; users: number };
 
 /**
  * Every campus 42 has, with the coordinates of the city it is in.
@@ -52,18 +50,6 @@ const campusPoint = (campus?: string | null): CampusPoint | null =>
   CAMPUS_COORDS.find(
     (point) => point.name.toLowerCase() === (campus ?? "").toLowerCase(),
   ) ?? null;
-
-/**
- * Whether the ambient background animates.
- *
- * The old background was ninety framer-motion stars plus two 700px shapes
- * under a 120px blur, animated in a loop: ninety JavaScript animations a
- * frame, and a blurred surface Chrome for Windows re-rasterises as it moves.
- * What is here now is four composited layers driven by CSS transforms, so the
- * toggle is a courtesy rather than a rescue -- and it still defers to the
- * system's own reduced-motion setting.
- */
-const PAUSE_STORAGE_KEY = "42insight:background-paused";
 
 /**
  * Page-specific copy, in both languages. The longer explanatory paragraphs
@@ -102,10 +88,6 @@ const homeCopy = {
     star: "Star",
     issues: "Issues",
     createdBy: "Created by",
-    pauseAnimation: "Pause animation",
-    animationOff: "Animation off",
-    pauseTitle: "Pause the background animation",
-    resumeTitle: "Resume the background animation",
     errorGeneric: "42 didn't accept that client ID and secret",
     errorPrivate: "That application is private on the intra. Make it public (your app → Public) and try again.",
     errorServer: "Could not reach the server",
@@ -140,10 +122,6 @@ const homeCopy = {
     star: "Star",
     issues: "Issues",
     createdBy: "Créé par",
-    pauseAnimation: "Mettre en pause",
-    animationOff: "Animation coupée",
-    pauseTitle: "Mettre en pause l'animation de fond",
-    resumeTitle: "Reprendre l'animation de fond",
     errorGeneric: "42 n'a pas accepté ce client ID et ce secret",
     errorPrivate: "Cette application est privée sur l'intra. Passez-la en publique (votre appli → Public) puis réessayez.",
     errorServer: "Impossible de contacter le serveur",
@@ -196,18 +174,91 @@ const MAP_TILES = 2;
 const TILE_SPAN = 3;
 
 /**
- * How lively a campus looks on the map: dim, awake, or busy.
+ * Which latitude sits in the middle of the window.
  *
- * Decoration, not data. Telling anyone how busy a campus really is would mean
- * reading fifty-four rosters before they have even signed in, which is the
- * whole thing this page exists to avoid. So it is a number derived from the
- * name -- stable, so a campus keeps its colour from one visit to the next,
- * and varied enough that the map does not look like a grid of identical pins.
+ * The disc shows a square of the map about 97 degrees on a side, and 42 runs
+ * from Helsinki at 60N to Adelaide at 35S -- 95 degrees, which only fits if
+ * the window is put where the campuses are. Centred on the equator, as it
+ * was, the top edge fell at 47N: Helsinki, Stockholm, Berlin, Amsterdam and
+ * Brussels were all off the map while the bottom half held open ocean.
+ *
+ * Taken from the campuses themselves rather than written down, so opening a
+ * campus further north can never push one off the bottom.
  */
-const busyness = (name: string): "dim" | "awake" | "busy" => {
-  let sum = 0;
-  for (const letter of name) sum = (sum * 31 + letter.charCodeAt(0)) % 997;
-  return sum % 3 === 0 ? "busy" : sum % 3 === 1 ? "awake" : "dim";
+const MAP_CENTRE_LAT =
+  (Math.max(...CAMPUS_COORDS.map((point) => point.lat)) +
+    Math.min(...CAMPUS_COORDS.map((point) => point.lat))) /
+  2;
+const MAP_SHIFT = MAP_CENTRE_LAT / 180;
+
+/** The largest campus there is, which every other one is drawn against. */
+const BIGGEST_CAMPUS = Math.max(...CAMPUS_COORDS.map((point) => point.users));
+
+/**
+ * How big and how bright a campus is drawn: 0 for the smallest, 1 for Paris.
+ *
+ * This used to be a hash of the campus name -- three tiers of colour, chosen
+ * so the map had some life in it rather than a grid of identical pins, and
+ * meaning nothing at all. It is the account count now, from the same /campus
+ * call the rest of the site runs on, stored beside the coordinates so the
+ * page still fetches nothing before anyone signs in.
+ *
+ * Square root, not the count itself: a dot's *area* is what the eye reads as
+ * quantity, so the diameter has to go as the square root or Paris, at forty
+ * thousand against Nablus's two, would be two hundred times as wide. As it is
+ * it comes out about ten pixels against three.
+ *
+ * The count 42 gives is cumulative -- everyone who has ever held an account
+ * there, not who is in the building today -- so this is the size of a campus
+ * over its life, which is the honest thing for a map to show.
+ */
+const campusWeight = (users: number): number =>
+  Math.sqrt(Math.max(users, 0)) / Math.sqrt(BIGGEST_CAMPUS);
+
+/**
+ * Where a campus places among the fifty-four: 0 for the smallest, 1 for Paris.
+ *
+ * Size comes off the count itself and stays literal -- Paris really is four
+ * times Nice across. Colour comes off the rank instead, because the counts
+ * pile up: three quarters of 42 sits between a thousand and six thousand
+ * accounts, so a ramp laid over the raw numbers hands that whole crowd the
+ * same shade and spends its range on Paris alone. By rank the ramp is walked
+ * evenly, and what a colour says is where a campus places, not how many
+ * people have passed through it.
+ */
+const CAMPUS_RANK = new Map<string, number>(
+  [...CAMPUS_COORDS]
+    .sort((a, b) => a.users - b.users)
+    .map((point, index, all) => [point.name, index / (all.length - 1)]),
+);
+
+/**
+ * The ramp itself, as stops along that rank.
+ *
+ * Indigo, blue, cyan, pale, gold. It goes to gold through white rather than
+ * straight from cyan, since mixing cyan with gold passes through green on the
+ * way -- and green is the visitor's own campus, which has to stay the one
+ * colour nothing else on the map wears.
+ */
+const CAMPUS_RAMP: Array<[number, [number, number, number]]> = [
+  [0, [70, 84, 138]],
+  [0.3, [84, 132, 226]],
+  [0.58, [56, 189, 248]],
+  [0.82, [186, 230, 253]],
+  [1, [253, 200, 88]],
+];
+
+const campusColour = (rank: number): string => {
+  const at = Math.min(Math.max(rank, 0), 1);
+  let index = 0;
+  while (index < CAMPUS_RAMP.length - 2 && at > CAMPUS_RAMP[index + 1][0]) index++;
+
+  const [from, lower] = CAMPUS_RAMP[index];
+  const [to, upper] = CAMPUS_RAMP[index + 1];
+  const along = to === from ? 0 : (at - from) / (to - from);
+  const channel = (i: number) => Math.round(lower[i] + (upper[i] - lower[i]) * along);
+
+  return `rgb(${channel(0)} ${channel(1)} ${channel(2)})`;
 };
 
 const Globe = ({ focus }: { focus: CampusPoint | null }) => {
@@ -242,7 +293,7 @@ const Globe = ({ focus }: { focus: CampusPoint | null }) => {
 
     map.style.transition = "transform 1.8s cubic-bezier(0.22, 0.61, 0.36, 1)";
     map.style.transform =
-      `translate(${(0.5 / acrossTrack - zoom * alongX) * 100}%, ${zoom * (0.5 - alongY) * 100}%)` +
+      `translate(${(0.5 / acrossTrack - zoom * alongX) * 100}%, ${(zoom * (0.5 - alongY) - MAP_SHIFT) * 100}%)` +
       ` scale(${zoom})`;
   }, [focus]);
 
@@ -255,16 +306,21 @@ const Globe = ({ focus }: { focus: CampusPoint | null }) => {
       <div className="globe-track" ref={track}>
         {Array.from({ length: MAP_TILES }, (_, tile) => (
           <div className="globe-tile" key={tile}>
-            <svg className="globe-land" viewBox="0 0 720 360" preserveAspectRatio="none">
+            <svg className="globe-land" viewBox="0 0 2880 1440" preserveAspectRatio="none">
               <path d={WORLD_LAND_PATH} />
             </svg>
             {CAMPUS_COORDS.map((campus) => (
               <span
                 key={campus.name}
-                className={`campus campus-${busyness(campus.name)} ${focus?.name === campus.name ? "campus-yours" : ""}`}
+                className={`campus ${focus?.name === campus.name ? "campus-yours" : ""}`}
                 style={{
                   left: `${((campus.lon + 180) / 360) * 100}%`,
                   top: `${((90 - campus.lat) / 180) * 100}%`,
+                  // What the rules below are written in terms of: how big
+                  // the dot is, where it places, and the colour that earns.
+                  ["--weight" as string]: campusWeight(campus.users).toFixed(3),
+                  ["--lit" as string]: (CAMPUS_RANK.get(campus.name) ?? 0).toFixed(3),
+                  ["--tint" as string]: campusColour(CAMPUS_RANK.get(campus.name) ?? 0),
                 }}
               />
             ))}
@@ -291,11 +347,8 @@ const Globe = ({ focus }: { focus: CampusPoint | null }) => {
  * field costs one paint rather than one element per star, and parallax is just
  * a different tile size and speed per layer.
  */
-const Sky = ({ still }: { still: boolean }) => (
-  <div
-    aria-hidden
-    className={`pointer-events-none fixed inset-0 overflow-hidden ${still ? "sky-still" : ""}`}
-  >
+const Sky = () => (
+  <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
     <div className="nebula" />
     <div className="stars stars-far" />
     <div className="stars stars-near" />
@@ -305,27 +358,32 @@ const Sky = ({ still }: { still: boolean }) => (
 );
 
 const skyStyles = `
-  /* One breath of colour, cold and far off. Two gradients, nothing else: on a
-     page this dark, more of them reads as decoration rather than distance. */
+  /* One breath of colour, cold and far off.
+     It used to be two tight radial gradients, at 20% and 16% opacity over a
+     near-black page. Eight-bit colour has about five steps to cross that
+     range, so each one banded into visible rings and read as a pale oval
+     sitting on the page rather than as depth. What is here now covers most of
+     the screen instead of a corner, so the same few steps are spread over ten
+     times the distance and no edge lands anywhere the eye can find it. */
   .nebula {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(45% 38% at 16% 12%, rgba(47, 78, 184, 0.2), transparent 72%),
-      radial-gradient(40% 34% at 84% 84%, rgba(76, 46, 150, 0.16), transparent 74%);
+      radial-gradient(120% 90% at 10% 0%, rgba(47, 78, 184, 0.13), transparent 100%),
+      radial-gradient(110% 80% at 95% 100%, rgba(76, 46, 150, 0.1), transparent 100%);
   }
 
   /* The round window the map turns behind. */
   .globe {
     position: absolute;
     left: 50%;
-    top: 52%;
+    top: 50%;
     width: clamp(420px, 58vw, 820px);
     aspect-ratio: 1;
     translate: -50% -50%;
     border-radius: 50%;
     overflow: hidden;
-    opacity: 0.6;
+    opacity: 0.85;
     transition: opacity 1.2s ease;
     box-shadow: inset 0 0 60px rgba(2, 6, 23, 0.9), 0 0 60px rgba(37, 99, 235, 0.1);
   }
@@ -335,7 +393,7 @@ const skyStyles = `
      never come into view as it turns. */
   .globe-tilt {
     position: absolute;
-    inset: -14%;
+    inset: -12%;
     transform: rotate(-7deg);
   }
 
@@ -348,7 +406,7 @@ const skyStyles = `
     display: flex;
     width: 600%;
     height: 150%;
-    translate: 0 -50%;
+    translate: 0 calc(-50% + ${MAP_SHIFT * 100}%);
     will-change: transform;
     animation: map-turn 150s linear infinite;
     transform-origin: 0 50%;
@@ -363,44 +421,42 @@ const skyStyles = `
     width: 100%;
     height: 100%;
     display: block;
-    fill: rgba(96, 165, 250, 0.22);
-    stroke: rgba(147, 197, 253, 0.55);
-    stroke-width: 0.6;
+    fill: rgba(96, 165, 250, 0.3);
+    stroke: rgba(147, 197, 253, 0.85);
+    stroke-width: 0.75;
     vector-effect: non-scaling-stroke;
   }
   .campus {
     position: absolute;
-    width: 3px;
-    height: 3px;
-    margin: -1.5px 0 0 -1.5px;
     border-radius: 50%;
-    background: rgba(191, 219, 254, 0.9);
-    box-shadow: 0 0 5px rgba(96, 165, 250, 0.8);
-  }
-  /* Three tiers, so the map has some life in it rather than one flat colour.
-     Decorative: see busyness() for why this is not real activity. */
-  .campus-dim {
-    background: rgba(148, 163, 184, 0.55);
-    box-shadow: 0 0 4px rgba(100, 116, 139, 0.5);
-  }
-  .campus-awake {
-    background: rgba(125, 211, 252, 0.85);
-    box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
-  }
-  .campus-busy {
-    width: 4px;
-    height: 4px;
-    margin: -2px 0 0 -2px;
-    background: rgba(253, 224, 71, 0.95);
-    box-shadow: 0 0 8px rgba(250, 204, 21, 0.8);
+
+    /* Size from --weight, which is the account count. Colour from --tint and
+       how far it carries from --lit, which are the campus's rank among the
+       fifty-four. Each dot brings all three with it. */
+    width: calc(2.6px + var(--weight) * 8px);
+    height: calc(2.6px + var(--weight) * 8px);
+    margin: calc(-1.3px - var(--weight) * 4px) 0 0
+      calc(-1.3px - var(--weight) * 4px);
+    background: var(--tint);
+    opacity: calc(0.5 + var(--lit) * 0.5);
+    box-shadow: 0 0 calc(2px + var(--lit) * 11px)
+      color-mix(
+        in srgb,
+        var(--tint) calc(30% + var(--lit) * 55%),
+        transparent
+      );
   }
 
-  /* The one the visitor belongs to, once 42 has said which it is. */
+  /* The one the visitor belongs to, once 42 has said which it is. Never
+     smaller than the size its own campus earns, so signing in from Paris does
+     not shrink the dot the map has just flown to. */
   .campus-yours {
-    width: 6px;
-    height: 6px;
-    margin: -3px 0 0 -3px;
+    width: max(6px, calc(2.6px + var(--weight) * 8px));
+    height: max(6px, calc(2.6px + var(--weight) * 8px));
+    margin: min(-3px, calc(-1.3px - var(--weight) * 4px)) 0 0
+      min(-3px, calc(-1.3px - var(--weight) * 4px));
     background: #eaffea;
+    opacity: 1;
     box-shadow: 0 0 12px 3px rgba(74, 222, 128, 0.95);
   }
   /* A green light opening out from it, once, as the map flies in. */
@@ -422,14 +478,22 @@ const skyStyles = `
     to { transform: scale(14); opacity: 0; }
   }
 
-  /* The curve: light from the upper left, dark at the rim. Static. */
+  /* The curve, and the limb. Static.
+     There was a pale highlight in the upper left too, and at 820px across it
+     was the brightest thing on the page after the text: a white oval floating
+     over the map. The rim shading alone is what reads as curvature, and
+     taking it deeper and further in is what makes a coastline look like it is
+     turning away at the edge instead of sliding off a flat one. */
   .globe-shade {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 28%, rgba(191, 219, 254, 0.12), transparent 55%),
-      radial-gradient(circle at 50% 50%, transparent 52%, rgba(2, 4, 12, 0.85) 88%);
+    background: radial-gradient(
+      circle at 50% 50%,
+      transparent 48%,
+      rgba(3, 6, 16, 0.35) 74%,
+      rgba(2, 4, 12, 0.95) 95%
+    );
   }
 
   @keyframes map-turn {
@@ -495,10 +559,9 @@ const skyStyles = `
     100% { transform: translate3d(85vw, 52vh, 0) rotate(18deg); opacity: 0; }
   }
 
-  /* The toggle, and the system setting, stop everything rather than slow it. */
-  .sky-still * { animation: none !important; }
+  /* The system setting stops everything rather than slowing it down. */
   @media (prefers-reduced-motion: reduce) {
-    .stars, .shooting { animation: none !important; }
+    .stars, .shooting, .globe-track { animation: none !important; }
   }
 `;
 
@@ -528,7 +591,6 @@ const resolveCallbackUrl = (raw: string | null): string => {
 export default function Home() {
   const router = useRouter();
   const { status } = useSession();
-  const [paused, setPaused] = useState(true);
   const [language, setLanguage] = useState<Language>("en");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -542,16 +604,6 @@ export default function Home() {
 
   const t = homeCopy[language];
   const tKey = copy[language];
-
-  useEffect(() => {
-    try {
-      // Only a stored "false" starts it: no answer means off, as it has been
-      // since the background stopped being the point of this page.
-      setPaused(window.localStorage.getItem(PAUSE_STORAGE_KEY) !== "false");
-    } catch {
-      // Private browsing, or storage refused. The animation simply runs.
-    }
-  }, []);
 
   // Read after mount: navigator and localStorage do not exist on the server,
   // and guessing wrong would flash the wrong language for a moment.
@@ -597,18 +649,6 @@ export default function Home() {
     } catch {
       // Not remembering it is a smaller failure than not honouring it.
     }
-  };
-
-  const togglePaused = () => {
-    setPaused((wasPaused) => {
-      const next = !wasPaused;
-      try {
-        window.localStorage.setItem(PAUSE_STORAGE_KEY, String(next));
-      } catch {
-        // Not remembering it is a smaller failure than not honouring it.
-      }
-      return next;
-    });
   };
 
   const handleConnect = async (event: React.FormEvent) => {
@@ -706,7 +746,7 @@ export default function Home() {
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#05060a] text-foreground">
       <style>{skyStyles}</style>
-      <Sky still={paused} />
+      <Sky />
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
         <Globe focus={focus} />
       </div>
@@ -959,26 +999,6 @@ export default function Home() {
           </p>
         </form>
       </div>
-
-      <button
-        type="button"
-        onClick={togglePaused}
-        aria-pressed={paused}
-        title={paused ? t.resumeTitle : t.pauseTitle}
-        className="absolute bottom-4 right-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/50 px-3 py-1.5 text-xs text-white/70 transition-colors hover:bg-black/70 hover:text-white"
-      >
-        {paused ? (
-          <>
-            <Play className="h-3.5 w-3.5" />
-            {t.animationOff}
-          </>
-        ) : (
-          <>
-            <Pause className="h-3.5 w-3.5" />
-            {t.pauseAnimation}
-          </>
-        )}
-      </button>
     </div>
   );
 }

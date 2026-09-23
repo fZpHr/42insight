@@ -178,10 +178,14 @@ const isStudentAccount = (user: any): boolean =>
   Boolean(user) && !user["staff?"] && (user.kind ?? "student") === "student";
 
 /** Which of those an account is, for the ones that are not students. */
-const accountTypeOf = (user: any, tests: Set<number>): Student["accountType"] => {
+const accountTypeOf = (
+  user: any,
+  marked: MarkedAccounts,
+): Student["accountType"] => {
   if (!user) return "external";
   if (user["staff?"] || user.kind === "admin") return "staff";
-  if (tests.has(user.id)) return "test";
+  if (marked.staff.has(user.id)) return "staff";
+  if (marked.tests.has(user.id)) return "test";
   if ((user.kind ?? "student") !== "student") return "external";
   return "student";
 };
@@ -200,27 +204,74 @@ const accountTypeOf = (user: any, tests: Set<number>): Student["accountType"] =>
  * wide, eight pages, once a week for everyone.
  */
 const TEST_ACCOUNT_GROUP_ID = 119;
-const TEST_ACCOUNTS_TTL = 7 * 24 * 60 * 60;
 
-const testAccountIds = async (api: FortyTwoApi): Promise<Set<number>> =>
-  cachedOnce("test-accounts", TEST_ACCOUNTS_TTL, async () => {
-    try {
-      const rows = await api.fetchAllPages(
-        `/groups/${TEST_ACCOUNT_GROUP_ID}/groups_users`,
-        { maxPages: 12 },
-      );
+/**
+ * 42's own staff group, read the same way and for the same reason.
+ *
+ * The staff flag catches nearly all of them, but not all: of a hundred
+ * members of this group sampled against /users, two -- tzeck and holly --
+ * came back kind "student" with no flag set, which is to say they read as
+ * ordinary students everywhere the flag is the only check. Across the group's
+ * 654 members that is on the order of a dozen accounts in the leaderboards.
+ */
+const STAFF_GROUP_ID = 1;
+const MARKED_ACCOUNTS_TTL = 7 * 24 * 60 * 60;
 
-      return new Set<number>(
+interface MarkedAccounts {
+  tests: Set<number>;
+  staff: Set<number>;
+}
+
+/**
+ * Everyone in one 42 group, by user id.
+ *
+ * The catch is outside the cache on purpose. It used to be inside, which
+ * meant a single 429 part way through eight pages -- the likeliest thing to
+ * happen to a walk that long -- resolved to an empty set, and cachedOnce
+ * stored *that* for the week. Every marked account was back in every
+ * leaderboard until it expired, with nothing to say why. Letting the failure
+ * out of the builder leaves the cache empty instead, so the next request
+ * tries again, and the empty set answers this one request only.
+ */
+const groupMemberIds = async (
+  groupId: number,
+  api: FortyTwoApi,
+): Promise<Set<number>> => {
+  try {
+    return await cachedOnce(`group-members:${groupId}`, MARKED_ACCOUNTS_TTL, async () => {
+      const rows = await api.fetchAllPages(`/groups/${groupId}/groups_users`, {
+        maxPages: 12,
+      });
+
+      const ids = new Set<number>(
         rows
           .map((row) => row?.user_id)
           .filter((id): id is number => typeof id === "number"),
       );
-    } catch (error: any) {
-      // A roster with a few test accounts in it beats no roster at all.
-      console.error("[live-campus] test accounts failed:", error.message);
-      return new Set<number>();
-    }
-  });
+
+      // Both groups have hundreds of members and always have. None at all
+      // means the walk came back wrong rather than that the group emptied,
+      // and a week of that is what this is guarding against.
+      if (ids.size === 0) {
+        throw new Error(`group ${groupId} returned no members`);
+      }
+
+      return ids;
+    });
+  } catch (error: any) {
+    // A roster with a few of these in it beats no roster at all.
+    console.error(`[live-campus] group ${groupId} failed:`, error.message);
+    return new Set<number>();
+  }
+};
+
+const markedAccounts = async (api: FortyTwoApi): Promise<MarkedAccounts> => {
+  const [tests, staff] = await Promise.all([
+    groupMemberIds(TEST_ACCOUNT_GROUP_ID, api),
+    groupMemberIds(STAFF_GROUP_ID, api),
+  ]);
+  return { tests, staff };
+};
 
 const toStudent = (cursusUser: any, campusName: string): Student => {
   const user = cursusUser.user ?? {};
@@ -265,13 +316,13 @@ const getCampusRoster = async (
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
   return cachedOnce(studentsCacheKey(campusName), STUDENTS_TTL, async () => {
-    const [cursusUsers, work, tests] = await Promise.all([
+    const [cursusUsers, work, marked] = await Promise.all([
       api.fetchAllPages(
         `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
         { maxPages: ROSTER_MAX_PAGES },
       ),
       getWorkStatus(campusId, api),
-      testAccountIds(api),
+      markedAccounts(api),
     ]);
 
     return cursusUsers
@@ -279,7 +330,7 @@ const getCampusRoster = async (
       .map((cursusUser) => {
         const student = toStudent(cursusUser, campusName);
         student.work = work.get(student.id) ?? 0;
-        student.accountType = accountTypeOf(cursusUser.user, tests);
+        student.accountType = accountTypeOf(cursusUser.user, marked);
         return student;
       });
   });
@@ -743,9 +794,12 @@ export const getPoolUsers = async (
 
     // Belt and braces: the filter above is what makes the count agree with the
     // roster, and this makes a filter 42 might one day stop honouring harmless.
-    const tests = await testAccountIds(api);
+    const marked = await markedAccounts(api);
     const pisciners = users.filter(
-      (user) => isStudentAccount(user) && !tests.has(user.id),
+      (user) =>
+        isStudentAccount(user) &&
+        !marked.tests.has(user.id) &&
+        !marked.staff.has(user.id),
     );
     if (pisciners.length === 0) return [];
 

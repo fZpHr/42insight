@@ -460,7 +460,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             there is no room for a choice nobody is looking for. */}
         {open && (
           <div className="flex items-center gap-2 px-2 pb-1">
-            <span className="text-[11px] text-sidebar-foreground/70">Colours</span>
             {(
               [
                 // Each square shows the two colours that palette is made of --
