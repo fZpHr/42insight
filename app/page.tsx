@@ -215,6 +215,18 @@ const BIGGEST_CAMPUS = Math.max(...CAMPUS_COORDS.map((point) => point.users));
 const campusWeight = (users: number): number =>
   Math.sqrt(Math.max(users, 0)) / Math.sqrt(BIGGEST_CAMPUS);
 
+/**
+ * The same thing again, for colour rather than for size.
+ *
+ * Square root is right for area and wrong for a colour ramp: it leaves most
+ * campuses between 0.15 and 0.4, which over any two colours is a band of
+ * near-identical dots. The gamma pulls that band open -- Quebec lands at
+ * 0.33, Helsinki 0.42, Madrid 0.71 -- so the ramp is actually travelled
+ * instead of being crowded into its first third.
+ */
+const campusLight = (users: number): number =>
+  Math.pow(campusWeight(users), 0.6);
+
 const Globe = ({ focus }: { focus: CampusPoint | null }) => {
   const track = useRef<HTMLDivElement>(null);
 
@@ -270,8 +282,10 @@ const Globe = ({ focus }: { focus: CampusPoint | null }) => {
                 style={{
                   left: `${((campus.lon + 180) / 360) * 100}%`,
                   top: `${((90 - campus.lat) / 180) * 100}%`,
-                  // The one number the rules below are written in terms of.
+                  // The two numbers the rules below are written in terms of:
+                  // how big the dot is, and how far up the colour ramp it is.
                   ["--weight" as string]: campusWeight(campus.users).toFixed(3),
+                  ["--lit" as string]: campusLight(campus.users).toFixed(3),
                 }}
               />
             ))}
@@ -381,22 +395,37 @@ const skyStyles = `
     position: absolute;
     border-radius: 50%;
 
-    /* Everything here is written against --weight, which each dot carries:
-       0 for the smallest campus, 1 for Paris. Size, colour and glow all move
-       together, so a big campus reads as big from any one of the three.
-       Slate at the bottom end, near-white blue at the top. */
+    /* Size from --weight, colour and glow from --lit: both come off the same
+       account count, and both are 0 for the smallest campus and 1 for Paris.
+
+       Three stops rather than two, because a ramp between two neighbouring
+       blues is a ramp nobody can see. Cold slate at the bottom, a real sky
+       blue through the middle, white-hot at the top -- the first half of
+       --lit travels the first mix, the second half the second. */
+    --cold: rgb(88 106 134);
+    --mid: rgb(56 176 255);
+    --hot: rgb(240 250 255);
+
     width: calc(2.6px + var(--weight) * 8px);
     height: calc(2.6px + var(--weight) * 8px);
     margin: calc(-1.3px - var(--weight) * 4px) 0 0
       calc(-1.3px - var(--weight) * 4px);
     background: color-mix(
       in oklab,
-      rgb(130 150 180) calc(100% - var(--weight) * 100%),
-      rgb(226 242 255)
+      color-mix(
+        in oklab,
+        var(--cold),
+        var(--mid) calc(clamp(0, var(--lit) * 2, 1) * 100%)
+      ),
+      var(--hot) calc(clamp(0, var(--lit) * 2 - 1, 1) * 100%)
     );
-    opacity: calc(0.55 + var(--weight) * 0.45);
-    box-shadow: 0 0 calc(3px + var(--weight) * 10px)
-      rgb(96 165 250 / calc(0.3 + var(--weight) * 0.55));
+    opacity: calc(0.5 + var(--lit) * 0.5);
+    box-shadow: 0 0 calc(2px + var(--lit) * 11px)
+      color-mix(
+        in oklab,
+        rgb(59 130 246 / 0.35),
+        rgb(125 211 252 / 0.95) calc(var(--lit) * 100%)
+      );
   }
 
   /* The one the visitor belongs to, once 42 has said which it is. Never
