@@ -33,9 +33,15 @@ function MainSelector({ titles, activeTitle, setActiveTitle }: MainSelectorProps
           aria-label={title.title}
         >
           <h2 className="mt-1 line-clamp-2 max-h-[40px] w-full text-balance">{title.title}</h2>
+          {/* The badge sits in the tab's own top-left corner, so it leaves the
+              rounding to the tab. It used to round that corner itself on top
+              of a 1px transparent border, and neither lined up with the corner
+              underneath: zoomed in, the tab's green showed through as a
+              hairline around the badge. Square corner, no border, clipped once
+              by the tab's own overflow. */}
           <Badge
             variant={activeTitle.title === title.title ? "secondary" : "default"}
-            className="absolute top-0 left-0 rounded-none rounded-tl-md rounded-br-md"
+            className="absolute top-0 left-0 rounded-none rounded-br-md border-0"
           >
             {title.type === "rncp-6" ? "RNCP 6" : "RNCP 7"}
           </Badge>
