@@ -56,7 +56,7 @@ export default function ApiKeyPage() {
   const [showSecret, setShowSecret] = useState(false);
   const [keyPresent, setKeyPresent] = useState<boolean | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
-  const [language, setLanguage] = useState<Language>("fr");
+  const [language, setLanguage] = useState<Language>("en");
 
   // After mount: navigator and localStorage do not exist on the server, and a
   // guess here would render the wrong language for a moment.

@@ -163,18 +163,22 @@ export const copy = {
 } as const;
 
 /**
- * French unless the browser says otherwise, since this is a French campus --
- * but only as a starting point: the choice, once made, is what counts.
+ * English unless the visitor has picked otherwise.
+ *
+ * This used to open in French for any French browser, from when the site was
+ * for one French campus. It now covers all 54, so a browser's own language is
+ * not reason enough to greet everyone in French; whoever wants French says so
+ * once, and that choice is what counts from then on.
  */
 export const detectLanguage = (): Language => {
-  if (typeof window === "undefined") return "fr";
+  if (typeof window === "undefined") return "en";
 
   try {
     const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (stored === "en" || stored === "fr") return stored;
   } catch {
-    // Storage refused; fall through to the browser's own preference.
+    // Storage refused; English it is.
   }
 
-  return navigator.language?.toLowerCase().startsWith("en") ? "en" : "fr";
+  return "en";
 };
