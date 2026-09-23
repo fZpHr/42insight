@@ -61,7 +61,7 @@ import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react"
 import { hasApiKey } from "@/lib/api-client"
 import { CampusSwitcher } from "@/components/CampusSwitcher";
-import { isDevPreviewEnabled } from "@/lib/dev-preview";
+import { isDemoEnabled } from "@/lib/demo-mode";
 
 
 const hasAccessToRoute = (url: string, role?: string | null) => {
@@ -257,7 +257,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   useEffect(() => {
     setKeyPresent(hasApiKey())
-    setPreviewBypass(isDevPreviewEnabled())
+    setPreviewBypass(isDemoEnabled())
   }, [pathname])
 
   const signOutfunc = async () => {

@@ -2,7 +2,7 @@ import "./globals.css";
 import Providers from "./providers";
 import { Outfit } from "next/font/google";
 import { Toaster } from "sonner";
-import { DevPreviewToggle } from "@/components/DevPreviewToggle";
+import { DemoBanner } from "@/components/DemoBanner";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -25,7 +25,7 @@ export default function RootLayout({
       <body className={`${outfit.variable} `}>
         <Providers>{children}</Providers>
         <Toaster />
-        <DevPreviewToggle />
+        <DemoBanner />
       </body>
     </html>
   );

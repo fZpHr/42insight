@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { hasApiKey, KEY_CHANGED_EVENT } from "@/lib/api-client";
 import { readable, type ApiCall } from "@/lib/forty-two/activity";
-import { isDevPreviewEnabled } from "@/lib/dev-preview";
+import { isDemoEnabled } from "@/lib/demo-mode";
 
 /**
  * What the site is doing to the 42 API, always on screen.
@@ -75,7 +75,7 @@ export function ApiStatusBar() {
 
     setKeyPresent(hasApiKey());
     // No session in preview mode, so this would only ever come back 401.
-    if (isDevPreviewEnabled()) return;
+    if (isDemoEnabled()) return;
 
     fetch("/api/quota")
       .then((response) => (response.ok ? response.json() : null))

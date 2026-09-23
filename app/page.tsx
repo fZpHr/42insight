@@ -26,7 +26,7 @@ import {
   type Language,
 } from "@/lib/api-key-copy";
 import { getSession, signIn, useSession } from "next-auth/react";
-import { isDevPreviewEnabled, setDevPreview as persistDevPreview } from "@/lib/dev-preview";
+import { isDemoEnabled, setDemo } from "@/lib/demo-mode";
 import { announceKeyChange } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -80,7 +80,7 @@ const homeCopy = {
     alreadyBefore: "Already registered one?",
     alreadyLink: "Find it in your existing apps",
     alreadyAfter: "and reuse its credentials. Make sure it's public.",
-    browseWithoutKey: "Browse the site without a key (so, without data)",
+    browseWithoutKey: "Look around first, with made-up data",
     noKey: "Don't have a key, or not sure what this is?",
     stepOpenBefore: "Open",
     stepOpenAfter: "on the intra.",
@@ -114,7 +114,7 @@ const homeCopy = {
     alreadyBefore: "Déjà inscrit une application ?",
     alreadyLink: "Retrouvez-la dans vos applications",
     alreadyAfter: "et réutilisez ses identifiants. Elle doit être publique.",
-    browseWithoutKey: "Accéder au site sans clé (donc sans data)",
+    browseWithoutKey: "Voir le site d'abord, avec des données inventées",
     noKey: "Pas encore de clé, ou pas sûr de ce que c'est ?",
     stepOpenBefore: "Ouvrez",
     stepOpenAfter: "sur l'intra.",
@@ -601,6 +601,7 @@ export default function Home() {
   const [focus, setFocus] = useState<CampusPoint | null>(null);
   const connectingRef = useRef(false);
   const [devPreview, setDevPreview] = useState(false);
+  const [startingDemo, setStartingDemo] = useState(false);
 
   const t = homeCopy[language];
   const tKey = copy[language];
@@ -619,10 +620,36 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Same cookie the DevPreviewToggle button sets. Read after mount: the
-  // server never sees this cookie's value the way the client does, so
-  // checking it during render would fight hydration.
-  useEffect(() => setDevPreview(isDevPreviewEnabled()), []);
+  // Read after mount: the server never sees this cookie's value the way the
+  // client does, so checking it during render would fight hydration.
+  useEffect(() => setDevPreview(isDemoEnabled()), []);
+
+  /**
+   * Demo mode: the cookie first, then a session to carry it.
+   *
+   * Both are needed and in this order. The cookie is what makes getApi()
+   * serve the invented network, and it has to be set before the session
+   * lands, because the redirect that follows starts fetching immediately --
+   * set it after and the first pages answer 428 on the way in.
+   */
+  const startDemo = async () => {
+    setStartingDemo(true);
+    setDemo(true);
+
+    const result = await signIn("demo", { redirect: false });
+    if (!result?.ok) {
+      setDemo(false);
+      setStartingDemo(false);
+      toast.error(t.errorServer, { duration: 3000, position: "bottom-right" });
+      return;
+    }
+
+    router.replace(
+      resolveCallbackUrl(
+        new URLSearchParams(window.location.search).get("callbackUrl"),
+      ),
+    );
+  };
 
   // A visitor whose session cookie is still good has nothing to do on this
   // page. Without this, it showed the connect form on every visit even
@@ -967,22 +994,17 @@ export default function Home() {
           {/* A plain button rather than <Button variant="outline">: that
               variant's dark-mode border resolves to near-black on this
               background, which read as unstyled text rather than a button. */}
-          {process.env.NODE_ENV !== "production" && (
-            <button
-              type="button"
-              onClick={() => {
-                persistDevPreview(true);
-                router.replace(
-                  resolveCallbackUrl(
-                    new URLSearchParams(window.location.search).get("callbackUrl"),
-                  ),
-                );
-              }}
-              className="h-10 w-full rounded-md border border-white/20 bg-white/5 text-sm text-white/70 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
-            >
+          <button
+            type="button"
+            onClick={startDemo}
+            disabled={startingDemo}
+            className="h-10 w-full rounded-md border border-white/20 bg-white/5 text-sm text-white/70 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-60"
+          >
+            <span className="inline-flex items-center justify-center gap-2">
+              {startingDemo && <Loader2 className="h-4 w-4 animate-spin" />}
               {t.browseWithoutKey}
-            </button>
-          )}
+            </span>
+          </button>
 
           <p className="text-center text-xs text-muted-foreground">
             {t.alreadyBefore}{" "}
