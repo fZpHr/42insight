@@ -461,10 +461,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             menu on the user card, which is where it used to be and where
             nobody found it.
 
-            Both survive the sidebar collapsing to icons, stacked and shrunk
-            rather than dropped: the rail is 3rem across, so two 16px swatches
-            and a gap fit on one line with room to spare, and the button keeps
-            its icon and loses only its label. */}
+            Both survive the sidebar collapsing to icons rather than being
+            dropped. On the 3rem rail the swatches stack instead of sitting
+            side by side -- two squares abreast there read as one wide button
+            rather than a choice -- and the sign-out keeps its icon and loses
+            only its label. */}
         <div
           className={
             open
@@ -472,7 +473,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               : "flex flex-col items-center gap-2 px-1 pb-1"
           }
         >
-          <div className="flex items-center gap-1.5">
+          <div
+            className={
+              open ? "flex items-center gap-1.5" : "flex flex-col gap-1.5"
+            }
+          >
             {(
               [
                 // Each square shows the two colours that palette is made of --
@@ -497,7 +502,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 title={option.label}
                 aria-label={option.label}
                 aria-pressed={palette === option.value}
-                className={`${open ? "size-5" : "size-4"} rounded-[6px] border border-white/10 transition-all ${option.swatch} ${
+                className={`size-5 rounded-[6px] border border-white/10 transition-all ${option.swatch} ${
                   palette === option.value
                     ? "ring-2 ring-offset-1 ring-offset-sidebar"
                     : "opacity-60 hover:opacity-100"
