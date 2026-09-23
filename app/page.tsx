@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
-import dynamic from "next/dynamic";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +20,6 @@ import {
   HelpCircle,
   Server,
 } from "lucide-react";
-import { TransparentBadge } from "@/components/TransparentBadge";
 import { IntraKeyGuide } from "@/components/IntraKeyGuide";
 import {
   copy,
@@ -29,20 +27,41 @@ import {
   LANGUAGE_STORAGE_KEY,
   type Language,
 } from "@/lib/api-key-copy";
-import { signIn, useSession } from "next-auth/react";
+import { getSession, signIn, useSession } from "next-auth/react";
 import { isDevPreviewEnabled, setDevPreview as persistDevPreview } from "@/lib/dev-preview";
 import { announceKeyChange } from "@/lib/api-client";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+
+import { WORLD_LAND_PATH } from "@/lib/forty-two/data/world-land";
+import campusCoords from "@/lib/forty-two/data/campus-coords.json";
+
+type CampusPoint = { name: string; lat: number; lon: number };
+
+/**
+ * Every campus 42 has, with the coordinates of the city it is in.
+ *
+ * The 42 API gives a campus's city and country and no latitude or longitude,
+ * so the file next door was geocoded once from those cities rather than being
+ * fetched on every visit. A campus 42 opens tomorrow shows up in the site's
+ * own lists straight away, and on this map when someone regenerates the file.
+ */
+const CAMPUS_COORDS: CampusPoint[] = campusCoords.campuses;
+
+/** The campus a session names, as a point on the map, when 42 has one. */
+const campusPoint = (campus?: string | null): CampusPoint | null =>
+  CAMPUS_COORDS.find(
+    (point) => point.name.toLowerCase() === (campus ?? "").toLowerCase(),
+  ) ?? null;
 
 /**
  * Whether the ambient background animates.
  *
- * Off unless asked for. Ninety animated stars and two 700px shapes under a
- * 120px blur are cheap on a Mac and not on Chrome for Windows, where animating
- * a blurred surface that size re-rasterises it every frame -- and this is the
- * first page anyone sees. The choice is remembered rather than asked again on
- * every visit.
+ * The old background was ninety framer-motion stars plus two 700px shapes
+ * under a 120px blur, animated in a loop: ninety JavaScript animations a
+ * frame, and a blurred surface Chrome for Windows re-rasterises as it moves.
+ * What is here now is four composited layers driven by CSS transforms, so the
+ * toggle is a courtesy rather than a rescue -- and it still defers to the
+ * system's own reduced-motion setting.
  */
 const PAUSE_STORAGE_KEY = "42insight:background-paused";
 
@@ -55,6 +74,7 @@ const PAUSE_STORAGE_KEY = "42insight:background-paused";
 const homeCopy = {
   en: {
     subtitle: "Student hub for every 42 campus",
+    tagline: "One key. Every campus. Nothing stored.",
     highlight1Title: "One key, signs you in and fetches your data",
     highlight1Text: "There is no separate 42 login anymore. The application you register below is both.",
     highlight2Title: "Nothing stored",
@@ -67,6 +87,8 @@ const homeCopy = {
     whySummary:
       "Using your key rather than one of mine changes three things. The site runs with nothing stored anywhere. It stops depending on me, so it keeps working even if I ever stop looking after it. And the code is open source, so you can check exactly what is done with your key.",
     moreDetail: "More detail",
+    formTitle: "Connect your 42 application",
+    formSubtitle: "Its UID and secret, from the intra. Nothing else is asked.",
     connect: "Connect",
     connecting: "Connecting…",
     alreadyBefore: "Already registered one?",
@@ -90,6 +112,7 @@ const homeCopy = {
   },
   fr: {
     subtitle: "Espace étudiant pour toutes les écoles 42",
+    tagline: "Une clé. Tous les campus. Rien de stocké.",
     highlight1Title: "Une seule clé, pour se connecter et pour récupérer vos données",
     highlight1Text: "Il n'y a plus de connexion 42 séparée. L'application que vous enregistrez ci-dessous fait les deux.",
     highlight2Title: "Rien n'est stocké",
@@ -102,6 +125,8 @@ const homeCopy = {
     whySummary:
       "Utiliser votre clé plutôt qu'une des miennes change trois choses. Le site tourne sans rien stocker nulle part. Il cesse de dépendre de moi, donc il continue de marcher même si j'arrête un jour de m'en occuper. Et le code est open source, vous pouvez vérifier exactement ce qui est fait de votre clé.",
     moreDetail: "Plus de détails",
+    formTitle: "Connectez votre application 42",
+    formSubtitle: "Son UID et son secret, depuis l'intra. Rien d'autre n'est demandé.",
     connect: "Se connecter",
     connecting: "Connexion…",
     alreadyBefore: "Déjà inscrit une application ?",
@@ -154,43 +179,328 @@ const tutorialSteps: Record<Language, React.ReactNode[]> = {
   ],
 };
 
-const StarFieldImpl = ({ paused }: { paused: boolean }) => {
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 90 }, (_, i) => ({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 2 + 0.5,
-        opacity: Math.random() * 0.5 + 0.2,
-        duration: 2 + Math.random() * 3,
-        delay: Math.random() * 2,
-      })),
-    [],
-  );
+/**
+ * The network, turning.
+ *
+ * A flat map inside a round window rather than a sphere: one element carrying
+ * the coastlines slides past under a circular mask, and the campuses ride with
+ * it because they are positioned in the same map. Nothing is recomputed per
+ * frame -- it is one transform on one element, which the compositor animates
+ * on its own, and the shading over the top is what sells the curve.
+ *
+ * On a successful sign-in the 42 API has just said which campus the visitor
+ * belongs to, so the map stops turning and travels to it.
+ */
+const MAP_TILES = 2;
+/** The map is this many times the width of the window it shows through. */
+const TILE_SPAN = 3;
+
+/**
+ * How lively a campus looks on the map: dim, awake, or busy.
+ *
+ * Decoration, not data. Telling anyone how busy a campus really is would mean
+ * reading fifty-four rosters before they have even signed in, which is the
+ * whole thing this page exists to avoid. So it is a number derived from the
+ * name -- stable, so a campus keeps its colour from one visit to the next,
+ * and varied enough that the map does not look like a grid of identical pins.
+ */
+const busyness = (name: string): "dim" | "awake" | "busy" => {
+  let sum = 0;
+  for (const letter of name) sum = (sum * 31 + letter.charCodeAt(0)) % 997;
+  return sum % 3 === 0 ? "busy" : sum % 3 === 1 ? "awake" : "dim";
+};
+
+const Globe = ({ focus }: { focus: CampusPoint | null }) => {
+  const track = useRef<HTMLDivElement>(null);
+
+  // Handing a running animation over to a transition needs the position it is
+  // at right now: dropping the animation alone would snap it back to the
+  // start. So the live matrix is pinned inline first, the layout is flushed,
+  // and only then is the destination set for the transition to run to.
+  useEffect(() => {
+    const map = track.current;
+    if (!map || !focus) return;
+
+    const live = getComputedStyle(map).transform;
+    map.style.animation = "none";
+    map.style.transform = live;
+    void map.offsetWidth;
+
+    // Where that campus sits in the track, as a share of the track's own size,
+    // and the translation that brings it to the middle of the window. In
+    // percentages rather than pixels: pixels would have to be measured, and a
+    // measurement taken a frame too early reads zero -- which is a zoom that
+    // lands nowhere. Percentages also survive the window being resized.
+    //
+    // The scale applies before the translation, and the origin is the track's
+    // left edge at half its height, so across it counts from the edge and
+    // vertically from the middle.
+    const zoom = 2.6;
+    const acrossTrack = TILE_SPAN * MAP_TILES;
+    const alongX = (focus.lon + 180) / 360 / MAP_TILES;
+    const alongY = (90 - focus.lat) / 180;
+
+    map.style.transition = "transform 1.8s cubic-bezier(0.22, 0.61, 0.36, 1)";
+    map.style.transform =
+      `translate(${(0.5 / acrossTrack - zoom * alongX) * 100}%, ${zoom * (0.5 - alongY) * 100}%)` +
+      ` scale(${zoom})`;
+  }, [focus]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      {stars.map((star) => (
-        <motion.div
-          key={star.id}
-          className="absolute rounded-full bg-white shadow-[0_0_2px_rgba(255,255,255,0.8)]"
-          style={{ left: `${star.x}%`, top: `${star.y}%`, width: star.size, height: star.size }}
-          animate={
-            paused
-              ? undefined
-              : { opacity: [star.opacity, 1, star.opacity], scale: [1, 1.2, 1] }
-          }
-          transition={{ duration: star.duration, repeat: Infinity, delay: star.delay, ease: "easeInOut" }}
-        />
-      ))}
+    <div className={`globe ${focus ? "globe-found" : ""}`}>
+      {/* A planet's axis is not straight up, and a map sliding dead level
+          reads as a conveyor belt. The tilt is on a wrapper so the seam
+          between the two copies stays exactly vertical underneath it. */}
+      <div className="globe-tilt">
+      <div className="globe-track" ref={track}>
+        {Array.from({ length: MAP_TILES }, (_, tile) => (
+          <div className="globe-tile" key={tile}>
+            <svg className="globe-land" viewBox="0 0 720 360" preserveAspectRatio="none">
+              <path d={WORLD_LAND_PATH} />
+            </svg>
+            {CAMPUS_COORDS.map((campus) => (
+              <span
+                key={campus.name}
+                className={`campus campus-${busyness(campus.name)} ${focus?.name === campus.name ? "campus-yours" : ""}`}
+                style={{
+                  left: `${((campus.lon + 180) / 360) * 100}%`,
+                  top: `${((90 - campus.lat) / 180) * 100}%`,
+                }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      </div>
+      <div className="globe-shade" />
     </div>
   );
 };
 
-// Client-only: the positions are random on every render, so a server-rendered
-// copy can never match what the client generates on hydration.
-const StarField = dynamic(() => Promise.resolve(StarFieldImpl), { ssr: false });
+/**
+ * The sky: two drifting star fields, and a streak across it now and then.
+ *
+ * What was here before -- ninety framer-motion stars and a blackhole scene --
+ * looked good and said nothing about the site. The page has one job, which is
+ * to show what you get for a key and then take it, so the background is now
+ * backdrop rather than subject.
+ *
+ * Each layer is one element carrying a repeating background, moved with
+ * `transform` alone: the property a browser hands to the compositor. The stars
+ * are two tiny radial gradients tiled over a few hundred pixels, so a whole
+ * field costs one paint rather than one element per star, and parallax is just
+ * a different tile size and speed per layer.
+ */
+const Sky = ({ still }: { still: boolean }) => (
+  <div
+    aria-hidden
+    className={`pointer-events-none fixed inset-0 overflow-hidden ${still ? "sky-still" : ""}`}
+  >
+    <div className="nebula" />
+    <div className="stars stars-far" />
+    <div className="stars stars-near" />
+    <span className="shooting shooting-a" />
+    <div className="vignette" />
+  </div>
+);
+
+const skyStyles = `
+  /* One breath of colour, cold and far off. Two gradients, nothing else: on a
+     page this dark, more of them reads as decoration rather than distance. */
+  .nebula {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(45% 38% at 16% 12%, rgba(47, 78, 184, 0.2), transparent 72%),
+      radial-gradient(40% 34% at 84% 84%, rgba(76, 46, 150, 0.16), transparent 74%);
+  }
+
+  /* The round window the map turns behind. */
+  .globe {
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    width: clamp(420px, 58vw, 820px);
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    border-radius: 50%;
+    overflow: hidden;
+    opacity: 0.6;
+    transition: opacity 1.2s ease;
+    box-shadow: inset 0 0 60px rgba(2, 6, 23, 0.9), 0 0 60px rgba(37, 99, 235, 0.1);
+  }
+  .globe-found { opacity: 0.95; }
+
+  /* The axial tilt, on its own wrapper: slightly oversized so its corners
+     never come into view as it turns. */
+  .globe-tilt {
+    position: absolute;
+    inset: -14%;
+    transform: rotate(-7deg);
+  }
+
+  /* Two copies of the map side by side, so sliding one width over is
+     seamless. One transform, one animation, whatever the map holds. */
+  .globe-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    display: flex;
+    width: 600%;
+    height: 150%;
+    translate: 0 -50%;
+    will-change: transform;
+    animation: map-turn 150s linear infinite;
+    transform-origin: 0 50%;
+  }
+  .globe-tile {
+    position: relative;
+    width: 50%;
+    height: 100%;
+    flex: none;
+  }
+  .globe-land {
+    width: 100%;
+    height: 100%;
+    display: block;
+    fill: rgba(96, 165, 250, 0.22);
+    stroke: rgba(147, 197, 253, 0.55);
+    stroke-width: 0.6;
+    vector-effect: non-scaling-stroke;
+  }
+  .campus {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    margin: -1.5px 0 0 -1.5px;
+    border-radius: 50%;
+    background: rgba(191, 219, 254, 0.9);
+    box-shadow: 0 0 5px rgba(96, 165, 250, 0.8);
+  }
+  /* Three tiers, so the map has some life in it rather than one flat colour.
+     Decorative: see busyness() for why this is not real activity. */
+  .campus-dim {
+    background: rgba(148, 163, 184, 0.55);
+    box-shadow: 0 0 4px rgba(100, 116, 139, 0.5);
+  }
+  .campus-awake {
+    background: rgba(125, 211, 252, 0.85);
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
+  }
+  .campus-busy {
+    width: 4px;
+    height: 4px;
+    margin: -2px 0 0 -2px;
+    background: rgba(253, 224, 71, 0.95);
+    box-shadow: 0 0 8px rgba(250, 204, 21, 0.8);
+  }
+
+  /* The one the visitor belongs to, once 42 has said which it is. */
+  .campus-yours {
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    background: #eaffea;
+    box-shadow: 0 0 12px 3px rgba(74, 222, 128, 0.95);
+  }
+  /* A green light opening out from it, once, as the map flies in. */
+  .campus-yours::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    border: 1px solid rgba(74, 222, 128, 0.9);
+    background: radial-gradient(circle, rgba(74, 222, 128, 0.35), transparent 70%);
+    animation: found 2.4s ease-out 0.6s infinite;
+  }
+  @keyframes found {
+    from { transform: scale(1); opacity: 0.9; }
+    to { transform: scale(14); opacity: 0; }
+  }
+
+  /* The curve: light from the upper left, dark at the rim. Static. */
+  .globe-shade {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 28%, rgba(191, 219, 254, 0.12), transparent 55%),
+      radial-gradient(circle at 50% 50%, transparent 52%, rgba(2, 4, 12, 0.85) 88%);
+  }
+
+  @keyframes map-turn {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* No room for it beside the form on a narrow screen. */
+  @media (max-width: 1023px) {
+    .globe { display: none; }
+  }
+
+  /* Dark at the edges, so the middle of the page reads first. */
+  .vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(75% 65% at 50% 45%, transparent 55%, rgba(2, 3, 8, 0.75) 100%);
+  }
+
+  .stars {
+    position: absolute;
+    inset: -20% -20% -20% -20%;
+    background-repeat: repeat;
+    will-change: transform;
+  }
+  .stars-far {
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.55), transparent 60%),
+      radial-gradient(1px 1px at 70% 80%, rgba(255, 255, 255, 0.4), transparent 60%);
+    background-size: 180px 180px;
+    animation: drift 240s linear infinite;
+  }
+  /* The near layer: fewer, brighter, and quicker, which is what sells depth. */
+  .stars-near {
+    background-image:
+      radial-gradient(2px 2px at 60% 40%, rgba(255, 255, 255, 0.9), transparent 60%),
+      radial-gradient(1.6px 1.6px at 15% 75%, rgba(199, 210, 254, 0.8), transparent 60%);
+    background-size: 620px 620px;
+    animation: drift 100s linear infinite;
+  }
+
+  /* A streak that crosses the sky now and then: one element, visible for a
+     couple of seconds out of twenty. */
+  .shooting {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 140px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9));
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .shooting-a { animation: shoot 19s linear infinite 6s; }
+
+  @keyframes drift {
+    to { transform: translate3d(-180px, -120px, 0); }
+  }
+  @keyframes shoot {
+    0% { transform: translate3d(-10vw, 12vh, 0) rotate(18deg); opacity: 0; }
+    3% { opacity: 1; }
+    12% { transform: translate3d(85vw, 52vh, 0) rotate(18deg); opacity: 0; }
+    100% { transform: translate3d(85vw, 52vh, 0) rotate(18deg); opacity: 0; }
+  }
+
+  /* The toggle, and the system setting, stop everything rather than slow it. */
+  .sky-still * { animation: none !important; }
+  @media (prefers-reduced-motion: reduce) {
+    .stars, .shooting { animation: none !important; }
+  }
+`;
 
 /**
  * middleware.ts sends a visitor here with ?callbackUrl=<the page they wanted>
@@ -226,6 +536,7 @@ export default function Home() {
   const [showGuide, setShowGuide] = useState(false);
   const [showWhyDetail, setShowWhyDetail] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [focus, setFocus] = useState<CampusPoint | null>(null);
   const connectingRef = useRef(false);
   const [devPreview, setDevPreview] = useState(false);
 
@@ -234,16 +545,27 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      // Only a stored "false" starts it: no answer means off.
+      // Only a stored "false" starts it: no answer means off, as it has been
+      // since the background stopped being the point of this page.
       setPaused(window.localStorage.getItem(PAUSE_STORAGE_KEY) !== "false");
     } catch {
-      // Private browsing, or storage refused. The animation stays off.
+      // Private browsing, or storage refused. The animation simply runs.
     }
   }, []);
 
   // Read after mount: navigator and localStorage do not exist on the server,
   // and guessing wrong would flash the wrong language for a moment.
   useEffect(() => setLanguage(detectLanguage()), []);
+
+  // PROTOTYPE: ?demo=Nice plays the sign-in flight without a key, so the
+  // animation can be looked at during `npm run dev`.
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const demo = new URLSearchParams(window.location.search).get("demo");
+    if (!demo) return;
+    const timer = setTimeout(() => setFocus(campusPoint(demo)), 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Same cookie the DevPreviewToggle button sets. Read after mount: the
   // server never sees this cookie's value the way the client does, so
@@ -323,6 +645,17 @@ export default function Home() {
       if (!sealed.ok) throw new Error(`byok token ${sealed.status}`);
       announceKeyChange();
 
+      // Now that 42 has said who this is, the globe knows where to look: it
+      // stops turning and flies to the campus, the way a map does when you
+      // hand it coordinates. Worth the second and a half it costs, and skipped
+      // entirely for a campus this page has no point for.
+      const session = await getSession();
+      const point = campusPoint(session?.user?.campus);
+      if (point) {
+        setFocus(point);
+        await new Promise((done) => setTimeout(done, 1500));
+      }
+
       router.push(resolveCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl")));
     } catch {
       toast.error(t.errorServer, { duration: 3000, position: "bottom-right" });
@@ -359,45 +692,31 @@ export default function Home() {
     { icon: highlightIcons[3], title: t.highlight4Title, text: t.highlight4Text },
   ];
 
-  if (status === "loading" || status === "authenticated" || devPreview) {
+  // Not while this page is the one doing the signing in: the session turns
+  // authenticated the moment 42 answers, and swapping the page for a spinner
+  // right then takes the globe off screen before it has flown anywhere.
+  if (!connecting && (status === "loading" || status === "authenticated" || devPreview)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f]">
+      <div className="flex min-h-screen items-center justify-center bg-[#05060a]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0a0a0f] text-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900/50 via-[#050505] to-black pointer-events-none" />
-
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute w-[70vw] h-[70vw] max-w-[700px] max-h-[700px] rounded-full blur-[120px] opacity-20"
-          style={{
-            background: "radial-gradient(circle, rgba(60, 50, 255, 0.4), transparent 70%)",
-            top: "20%",
-            left: "50%",
-            x: "-50%",
-          }}
-          animate={paused ? undefined : { scale: [1, 1.15, 1] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute w-[50vw] h-[50vw] max-w-[550px] max-h-[550px] rounded-full blur-[110px] opacity-15"
-          style={{ background: "radial-gradient(circle, rgba(180, 50, 255, 0.4), transparent 70%)", bottom: "5%", right: "10%" }}
-          animate={paused ? undefined : { x: [0, 60, 0], y: [0, -40, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-        />
+    <div className="relative min-h-dvh overflow-hidden bg-[#05060a] text-foreground">
+      <style>{skyStyles}</style>
+      <Sky still={paused} />
+      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+        <Globe focus={focus} />
       </div>
 
-      <StarField paused={paused} />
-
-      <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center gap-16 p-8 py-16">
-        <main className="flex w-full max-w-2xl flex-col items-center gap-10">
-          {/* In the content column rather than the corner of the window: on a
-              wide screen the corner is half a metre from anything to read. */}
-          <div className="-mb-6 inline-flex self-end overflow-hidden rounded-md border border-white/15 bg-black/40 text-xs backdrop-blur-sm">
+      {/* Two columns on a wide screen: what this is on the left, the one thing
+          to do on the right. Stacked on a phone, form first is wrong -- nobody
+          pastes a secret into a page they have not read yet. */}
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-5xl flex-col justify-center gap-10 px-6 py-14 lg:flex-row lg:items-center lg:gap-14">
+        <main className="flex w-full flex-col gap-7 lg:max-w-sm">
+          <div className="inline-flex w-fit overflow-hidden rounded-md border border-white/15 bg-black/50 text-xs">
             {(["fr", "en"] as const).map((code) => (
               <button
                 key={code}
@@ -415,219 +734,230 @@ export default function Home() {
             ))}
           </div>
 
-          <motion.div
-            className="text-center space-y-4"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            <h1 className="text-6xl sm:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/40 drop-shadow-[0_0_30px_rgba(255,255,255,0.25)]">
-              42 Insight
+          <div className="space-y-3">
+            {/* The fade is the point: white at the top, thinning out at the
+                baseline, so the name sits in the dark rather than on it. */}
+            {/* White wordmark, blue fading out of the second half: the colour is
+                there without the flat block of it. */}
+            <h1 className="text-5xl font-black leading-none tracking-tighter text-white sm:text-6xl">
+              42{" "}
+              <span className="bg-gradient-to-b from-blue-200 via-blue-300 to-blue-600/40 bg-clip-text text-transparent">
+                Insight
+              </span>
             </h1>
-            <div className="flex items-center justify-center gap-2">
-              <TransparentBadge text="🌐 One for All" bgColor="bg-blue-500/10" textColor="text-blue-300" />
-              <span className="text-sm text-muted-foreground">{t.subtitle}</span>
-            </div>
-          </motion.div>
 
-          <motion.div
-            className="w-full space-y-3"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
-          >
+            <p className="text-lg text-white/80">{t.tagline}</p>
+            <p className="text-sm text-muted-foreground">{t.subtitle}</p>
+          </div>
+
+          <ul className="space-y-3 border-l border-white/10 pl-4">
             {highlights.map((item) => (
-              <div
-                key={item.title}
-                className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm"
-              >
-                <item.icon className="h-4 w-4 shrink-0 mt-0.5 text-blue-300" />
+              <li key={item.title} className="flex items-start gap-3">
+                <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
                 <div>
                   <p className="text-sm font-medium text-white">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">{item.text}</p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {item.text}
+                  </p>
                 </div>
-              </div>
+              </li>
             ))}
-          </motion.div>
+          </ul>
 
-          <motion.form
-            onSubmit={handleConnect}
-            className="w-full space-y-3 rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
-          >
-            <div className="space-y-2 border-b border-white/10 pb-3 text-sm text-muted-foreground">
-              <p>{t.whySummary}</p>
-              <button
-                type="button"
-                onClick={() => setShowWhyDetail((shown) => !shown)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-white transition-colors"
-              >
-                {t.moreDetail}
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showWhyDetail ? "rotate-180" : ""}`} />
-              </button>
-              {showWhyDetail && (
-                <div className="space-y-2 border-t border-white/10 pt-2">
-                  <p>{tKey.why}</p>
-                  <p>{tKey.whyAutonomy}</p>
-                  <p>{tKey.whyPrivacy}</p>
-                  <p>{tKey.whySelfHost}</p>
-                </div>
-              )}
-            </div>
-
+          <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+            <p>{t.whySummary}</p>
             <button
               type="button"
-              onClick={() => setShowGuide((shown) => !shown)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-400/30 bg-blue-500/10 px-4 py-2.5 text-sm font-medium text-blue-200 transition-colors hover:bg-blue-500/20"
+              onClick={() => setShowWhyDetail((shown) => !shown)}
+              className="flex items-center gap-1 text-white/60 transition-colors hover:text-white"
             >
-              <HelpCircle className="h-4 w-4" />
-              {t.noKey}
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showGuide ? "rotate-180" : ""}`} />
-            </button>
-
-            {showGuide && (
-              <div className="max-h-72 space-y-3 overflow-y-auto rounded-lg border border-white/10 bg-black/20 p-3 pr-2">
-                <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
-                  <li>
-                    {t.stepOpenBefore}{" "}
-                    <a
-                      href="https://profile.intra.42.fr/oauth/applications/new"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-blue-300 hover:underline"
-                    >
-                      Settings → API → Register a new app
-                      <ExternalLink className="h-3 w-3" />
-                    </a>{" "}
-                    {t.stepOpenAfter}
-                  </li>
-                  {tutorialSteps[language].map((step, index) => (
-                    <li key={index}>{step}</li>
-                  ))}
-                  <li>{t.stepCopy}</li>
-                </ol>
-                <IntraKeyGuide language={language} />
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label htmlFor="client-id" className="text-xs font-medium text-white/70">
-                {tKey.clientId}
-              </label>
-              <Input
-                id="client-id"
-                value={clientId}
-                onChange={(event) => setClientId(event.target.value)}
-                autoComplete="off"
-                placeholder="u-s4t2ud-…"
-                className="border-white/10 bg-black/30 text-white placeholder:text-white/30"
+              {t.moreDetail}
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${showWhyDetail ? "rotate-180" : ""}`}
               />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="client-secret" className="text-xs font-medium text-white/70">
-                {tKey.clientSecret}
-              </label>
-              <div className="relative">
-                <Input
-                  id="client-secret"
-                  type={showSecret ? "text" : "password"}
-                  value={clientSecret}
-                  onChange={(event) => setClientSecret(event.target.value)}
-                  autoComplete="off"
-                  placeholder="s-s4t2ud-…"
-                  className="border-white/10 bg-black/30 pr-9 text-white placeholder:text-white/30"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSecret((shown) => !shown)}
-                  aria-label={showSecret ? tKey.hideSecret : tKey.showSecret}
-                  className="absolute inset-y-0 right-0 flex items-center px-2 text-white/40 transition-colors hover:text-white"
-                >
-                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+            </button>
+            {showWhyDetail && (
+              <div className="space-y-2 border-t border-white/10 pt-2">
+                <p>{tKey.why}</p>
+                <p>{tKey.whyAutonomy}</p>
+                <p>{tKey.whyPrivacy}</p>
+                <p>{tKey.whySelfHost}</p>
               </div>
-            </div>
-
-            <Button
-              type="submit"
-              className="h-11 w-full text-base font-medium bg-white text-black hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all duration-300"
-              disabled={connecting || !clientId.trim() || !clientSecret.trim()}
-            >
-              <span className="flex items-center justify-center gap-2">
-                {connecting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {connecting ? t.connecting : t.connect}
-              </span>
-            </Button>
-
-            {/* A plain button rather than <Button variant="outline">: that
-                variant's dark-mode border resolves to near-black on this
-                background, which read as unstyled text rather than a button. */}
-            {process.env.NODE_ENV !== "production" && (
-              <button
-                type="button"
-                onClick={() => {
-                  persistDevPreview(true);
-                  router.replace(
-                    resolveCallbackUrl(
-                      new URLSearchParams(window.location.search).get("callbackUrl"),
-                    ),
-                  );
-                }}
-                className="h-10 w-full rounded-md border border-white/20 bg-white/5 text-sm text-white/70 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
-              >
-                {t.browseWithoutKey}
-              </button>
             )}
+          </div>
 
-            <p className="text-center text-xs text-muted-foreground">
-              {t.alreadyBefore}{" "}
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+            <a
+              href="https://github.com/fzphr/42insight"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 transition-colors hover:text-white"
+            >
+              <Star className="h-3.5 w-3.5" />
+              {t.star}
+            </a>
+            <a
+              href="https://github.com/fzphr/42insight/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 transition-colors hover:text-white"
+            >
+              <Bug className="h-3.5 w-3.5" />
+              {t.issues}
+            </a>
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
+              {t.createdBy}{" "}
               <a
-                href="https://profile.intra.42.fr/oauth/applications"
+                href="https://github.com/fzphr"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-300 hover:underline"
+                className="text-white/80 transition-colors hover:text-white"
               >
-                {t.alreadyLink}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-              {" "}{t.alreadyAfter}
-            </p>
-
-          </motion.form>
-
-          <div className="flex w-full flex-wrap justify-center gap-2">
-            {[
-              { icon: Star, text: t.star, href: "https://github.com/fzphr/42insight" },
-              { icon: Bug, text: t.issues, href: "https://github.com/fzphr/42insight/issues" },
-            ].map((item) => (
+                Zeph
+              </a>{" "}
+              &{" "}
               <a
-                key={item.text}
-                href={item.href}
+                href="https://github.com/Haletran"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex flex-1 min-w-[80px] items-center justify-center gap-1.5 rounded-xl border border-white/5 bg-white/5 px-2 py-2.5 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
+                className="text-white/80 transition-colors hover:text-white"
               >
-                <item.icon className="h-3.5 w-3.5" />
-                {item.text}
+                Haletran
               </a>
-            ))}
+            </span>
           </div>
         </main>
 
-        <footer className="flex flex-wrap items-center justify-center gap-6">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
-            {t.createdBy}{" "}
-            <a href="https://github.com/fzphr" target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-white transition-colors">
-              Zeph
+        <form
+          onSubmit={handleConnect}
+          className="w-full space-y-3 rounded-2xl border border-white/10 bg-black/60 p-5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)] lg:max-w-md"
+        >
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold text-white">{t.formTitle}</h2>
+            <p className="text-xs text-muted-foreground">{t.formSubtitle}</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowGuide((shown) => !shown)}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-400/30 bg-blue-500/10 px-4 py-2.5 text-sm font-medium text-blue-200 transition-colors hover:bg-blue-500/20"
+          >
+            <HelpCircle className="h-4 w-4" />
+            {t.noKey}
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform ${showGuide ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {showGuide && (
+            <div className="max-h-72 space-y-3 overflow-y-auto rounded-lg border border-white/10 bg-black/40 p-3 pr-2">
+              <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+                <li>
+                  {t.stepOpenBefore}{" "}
+                  <a
+                    href="https://profile.intra.42.fr/oauth/applications/new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-blue-300 hover:underline"
+                  >
+                    Settings → API → Register a new app
+                    <ExternalLink className="h-3 w-3" />
+                  </a>{" "}
+                  {t.stepOpenAfter}
+                </li>
+                {tutorialSteps[language].map((step, index) => (
+                  <li key={index}>{step}</li>
+                ))}
+                <li>{t.stepCopy}</li>
+              </ol>
+              <IntraKeyGuide language={language} />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label htmlFor="client-id" className="text-xs font-medium text-white/70">
+              {tKey.clientId}
+            </label>
+            <Input
+              id="client-id"
+              value={clientId}
+              onChange={(event) => setClientId(event.target.value)}
+              autoComplete="off"
+              placeholder="u-s4t2ud-…"
+              className="border-white/10 bg-black/40 text-white placeholder:text-white/30"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="client-secret" className="text-xs font-medium text-white/70">
+              {tKey.clientSecret}
+            </label>
+            <div className="relative">
+              <Input
+                id="client-secret"
+                type={showSecret ? "text" : "password"}
+                value={clientSecret}
+                onChange={(event) => setClientSecret(event.target.value)}
+                autoComplete="off"
+                placeholder="s-s4t2ud-…"
+                className="border-white/10 bg-black/40 pr-9 text-white placeholder:text-white/30"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSecret((shown) => !shown)}
+                aria-label={showSecret ? tKey.hideSecret : tKey.showSecret}
+                className="absolute inset-y-0 right-0 flex items-center px-2 text-white/40 transition-colors hover:text-white"
+              >
+                {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="h-11 w-full bg-white text-base font-medium text-black transition-colors hover:bg-white/90"
+            disabled={connecting || !clientId.trim() || !clientSecret.trim()}
+          >
+            <span className="flex items-center justify-center gap-2">
+              {connecting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {connecting ? t.connecting : t.connect}
+            </span>
+          </Button>
+
+          {/* A plain button rather than <Button variant="outline">: that
+              variant's dark-mode border resolves to near-black on this
+              background, which read as unstyled text rather than a button. */}
+          {process.env.NODE_ENV !== "production" && (
+            <button
+              type="button"
+              onClick={() => {
+                persistDevPreview(true);
+                router.replace(
+                  resolveCallbackUrl(
+                    new URLSearchParams(window.location.search).get("callbackUrl"),
+                  ),
+                );
+              }}
+              className="h-10 w-full rounded-md border border-white/20 bg-white/5 text-sm text-white/70 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
+            >
+              {t.browseWithoutKey}
+            </button>
+          )}
+
+          <p className="text-center text-xs text-muted-foreground">
+            {t.alreadyBefore}{" "}
+            <a
+              href="https://profile.intra.42.fr/oauth/applications"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-blue-300 hover:underline"
+            >
+              {t.alreadyLink}
+              <ExternalLink className="h-3 w-3" />
             </a>{" "}
-            &{" "}
-            <a href="https://github.com/Haletran" target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-white transition-colors">
-              Haletran
-            </a>
+            {t.alreadyAfter}
           </p>
-        </footer>
+        </form>
       </div>
 
       <button
@@ -635,7 +965,7 @@ export default function Home() {
         onClick={togglePaused}
         aria-pressed={paused}
         title={paused ? t.resumeTitle : t.pauseTitle}
-        className="absolute bottom-4 right-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
+        className="absolute bottom-4 right-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/50 px-3 py-1.5 text-xs text-white/70 transition-colors hover:bg-black/70 hover:text-white"
       >
         {paused ? (
           <>
