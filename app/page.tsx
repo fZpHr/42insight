@@ -174,6 +174,24 @@ const MAP_TILES = 2;
 const TILE_SPAN = 3;
 
 /**
+ * Which latitude sits in the middle of the window.
+ *
+ * The disc shows a square of the map about 97 degrees on a side, and 42 runs
+ * from Helsinki at 60N to Adelaide at 35S -- 95 degrees, which only fits if
+ * the window is put where the campuses are. Centred on the equator, as it
+ * was, the top edge fell at 47N: Helsinki, Stockholm, Berlin, Amsterdam and
+ * Brussels were all off the map while the bottom half held open ocean.
+ *
+ * Taken from the campuses themselves rather than written down, so opening a
+ * campus further north can never push one off the bottom.
+ */
+const MAP_CENTRE_LAT =
+  (Math.max(...CAMPUS_COORDS.map((point) => point.lat)) +
+    Math.min(...CAMPUS_COORDS.map((point) => point.lat))) /
+  2;
+const MAP_SHIFT = MAP_CENTRE_LAT / 180;
+
+/**
  * How lively a campus looks on the map: dim, awake, or busy.
  *
  * Decoration, not data. Telling anyone how busy a campus really is would mean
@@ -220,7 +238,7 @@ const Globe = ({ focus }: { focus: CampusPoint | null }) => {
 
     map.style.transition = "transform 1.8s cubic-bezier(0.22, 0.61, 0.36, 1)";
     map.style.transform =
-      `translate(${(0.5 / acrossTrack - zoom * alongX) * 100}%, ${zoom * (0.5 - alongY) * 100}%)` +
+      `translate(${(0.5 / acrossTrack - zoom * alongX) * 100}%, ${(zoom * (0.5 - alongY) - MAP_SHIFT) * 100}%)` +
       ` scale(${zoom})`;
   }, [focus]);
 
@@ -233,7 +251,7 @@ const Globe = ({ focus }: { focus: CampusPoint | null }) => {
       <div className="globe-track" ref={track}>
         {Array.from({ length: MAP_TILES }, (_, tile) => (
           <div className="globe-tile" key={tile}>
-            <svg className="globe-land" viewBox="0 0 720 360" preserveAspectRatio="none">
+            <svg className="globe-land" viewBox="0 0 2880 1440" preserveAspectRatio="none">
               <path d={WORLD_LAND_PATH} />
             </svg>
             {CAMPUS_COORDS.map((campus) => (
@@ -299,13 +317,13 @@ const skyStyles = `
   .globe {
     position: absolute;
     left: 50%;
-    top: 52%;
+    top: 50%;
     width: clamp(420px, 58vw, 820px);
     aspect-ratio: 1;
     translate: -50% -50%;
     border-radius: 50%;
     overflow: hidden;
-    opacity: 0.6;
+    opacity: 0.85;
     transition: opacity 1.2s ease;
     box-shadow: inset 0 0 60px rgba(2, 6, 23, 0.9), 0 0 60px rgba(37, 99, 235, 0.1);
   }
@@ -315,7 +333,7 @@ const skyStyles = `
      never come into view as it turns. */
   .globe-tilt {
     position: absolute;
-    inset: -14%;
+    inset: -12%;
     transform: rotate(-7deg);
   }
 
@@ -328,7 +346,7 @@ const skyStyles = `
     display: flex;
     width: 600%;
     height: 150%;
-    translate: 0 -50%;
+    translate: 0 calc(-50% + ${MAP_SHIFT * 100}%);
     will-change: transform;
     animation: map-turn 150s linear infinite;
     transform-origin: 0 50%;
@@ -343,9 +361,9 @@ const skyStyles = `
     width: 100%;
     height: 100%;
     display: block;
-    fill: rgba(96, 165, 250, 0.22);
-    stroke: rgba(147, 197, 253, 0.55);
-    stroke-width: 0.6;
+    fill: rgba(96, 165, 250, 0.3);
+    stroke: rgba(147, 197, 253, 0.85);
+    stroke-width: 0.75;
     vector-effect: non-scaling-stroke;
   }
   .campus {
@@ -402,15 +420,22 @@ const skyStyles = `
     to { transform: scale(14); opacity: 0; }
   }
 
-  /* The curve: dark at the rim. Static.
+  /* The curve, and the limb. Static.
      There was a pale highlight in the upper left too, and at 820px across it
      was the brightest thing on the page after the text: a white oval floating
-     over the map. The rim shading alone is what reads as curvature. */
+     over the map. The rim shading alone is what reads as curvature, and
+     taking it deeper and further in is what makes a coastline look like it is
+     turning away at the edge instead of sliding off a flat one. */
   .globe-shade {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, transparent 52%, rgba(2, 4, 12, 0.85) 88%);
+    background: radial-gradient(
+      circle at 50% 50%,
+      transparent 48%,
+      rgba(3, 6, 16, 0.35) 74%,
+      rgba(2, 4, 12, 0.95) 95%
+    );
   }
 
   @keyframes map-turn {
