@@ -9,6 +9,7 @@ import type { FortyTwoProject, FortyTwoTitle, FortyTwoTitleOption } from "@/type
 import { cn } from "@/lib/utils"
 import { Users } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { countsAsGroupProject } from "@/lib/forty-two/forty-two-rncp"
 
 interface TitleRequirementProps {
   name: string
@@ -129,7 +130,7 @@ export function TitleRequirements({
   const toggleCoalition = useFortyTwoStore((state) => state.toggleCoalitionBonus)
 
   const validatedGroupProjectsCount = (() => {
-    const groupProjects = Object.values(projects).filter((p) => p && p.is_solo === false)
+    const groupProjects = Object.values(projects).filter((p) => p && countsAsGroupProject(p))
     return groupProjects.filter((p) => projectMarks.get(p.id) && projectMarks.get(p.id)! > 0).length
   })()
 
