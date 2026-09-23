@@ -501,3 +501,122 @@ export const demoCampusPayload = (campus: DemoCampus): any => ({
   email_extension: "42.fr",
   default_hidden_phone: false,
 });
+
+/* ------------------------------------------------------- exams and events */
+
+/**
+ * The exams sitting today, and who is sitting them.
+ *
+ * The exam tracker reads a campus's exams to learn which projects they are sat
+ * on, then everybody's mark on those projects in the last day. Both halves
+ * have to line up or the page shows an empty room, so they are generated from
+ * one list here rather than separately.
+ */
+const EXAM_PROJECTS = [1320, 1321, 1322, 1323, 1324]
+  .map((id) => CATALOGUE.find((project) => project.id === id))
+  .filter((project): project is (typeof CATALOGUE)[number] => Boolean(project));
+
+const examsToday = (campus: DemoCampus) => {
+  const roll = seeded(hashOf(`exams:${campus.name}`));
+  // Two of the five ranks, so a campus is not sitting every exam at once.
+  const first = Math.floor(roll() * (EXAM_PROJECTS.length - 1));
+  return EXAM_PROJECTS.slice(first, first + 2);
+};
+
+export const demoExams = (campus: DemoCampus): any[] => {
+  const projects = examsToday(campus);
+  if (projects.length === 0) return [];
+
+  const begin = new Date();
+  begin.setHours(9, 0, 0, 0);
+
+  return [
+    {
+      id: campus.id * 10,
+      name: "Exam stud 3h",
+      begin_at: begin.toISOString(),
+      end_at: new Date(begin.getTime() + 3 * 3600000).toISOString(),
+      location: `${campus.city} cluster`,
+      max_people: 60,
+      nbr_subscribers: Math.round(campus.roster * 0.12),
+      campus: [demoCampusPayload(campus)],
+      cursus: [{ id: CURSUS_ID, name: "42cursus" }],
+      projects: projects.map((project) => ({
+        id: project.id,
+        name: project.name,
+        slug: project.slug,
+      })),
+    },
+  ];
+};
+
+/** Everyone's mark on those exams, as projects_users rows. */
+export const demoExamResults = (campus: DemoCampus): any[] => {
+  const projects = examsToday(campus);
+  if (projects.length === 0) return [];
+
+  const sitting = demoRoster(campus).filter((_, index) => index % 7 === 0);
+
+  return sitting.map((student, index) => {
+    const roll = seeded(hashOf(`exam:${student.login}`));
+    const project = projects[index % projects.length];
+    // Exams are marked out of 100 and most people do not clear the bar first
+    // time, which is the shape the tracker is there to show.
+    const mark = Math.floor(between(roll, 0, 105));
+
+    return {
+      id: student.id * 10 + index,
+      occurrence: Math.floor(roll() * 3),
+      final_mark: mark,
+      status: "finished",
+      "validated?": mark >= 50,
+      project: { id: project.id, name: project.name, slug: project.slug, parent_id: null },
+      cursus_ids: [CURSUS_ID],
+      marked: true,
+      marked_at: new Date(Date.now() - index * 60000).toISOString(),
+      created_at: new Date(Date.now() - 4 * 3600000).toISOString(),
+      updated_at: new Date(Date.now() - index * 60000).toISOString(),
+      user: demoUserSummary(student),
+    };
+  });
+};
+
+const EVENT_KINDS = ["conference", "meet_up", "workshop", "hackathon", "association"];
+const EVENT_NAMES = [
+  "Intro to systems programming",
+  "Pizza and peer review",
+  "Open source Saturday",
+  "Alumni night: life after the common core",
+  "Security workshop: breaking your own code",
+  "Game jam weekend",
+];
+
+export const demoEvents = (campus: DemoCampus): any[] => {
+  const roll = seeded(hashOf(`events:${campus.name}`));
+
+  return EVENT_NAMES.slice(0, 4 + Math.floor(roll() * 2)).map((name, index) => {
+    const begin = new Date(Date.now() + (index + 1) * 2 * 86400000);
+    begin.setHours(18, 30, 0, 0);
+    const max = 30 + Math.floor(roll() * 90);
+
+    return {
+      id: campus.id * 100 + index,
+      name,
+      description:
+        "An invented event, in an invented campus, for a demo. Nobody is running this.",
+      location: `${campus.city} — room ${1 + Math.floor(roll() * 6)}`,
+      kind: pick(roll, EVENT_KINDS),
+      max_people: max,
+      nbr_subscribers: Math.floor(max * between(roll, 0.2, 0.95)),
+      begin_at: begin.toISOString(),
+      end_at: new Date(begin.getTime() + 2 * 3600000).toISOString(),
+      campus_ids: [campus.id],
+      cursus_ids: [CURSUS_ID],
+      created_at: new Date(Date.now() - 20 * 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      prohibition_of_cancellation: null,
+      waitlist: null,
+      themes: [],
+    };
+  });
+};

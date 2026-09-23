@@ -17,7 +17,10 @@ import {
   demoCampusById,
   demoCampusPayload,
   demoCursusUserPayload,
+  demoEvents,
   demoEveryone,
+  demoExamResults,
+  demoExams,
   demoLocations,
   demoRoster,
   demoStudentById,
@@ -124,14 +127,34 @@ const route = (path: string, params: URLSearchParams): Response => {
         return paged(demoUserPayload(student).projects_users, params);
       // A demo has no correction history to replay, and every page that reads
       // these treats an empty list as "not enough to say", which is true here.
+      case "events": {
+        // The two the viewer has signed up for, so the dashboard's list is
+        // not empty while the campus page has half a dozen.
+        const campus = demoCampusById(student.campusId);
+        return paged(campus ? demoEvents(campus).slice(0, 2) : [], params);
+      }
       case "scale_teams/as_corrector":
-      case "events":
       case "locations_stats":
       case "coalitions":
         return paged([], params);
       default:
         return notFound();
     }
+  }
+
+  /* --------------------------------------------------------- projects_users */
+  // The exam tracker's second call: everyone's mark on the projects the
+  // campus's exams are sat on. It filters by campus rather than by roster, so
+  // the rows have to come from the campus the ids belong to.
+  if (path === "/projects_users") {
+    const campus = demoCampusById(Number(params.get("filter[campus]")));
+    if (!campus) return paged([], params);
+
+    const wanted = new Set(idsFrom(params.get("filter[project_id]")));
+    const rows = demoExamResults(campus).filter(
+      (row) => wanted.size === 0 || wanted.has(row.project.id),
+    );
+    return paged(rows, params);
   }
 
   /* ---------------------------------------------------------------- campus */
@@ -150,10 +173,35 @@ const route = (path: string, params: URLSearchParams): Response => {
       case "users":
         return paged(demoRoster(campus).map(demoUserSummary), params);
       case "events":
-        return paged([], params);
+        return paged(demoEvents(campus), params);
+      case "exams":
+        return paged(demoExams(campus), params);
       default:
         return notFound();
     }
+  }
+
+  /* ----------------------------------------------------------------- events */
+  // Who signed up for an event, and what they said afterwards. The event id
+  // carries its campus (campus.id * 100 + n), which is how the subscribers
+  // come from the right roster.
+  const eventSub = path.match(/^\/events\/(\d+)\/(events_users|feedbacks)$/);
+  if (eventSub) {
+    if (eventSub[2] === "feedbacks") return paged([], params);
+
+    const campus = demoCampusById(Math.floor(Number(eventSub[1]) / 100));
+    if (!campus) return paged([], params);
+
+    const rows = demoRoster(campus)
+      .filter((_, position) => position % 3 === 0)
+      .map((student, position) => ({
+        id: Number(eventSub[1]) * 1000 + position,
+        event_id: Number(eventSub[1]),
+        user_id: student.id,
+        user: demoUserSummary(student),
+      }));
+
+    return paged(rows, params);
   }
 
   /* -------------------------------------------------------- everything else */
