@@ -11,8 +11,6 @@ import {
   KeyRound,
   Database,
   Github,
-  Pause,
-  Play,
   Eye,
   EyeOff,
   ExternalLink,
@@ -54,18 +52,6 @@ const campusPoint = (campus?: string | null): CampusPoint | null =>
   ) ?? null;
 
 /**
- * Whether the ambient background animates.
- *
- * The old background was ninety framer-motion stars plus two 700px shapes
- * under a 120px blur, animated in a loop: ninety JavaScript animations a
- * frame, and a blurred surface Chrome for Windows re-rasterises as it moves.
- * What is here now is four composited layers driven by CSS transforms, so the
- * toggle is a courtesy rather than a rescue -- and it still defers to the
- * system's own reduced-motion setting.
- */
-const PAUSE_STORAGE_KEY = "42insight:background-paused";
-
-/**
  * Page-specific copy, in both languages. The longer explanatory paragraphs
  * (why/whyAutonomy/whyPrivacy) and the plain field labels live in
  * lib/api-key-copy.ts instead, and are reused here rather than duplicated,
@@ -102,10 +88,6 @@ const homeCopy = {
     star: "Star",
     issues: "Issues",
     createdBy: "Created by",
-    pauseAnimation: "Pause animation",
-    animationOff: "Animation off",
-    pauseTitle: "Pause the background animation",
-    resumeTitle: "Resume the background animation",
     errorGeneric: "42 didn't accept that client ID and secret",
     errorPrivate: "That application is private on the intra. Make it public (your app → Public) and try again.",
     errorServer: "Could not reach the server",
@@ -140,10 +122,6 @@ const homeCopy = {
     star: "Star",
     issues: "Issues",
     createdBy: "Créé par",
-    pauseAnimation: "Mettre en pause",
-    animationOff: "Animation coupée",
-    pauseTitle: "Mettre en pause l'animation de fond",
-    resumeTitle: "Reprendre l'animation de fond",
     errorGeneric: "42 n'a pas accepté ce client ID et ce secret",
     errorPrivate: "Cette application est privée sur l'intra. Passez-la en publique (votre appli → Public) puis réessayez.",
     errorServer: "Impossible de contacter le serveur",
@@ -291,11 +269,8 @@ const Globe = ({ focus }: { focus: CampusPoint | null }) => {
  * field costs one paint rather than one element per star, and parallax is just
  * a different tile size and speed per layer.
  */
-const Sky = ({ still }: { still: boolean }) => (
-  <div
-    aria-hidden
-    className={`pointer-events-none fixed inset-0 overflow-hidden ${still ? "sky-still" : ""}`}
-  >
+const Sky = () => (
+  <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
     <div className="nebula" />
     <div className="stars stars-far" />
     <div className="stars stars-near" />
@@ -305,14 +280,19 @@ const Sky = ({ still }: { still: boolean }) => (
 );
 
 const skyStyles = `
-  /* One breath of colour, cold and far off. Two gradients, nothing else: on a
-     page this dark, more of them reads as decoration rather than distance. */
+  /* One breath of colour, cold and far off.
+     It used to be two tight radial gradients, at 20% and 16% opacity over a
+     near-black page. Eight-bit colour has about five steps to cross that
+     range, so each one banded into visible rings and read as a pale oval
+     sitting on the page rather than as depth. What is here now covers most of
+     the screen instead of a corner, so the same few steps are spread over ten
+     times the distance and no edge lands anywhere the eye can find it. */
   .nebula {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(45% 38% at 16% 12%, rgba(47, 78, 184, 0.2), transparent 72%),
-      radial-gradient(40% 34% at 84% 84%, rgba(76, 46, 150, 0.16), transparent 74%);
+      radial-gradient(120% 90% at 10% 0%, rgba(47, 78, 184, 0.13), transparent 100%),
+      radial-gradient(110% 80% at 95% 100%, rgba(76, 46, 150, 0.1), transparent 100%);
   }
 
   /* The round window the map turns behind. */
@@ -422,14 +402,15 @@ const skyStyles = `
     to { transform: scale(14); opacity: 0; }
   }
 
-  /* The curve: light from the upper left, dark at the rim. Static. */
+  /* The curve: dark at the rim. Static.
+     There was a pale highlight in the upper left too, and at 820px across it
+     was the brightest thing on the page after the text: a white oval floating
+     over the map. The rim shading alone is what reads as curvature. */
   .globe-shade {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 28%, rgba(191, 219, 254, 0.12), transparent 55%),
-      radial-gradient(circle at 50% 50%, transparent 52%, rgba(2, 4, 12, 0.85) 88%);
+    background: radial-gradient(circle at 50% 50%, transparent 52%, rgba(2, 4, 12, 0.85) 88%);
   }
 
   @keyframes map-turn {
@@ -495,10 +476,9 @@ const skyStyles = `
     100% { transform: translate3d(85vw, 52vh, 0) rotate(18deg); opacity: 0; }
   }
 
-  /* The toggle, and the system setting, stop everything rather than slow it. */
-  .sky-still * { animation: none !important; }
+  /* The system setting stops everything rather than slowing it down. */
   @media (prefers-reduced-motion: reduce) {
-    .stars, .shooting { animation: none !important; }
+    .stars, .shooting, .globe-track { animation: none !important; }
   }
 `;
 
@@ -528,7 +508,6 @@ const resolveCallbackUrl = (raw: string | null): string => {
 export default function Home() {
   const router = useRouter();
   const { status } = useSession();
-  const [paused, setPaused] = useState(true);
   const [language, setLanguage] = useState<Language>("en");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -542,16 +521,6 @@ export default function Home() {
 
   const t = homeCopy[language];
   const tKey = copy[language];
-
-  useEffect(() => {
-    try {
-      // Only a stored "false" starts it: no answer means off, as it has been
-      // since the background stopped being the point of this page.
-      setPaused(window.localStorage.getItem(PAUSE_STORAGE_KEY) !== "false");
-    } catch {
-      // Private browsing, or storage refused. The animation simply runs.
-    }
-  }, []);
 
   // Read after mount: navigator and localStorage do not exist on the server,
   // and guessing wrong would flash the wrong language for a moment.
@@ -597,18 +566,6 @@ export default function Home() {
     } catch {
       // Not remembering it is a smaller failure than not honouring it.
     }
-  };
-
-  const togglePaused = () => {
-    setPaused((wasPaused) => {
-      const next = !wasPaused;
-      try {
-        window.localStorage.setItem(PAUSE_STORAGE_KEY, String(next));
-      } catch {
-        // Not remembering it is a smaller failure than not honouring it.
-      }
-      return next;
-    });
   };
 
   const handleConnect = async (event: React.FormEvent) => {
@@ -706,7 +663,7 @@ export default function Home() {
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#05060a] text-foreground">
       <style>{skyStyles}</style>
-      <Sky still={paused} />
+      <Sky />
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
         <Globe focus={focus} />
       </div>
@@ -959,26 +916,6 @@ export default function Home() {
           </p>
         </form>
       </div>
-
-      <button
-        type="button"
-        onClick={togglePaused}
-        aria-pressed={paused}
-        title={paused ? t.resumeTitle : t.pauseTitle}
-        className="absolute bottom-4 right-4 z-50 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/50 px-3 py-1.5 text-xs text-white/70 transition-colors hover:bg-black/70 hover:text-white"
-      >
-        {paused ? (
-          <>
-            <Play className="h-3.5 w-3.5" />
-            {t.animationOff}
-          </>
-        ) : (
-          <>
-            <Pause className="h-3.5 w-3.5" />
-            {t.pauseAnimation}
-          </>
-        )}
-      </button>
     </div>
   );
 }
