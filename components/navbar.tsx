@@ -23,6 +23,7 @@ import {
   GamepadIcon,
   Award,
   KeyRound,
+  LogOut,
   Bug,
 } from "lucide-react";
 
@@ -456,8 +457,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         {/* The two sets of colours the dark theme comes in, as the colours
             themselves: a swatch says what it does faster than a menu item
-            naming it. Hidden when the sidebar is collapsed to icons, where
-            there is no room for a choice nobody is looking for. */}
+            naming it, and signing out beside them rather than buried in a
+            hover menu on the user card, which is where it used to be and
+            where nobody found it. Both hidden when the sidebar is collapsed
+            to icons, where there is no room for either. */}
         {open && (
           <div className="flex items-center gap-2 px-2 pb-1">
             {(
@@ -491,6 +494,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 }`}
               />
             ))}
+
+            <button
+              type="button"
+              onClick={signOutfunc}
+              title="Sign out"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-destructive"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </button>
           </div>
         )}
 
