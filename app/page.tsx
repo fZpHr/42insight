@@ -280,14 +280,19 @@ const Sky = () => (
 );
 
 const skyStyles = `
-  /* One breath of colour, cold and far off. Two gradients, nothing else: on a
-     page this dark, more of them reads as decoration rather than distance. */
+  /* One breath of colour, cold and far off.
+     It used to be two tight radial gradients, at 20% and 16% opacity over a
+     near-black page. Eight-bit colour has about five steps to cross that
+     range, so each one banded into visible rings and read as a pale oval
+     sitting on the page rather than as depth. What is here now covers most of
+     the screen instead of a corner, so the same few steps are spread over ten
+     times the distance and no edge lands anywhere the eye can find it. */
   .nebula {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(45% 38% at 16% 12%, rgba(47, 78, 184, 0.2), transparent 72%),
-      radial-gradient(40% 34% at 84% 84%, rgba(76, 46, 150, 0.16), transparent 74%);
+      radial-gradient(120% 90% at 10% 0%, rgba(47, 78, 184, 0.13), transparent 100%),
+      radial-gradient(110% 80% at 95% 100%, rgba(76, 46, 150, 0.1), transparent 100%);
   }
 
   /* The round window the map turns behind. */
@@ -397,14 +402,15 @@ const skyStyles = `
     to { transform: scale(14); opacity: 0; }
   }
 
-  /* The curve: light from the upper left, dark at the rim. Static. */
+  /* The curve: dark at the rim. Static.
+     There was a pale highlight in the upper left too, and at 820px across it
+     was the brightest thing on the page after the text: a white oval floating
+     over the map. The rim shading alone is what reads as curvature. */
   .globe-shade {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background:
-      radial-gradient(circle at 32% 28%, rgba(191, 219, 254, 0.12), transparent 55%),
-      radial-gradient(circle at 50% 50%, transparent 52%, rgba(2, 4, 12, 0.85) 88%);
+    background: radial-gradient(circle at 50% 50%, transparent 52%, rgba(2, 4, 12, 0.85) 88%);
   }
 
   @keyframes map-turn {
