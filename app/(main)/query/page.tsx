@@ -155,9 +155,9 @@ export default function Query() {
                     {requestCount}/10
                   </span>
                 </div>
-                <div className="w-full bg-gray-600 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div
-                    className="bg-gray-100 h-2 rounded-full transition-all duration-300"
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
                     style={{ width: `${(requestCount / 10) * 100}%` }}
                   />
                 </div>

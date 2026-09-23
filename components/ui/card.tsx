@@ -7,7 +7,14 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        // Softer edges and no drop shadow: on a dark page a shadow reads as
+        // grime, and the border alone is enough to separate a card from what
+        // it sits on.
+        //
+        // No hover colour here, deliberately. A card that lit up on hover took
+        // its border colour back from the cards that set their own -- the
+        // green on a completed RNCP option vanished under the cursor.
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-2xl border border-border/60 py-6 shadow-none",
         className
       )}
       {...props}
