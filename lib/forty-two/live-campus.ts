@@ -59,6 +59,8 @@ export const CAMPUS_IDS: { [key: string]: number } = {
  * Cluj, Bucharest, Chisinau, Cape-Town, Novosibirsk, Alicante, Antwerp,
  * Fremont, 42next), and four are 42's own internal ones, active but never
  * meant for this list (42Network 42, 42 Central 54, Forty2 66, New Vegas 78).
+ * One id answered neither way: 7 returns 502 on every attempt, so it is the
+ * one gap in the sweep. Its neighbours are all closed campuses.
  *
  * Merged before the live rows, so the day 42 makes one public the API wins.
  */
