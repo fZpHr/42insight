@@ -36,6 +36,27 @@ export const CAMPUS_IDS: { [key: string]: number } = {
   Nice: 41,
 };
 
+/**
+ * Campuses 42 runs but does not list.
+ *
+ * GET /v2/campus answers with public campuses only, and Penang is flagged
+ * `public: false` -- it is missing from the list, and /v2/campus/74 answers
+ * 404 on top, so from those two endpoints the campus does not appear to
+ * exist. It does: /campus/74/users returns its 459 accounts,
+ * /campus/74/locations its 5723 sessions, and cursus_users filtered on it the
+ * 55 students in 42cursus. Every page of this site works for Penang. The only
+ * thing missing was the id, so here it is.
+ *
+ * Found by reading a Penang student's profile: the campus object nested in
+ * /v2/users/:login carries the whole record whatever the public flag says.
+ * That is also the way to add the next one -- ask someone who is there.
+ *
+ * Merged before the live rows, so the day 42 makes one public the API wins.
+ */
+const UNLISTED_CAMPUSES: { [name: string]: number } = {
+  Penang: 74,
+};
+
 export const CURSUS_ID = 21;
 export const POOL_CURSUS_ID = 9;
 
@@ -69,7 +90,9 @@ const loadDirectory = async (api: FortyTwoApi): Promise<CampusDirectory> => {
   if (directory && directory.expiresAt > Date.now()) return directory;
 
   const seen = new Map<string, CampusInfo>(
-    Object.entries(CAMPUS_IDS).map(([name, id]) => [name, { id, name }]),
+    [...Object.entries(CAMPUS_IDS), ...Object.entries(UNLISTED_CAMPUSES)].map(
+      ([name, id]) => [name, { id, name }],
+    ),
   );
 
   try {
