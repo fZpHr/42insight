@@ -51,6 +51,15 @@ export const CAMPUS_IDS: { [key: string]: number } = {
  * /v2/users/:login carries the whole record whatever the public flag says.
  * That is also the way to add the next one -- ask someone who is there.
  *
+ * And there is no next one for now. Every id the public list skips, 1 to 95,
+ * was probed through /campus/:id/users, which answers for a hidden campus
+ * where /campus/:id does not. Eighteen came back with accounts, and Penang is
+ * the only working student campus among them: thirteen are closed campuses
+ * whose alumni remain (Moscow 1279, Kazan 456, Kyiv 182, Johannesburg,
+ * Cluj, Bucharest, Chisinau, Cape-Town, Novosibirsk, Alicante, Antwerp,
+ * Fremont, 42next), and four are 42's own internal ones, active but never
+ * meant for this list (42Network 42, 42 Central 54, Forty2 66, New Vegas 78).
+ *
  * Merged before the live rows, so the day 42 makes one public the API wins.
  */
 const UNLISTED_CAMPUSES: { [name: string]: number } = {
