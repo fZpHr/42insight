@@ -64,8 +64,20 @@ export const CAMPUS_IDS: { [key: string]: number } = {
  *
  * Merged before the live rows, so the day 42 makes one public the API wins.
  */
-const UNLISTED_CAMPUSES: { [name: string]: number } = {
-  Penang: 74,
+const UNLISTED_CAMPUSES: { [name: string]: { id: number; closed?: boolean } } = {
+  Penang: { id: 74 },
+
+  // Closed, and kept for the people who were there. 42 shut these and their
+  // alumni stayed on the intra: cursus_users still answers for them, 887 at
+  // Moscow and 246 at Kazan. Only these two of the thirteen closed campuses
+  // are listed -- the rest have between zero and a handful of accounts in
+  // 42cursus, which is a picker entry leading to an empty page.
+  //
+  // Their locations endpoint answers 502 rather than empty, so the cluster
+  // map cannot work for them. They are marked closed and every picker but the
+  // rankings leaves them out.
+  Moscow: { id: 17, closed: true },
+  Kazan: { id: 23, closed: true },
 };
 
 export const CURSUS_ID = 21;
@@ -84,6 +96,13 @@ export interface CampusInfo {
    * it is rather than passing it off as a roster.
    */
   usersCount?: number;
+  /**
+   * A campus 42 has shut. Its alumni and their levels are still on the intra,
+   * so a leaderboard for it reads correctly, but nothing is live there: no
+   * cluster, no exams, no projects in progress. Only the rankings offer these,
+   * and only when asked.
+   */
+  closed?: boolean;
 }
 
 interface CampusDirectory {
@@ -100,11 +119,15 @@ let directory: CampusDirectory | null = null;
 const loadDirectory = async (api: FortyTwoApi): Promise<CampusDirectory> => {
   if (directory && directory.expiresAt > Date.now()) return directory;
 
-  const seen = new Map<string, CampusInfo>(
-    [...Object.entries(CAMPUS_IDS), ...Object.entries(UNLISTED_CAMPUSES)].map(
-      ([name, id]) => [name, { id, name }],
+  const seen = new Map<string, CampusInfo>([
+    ...Object.entries(CAMPUS_IDS).map(
+      ([name, id]) => [name, { id, name }] as [string, CampusInfo],
     ),
-  );
+    ...Object.entries(UNLISTED_CAMPUSES).map(
+      ([name, entry]) =>
+        [name, { id: entry.id, name, closed: entry.closed }] as [string, CampusInfo],
+    ),
+  ]);
 
   try {
     const rows = await api.fetchAllPages(`/campus`, { maxPages: 3 });

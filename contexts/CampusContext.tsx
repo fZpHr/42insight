@@ -17,13 +17,25 @@ export interface Campus {
   id: number
   name: string
   usersCount?: number
+  /** 42 has shut it. Alumni remain, nothing is live. */
+  closed?: boolean
 }
 
 interface CampusContextType {
   selectedCampus: string
   setSelectedCampus: (campus: string) => void
-  /** Every campus 42 has, once the directory has loaded. */
+  /**
+   * The campuses worth offering: open ones only.
+   *
+   * A closed campus has alumni and levels, so a leaderboard for it reads
+   * correctly, but its cluster, exams and projects in progress are all empty
+   * or erroring. Every picker on the site reads this list, so the closed ones
+   * are kept out of it and offered by the rankings alone, through
+   * `allCampuses`.
+   */
   campuses: Campus[]
+  /** The same list with the closed campuses in it. */
+  allCampuses: Campus[]
   userCampus: string
 }
 
@@ -85,7 +97,8 @@ export function CampusProvider({ children }: { children: React.ReactNode }) {
       value={{
         selectedCampus,
         setSelectedCampus: handleSetSelectedCampus,
-        campuses,
+        campuses: campuses.filter((campus) => !campus.closed),
+        allCampuses: campuses,
         userCampus,
       }}
     >
