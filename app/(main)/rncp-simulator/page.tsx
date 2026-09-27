@@ -147,6 +147,8 @@ export default function RNCPSimulator() {
       professionalExperiences: state.professionalExperiences,
       projects: state.projects,
       projectMarks: state.projectMarks,
+      validatedProjects: state.validatedProjects,
+      autoFetchedProjectMarks: state.autoFetchedProjectMarks,
       coalitionProjects: state.coalitionProjects,
       isProjectModuleComplete: state.isProjectModuleComplete,
     }),
@@ -234,7 +236,12 @@ export default function RNCPSimulator() {
     if (professionalExperiences.has("alternance_2_ans")) professionalExperiencesCount += 1
 
     const groupProjects = Object.values(storeState.projects).filter((p) => p && countsAsGroupProject(p))
-    const validatedGroupProjectsCount = groupProjects.filter((p) => (storeState.projectMarks.get(p.id) ?? 0) > 0).length
+    const validatedGroupProjectsCount = groupProjects.filter(
+      (p) =>
+        storeState.validatedProjects.has(p.id) ||
+        ((storeState.projectMarks.get(p.id) ?? 0) > 0 &&
+          storeState.autoFetchedProjectMarks.get(p.id) !== storeState.projectMarks.get(p.id)),
+    ).length
     const allTabsComplete = Object.keys(optionStatuses).length > 0 && Object.values(optionStatuses).every(Boolean)
 
     return (
