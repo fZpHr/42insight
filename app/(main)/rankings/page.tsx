@@ -259,16 +259,6 @@ export default function Rankings() {
   } = useCampus();
 
   /**
-   * Whether the campuses 42 has closed are on offer.
-   *
-   * Their alumni are still on the intra -- 887 at Moscow, 246 at Kazan -- so a
-   * leaderboard for them reads correctly, and it is the one page where that is
-   * worth anything: nothing else about a closed campus is live. Off by default,
-   * since for everyone but their own alumni they are noise.
-   */
-  const [showClosed, setShowClosed] = useState(false);
-
-  /**
    * Global belongs to this page alone -- every other page reads one campus --
    * and it is deliberately not remembered. Reading all of 42 is minutes of the
    * visitor's own quota, so it is asked for each time rather than resumed
@@ -368,7 +358,12 @@ export default function Rankings() {
   const campusOptions = useMemo(() => {
     const own = userCampus || user?.campus;
 
-    const schools = (showClosed ? allCampuses : campuses)
+    // allCampuses rather than campuses: the closed ones belong here and
+    // nowhere else. Their alumni are still on the intra -- 887 at Moscow, 246
+    // at Kazan -- so a leaderboard for them reads correctly, while their
+    // cluster, exams and projects in progress are empty or erroring. The
+    // label says which they are; nothing else is needed.
+    const schools = allCampuses
       .map((campus) => ({
         value: campus.name,
         label: campus.closed ? `${campus.name} (closed)` : campus.name,
@@ -386,7 +381,7 @@ export default function Rankings() {
     return cursus === "piscine"
       ? schools
       : [...schools, { value: "Global", label: "Global (every campus)" }];
-  }, [campuses, allCampuses, showClosed, userCampus, user?.campus, cursus]);
+  }, [allCampuses, userCampus, user?.campus, cursus]);
 
   const {
     data: rawStudents,
@@ -1242,23 +1237,6 @@ export default function Rankings() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <button
-                    type="button"
-                    onClick={() => setShowClosed((on) => !on)}
-                    aria-pressed={showClosed}
-                    title={
-                      showClosed
-                        ? "Hide the campuses 42 has closed"
-                        : "Show the campuses 42 has closed. Their alumni are still on the intra, so their leaderboards read; nothing else about them is live."
-                    }
-                    className={`shrink-0 rounded-md border px-2 py-1 text-xs transition-colors ${
-                      showClosed
-                        ? "border-primary/50 bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Closed
-                  </button>
                 </div>
                 {cursus === "cursus" && (
                   <div className="flex items-center gap-2 w-full sm:w-auto">
