@@ -254,6 +254,7 @@ export default function Rankings() {
     selectedCampus: pickedCampus,
     setSelectedCampus: pickCampus,
     campuses,
+    allCampuses,
     userCampus,
   } = useCampus();
 
@@ -357,8 +358,16 @@ export default function Rankings() {
   const campusOptions = useMemo(() => {
     const own = userCampus || user?.campus;
 
-    const schools = campuses
-      .map((campus) => ({ value: campus.name, label: campus.name }))
+    // allCampuses rather than campuses: the closed ones belong here and
+    // nowhere else. Their alumni are still on the intra -- 887 at Moscow, 246
+    // at Kazan -- so a leaderboard for them reads correctly, while their
+    // cluster, exams and projects in progress are empty or erroring. The
+    // label says which they are; nothing else is needed.
+    const schools = allCampuses
+      .map((campus) => ({
+        value: campus.name,
+        label: campus.closed ? `${campus.name} (closed)` : campus.name,
+      }))
       .sort((a, b) => {
         if (a.value === own) return -1;
         if (b.value === own) return 1;
@@ -372,7 +381,7 @@ export default function Rankings() {
     return cursus === "piscine"
       ? schools
       : [...schools, { value: "Global", label: "Global (every campus)" }];
-  }, [campuses, userCampus, user?.campus, cursus]);
+  }, [allCampuses, userCampus, user?.campus, cursus]);
 
   const {
     data: rawStudents,

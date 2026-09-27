@@ -36,6 +36,50 @@ export const CAMPUS_IDS: { [key: string]: number } = {
   Nice: 41,
 };
 
+/**
+ * Campuses 42 runs but does not list.
+ *
+ * GET /v2/campus answers with public campuses only, and Penang is flagged
+ * `public: false` -- it is missing from the list, and /v2/campus/74 answers
+ * 404 on top, so from those two endpoints the campus does not appear to
+ * exist. It does: /campus/74/users returns its 459 accounts,
+ * /campus/74/locations its 5723 sessions, and cursus_users filtered on it the
+ * 55 students in 42cursus. Every page of this site works for Penang. The only
+ * thing missing was the id, so here it is.
+ *
+ * Found by reading a Penang student's profile: the campus object nested in
+ * /v2/users/:login carries the whole record whatever the public flag says.
+ * That is also the way to add the next one -- ask someone who is there.
+ *
+ * And there is no next one for now. Every id the public list skips, 1 to 95,
+ * was probed through /campus/:id/users, which answers for a hidden campus
+ * where /campus/:id does not. Eighteen came back with accounts, and Penang is
+ * the only working student campus among them: thirteen are closed campuses
+ * whose alumni remain (Moscow 1279, Kazan 456, Kyiv 182, Johannesburg,
+ * Cluj, Bucharest, Chisinau, Cape-Town, Novosibirsk, Alicante, Antwerp,
+ * Fremont, 42next), and four are 42's own internal ones, active but never
+ * meant for this list (42Network 42, 42 Central 54, Forty2 66, New Vegas 78).
+ * One id answered neither way: 7 returns 502 on every attempt, so it is the
+ * one gap in the sweep. Its neighbours are all closed campuses.
+ *
+ * Merged before the live rows, so the day 42 makes one public the API wins.
+ */
+const UNLISTED_CAMPUSES: { [name: string]: { id: number; closed?: boolean } } = {
+  Penang: { id: 74 },
+
+  // Closed, and kept for the people who were there. 42 shut these and their
+  // alumni stayed on the intra: cursus_users still answers for them, 887 at
+  // Moscow and 246 at Kazan. Only these two of the thirteen closed campuses
+  // are listed -- the rest have between zero and a handful of accounts in
+  // 42cursus, which is a picker entry leading to an empty page.
+  //
+  // Their locations endpoint answers 502 rather than empty, so the cluster
+  // map cannot work for them. They are marked closed and every picker but the
+  // rankings leaves them out.
+  Moscow: { id: 17, closed: true },
+  Kazan: { id: 23, closed: true },
+};
+
 export const CURSUS_ID = 21;
 export const POOL_CURSUS_ID = 9;
 
@@ -52,6 +96,13 @@ export interface CampusInfo {
    * it is rather than passing it off as a roster.
    */
   usersCount?: number;
+  /**
+   * A campus 42 has shut. Its alumni and their levels are still on the intra,
+   * so a leaderboard for it reads correctly, but nothing is live there: no
+   * cluster, no exams, no projects in progress. Only the rankings offer these,
+   * and only when asked.
+   */
+  closed?: boolean;
 }
 
 interface CampusDirectory {
@@ -68,9 +119,15 @@ let directory: CampusDirectory | null = null;
 const loadDirectory = async (api: FortyTwoApi): Promise<CampusDirectory> => {
   if (directory && directory.expiresAt > Date.now()) return directory;
 
-  const seen = new Map<string, CampusInfo>(
-    Object.entries(CAMPUS_IDS).map(([name, id]) => [name, { id, name }]),
-  );
+  const seen = new Map<string, CampusInfo>([
+    ...Object.entries(CAMPUS_IDS).map(
+      ([name, id]) => [name, { id, name }] as [string, CampusInfo],
+    ),
+    ...Object.entries(UNLISTED_CAMPUSES).map(
+      ([name, entry]) =>
+        [name, { id: entry.id, name, closed: entry.closed }] as [string, CampusInfo],
+    ),
+  ]);
 
   try {
     const rows = await api.fetchAllPages(`/campus`, { maxPages: 3 });

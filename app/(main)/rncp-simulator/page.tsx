@@ -21,6 +21,7 @@ import { fetchUserIntraInfo } from "@/utils/fetchFunctions"
 import { Loader2, GraduationCap, Trophy, Award, RefreshCw, History } from "lucide-react"
 import { isDemoEnabled } from "@/lib/demo-mode"
 import { LEGACY_PROJECT_IDS } from "@/lib/forty-two/forty-two-rncp"
+import { countsAsGroupProject } from "@/lib/forty-two/forty-two-rncp"
 
 const SHOW_LEGACY_STORAGE_KEY = "rncp_show_legacy"
 
@@ -146,6 +147,8 @@ export default function RNCPSimulator() {
       professionalExperiences: state.professionalExperiences,
       projects: state.projects,
       projectMarks: state.projectMarks,
+      validatedProjects: state.validatedProjects,
+      autoFetchedProjectMarks: state.autoFetchedProjectMarks,
       coalitionProjects: state.coalitionProjects,
       isProjectModuleComplete: state.isProjectModuleComplete,
     }),
@@ -232,8 +235,13 @@ export default function RNCPSimulator() {
     let professionalExperiencesCount = professionalExperiences.size
     if (professionalExperiences.has("alternance_2_ans")) professionalExperiencesCount += 1
 
-    const groupProjects = Object.values(storeState.projects).filter((p) => p && p.is_solo === false)
-    const validatedGroupProjectsCount = groupProjects.filter((p) => (storeState.projectMarks.get(p.id) ?? 0) > 0).length
+    const groupProjects = Object.values(storeState.projects).filter((p) => p && countsAsGroupProject(p))
+    const validatedGroupProjectsCount = groupProjects.filter(
+      (p) =>
+        storeState.validatedProjects.has(p.id) ||
+        ((storeState.projectMarks.get(p.id) ?? 0) > 0 &&
+          storeState.autoFetchedProjectMarks.get(p.id) !== storeState.projectMarks.get(p.id)),
+    ).length
     const allTabsComplete = Object.keys(optionStatuses).length > 0 && Object.values(optionStatuses).every(Boolean)
 
     return (

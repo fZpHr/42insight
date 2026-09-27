@@ -9,12 +9,35 @@ import type { FortyTwoProject, FortyTwoTitle, FortyTwoTitleOption } from "@/type
 import { cn } from "@/lib/utils"
 import { Users } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { countsAsGroupProject } from "@/lib/forty-two/forty-two-rncp"
 
 interface TitleRequirementProps {
   name: string
   value: number | string | undefined
   max: number | string | undefined
   unit?: string
+}
+
+/**
+ * Whether a project counts as passed for a title's conditions.
+ *
+ * Two sources, and they answer different questions. For a project 42 knows
+ * about, `validated?` is the verdict, and a mark is not: a failed attempt
+ * marked 40 has a mark above zero and is not a pass. For a project the
+ * visitor has entered themselves, there is no verdict to read -- that is the
+ * simulator being asked "what if I did this?", and the answer is to count it.
+ */
+const passed = (
+  projectId: number,
+  validated: ReadonlySet<number>,
+  marks: ReadonlyMap<number, number>,
+  fromApi: ReadonlyMap<number, number>,
+): boolean => {
+  if (validated.has(projectId)) return true
+  const mark = marks.get(projectId)
+  if (mark === undefined || mark <= 0) return false
+  // Entered or changed by hand: no verdict exists, so take it at face value.
+  return fromApi.get(projectId) !== mark
 }
 
 function TitleRequirement({ name, value, max, unit }: TitleRequirementProps) {
@@ -109,6 +132,8 @@ export function TitleRequirements({
     getLevel,
     projects,
     projectMarks,
+    validatedProjects,
+    autoFetchedProjectMarks,
     setProjectMark,
     removeProject,
     toggleCoalitionBonus,
@@ -120,6 +145,8 @@ export function TitleRequirements({
     getLevel: state.getLevel,
     projects: state.projects,
     projectMarks: state.projectMarks,
+    validatedProjects: state.validatedProjects,
+    autoFetchedProjectMarks: state.autoFetchedProjectMarks,
     setProjectMark: state.setProjectMark,
     removeProject: state.removeProject,
     toggleCoalitionBonus: state.toggleCoalitionBonus,
@@ -129,8 +156,9 @@ export function TitleRequirements({
   const toggleCoalition = useFortyTwoStore((state) => state.toggleCoalitionBonus)
 
   const validatedGroupProjectsCount = (() => {
-    const groupProjects = Object.values(projects).filter((p) => p && p.is_solo === false)
-    return groupProjects.filter((p) => projectMarks.get(p.id) && projectMarks.get(p.id)! > 0).length
+    const groupProjects = Object.values(projects).filter((p) => p && countsAsGroupProject(p))
+    return groupProjects.filter((p) => passed(p.id, validatedProjects, projectMarks, autoFetchedProjectMarks))
+      .length
   })()
 
   const currentXP = useFortyTwoStore((state) => state.getSelectedXP())

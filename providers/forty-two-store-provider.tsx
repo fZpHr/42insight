@@ -22,6 +22,10 @@ function saveProgressionToStorage(state: any) {
       professionalExperienceMarks: Array.from((state.professionalExperienceMarks ?? new Map()).entries()),
       coalitionProjects: Array.from((state.coalitionProjects ?? new Set()).values()),
       autoFetchedProjectMarks: Array.from((state.autoFetchedProjectMarks ?? new Map()).entries()),
+      // Saved with the marks, not derived from them: it is 42's verdict, and
+      // a reload that dropped it would quietly turn every pass back into a
+      // mark to be guessed at.
+      validatedProjects: Array.from(state.validatedProjects ?? []),
       autoFetchedProfessionalExperiences: Array.from(state.autoFetchedProfessionalExperiences ?? []),
       autoFetchedProfessionalExperienceMarks: Array.from((state.autoFetchedProfessionalExperienceMarks ?? new Map()).entries()),
       initialXPDelta: state.initialXPDelta ?? 0,
@@ -59,6 +63,7 @@ function loadProgressionFromStorage() {
       professionalExperienceMarks: new Map<string, number>(data.professionalExperienceMarks as [string, number][]),
       coalitionProjects: new Set<number>(data.coalitionProjects as number[]),
       autoFetchedProjectMarks: new Map<number, number>(data.autoFetchedProjectMarks as [number, number][]),
+      validatedProjects: new Set<number>((data.validatedProjects ?? []) as number[]),
       autoFetchedProfessionalExperiences: new Set<string>(data.autoFetchedProfessionalExperiences as string[]),
       autoFetchedProfessionalExperienceMarks: new Map<string, number>(data.autoFetchedProfessionalExperienceMarks as [string, number][]),
       initialXPDelta: data.initialXPDelta ?? 0,
@@ -93,6 +98,18 @@ const createFortyTwoStore = (initProps: {
   type StoreWithPersistence = FortyTwoStore & {
     professionalExperiences: Set<string>
     autoFetchedProjectMarks: Map<number, number>
+    /**
+     * The projects 42 reports as passed, by id.
+     *
+     * A mark is not the answer to "did this count?": a project marked 40 is a
+     * failed attempt and still has a mark above zero, so counting anything
+     * positive counted failures as passes. 42 answers the question directly
+     * with `validated?` on each projects_users row, which is what this holds.
+     *
+     * Only what 42 says. A mark the visitor typed in themselves is a
+     * simulation, and the simulator treats that as a pass wherever it asks.
+     */
+    validatedProjects: Set<number>
     clearAutoFetchedProjectMarks: () => void
     toggleProfessionalExperience: (experience: string) => void
     setProfessionalExperience: (experience: string, enabled: boolean) => void
@@ -121,6 +138,7 @@ const createFortyTwoStore = (initProps: {
     projectMarks: new Map<number, number>(),
     professionalExperienceMarks: new Map<string, number>(),
     autoFetchedProjectMarks: new Map<number, number>(),
+    validatedProjects: new Set<number>(),
     autoFetchedProfessionalExperiences: new Set<string>(),
     autoFetchedProfessionalExperienceMarks: new Map<string, number>(),
     persistedOldProjects: [],
@@ -339,7 +357,9 @@ const createFortyTwoStore = (initProps: {
           : oldProjects.map((p: any) => ({ project: { id: p.id }, final_mark: p.mark }))
 
       const apiProjectIds = new Set<number>()
+      const newValidated = new Set<number>()
       for (const project of mainProjects) {
+        if (project["validated?"] === true) newValidated.add(project.project.id)
         if (typeof project.final_mark === "number" && project.final_mark > 0) {
           apiProjectIds.add(project.project.id)
           
@@ -427,6 +447,7 @@ const createFortyTwoStore = (initProps: {
       const finalState = {
         projectMarks: newMarks,
         autoFetchedProjectMarks: newAutoMarks,
+        validatedProjects: newValidated,
         professionalExperiences: newProExp,
         autoFetchedProfessionalExperiences: newAutoProExp,
         professionalExperienceMarks: newProExpMarks,
@@ -631,6 +652,7 @@ export const FortyTwoStoreProvider = ({ children, cursus, levels, titles, projec
         professionalExperienceMarks: restored.professionalExperienceMarks || new Map(),
         coalitionProjects: restored.coalitionProjects,
         autoFetchedProjectMarks: restored.autoFetchedProjectMarks || new Map(),
+        validatedProjects: restored.validatedProjects || new Set(),
         autoFetchedProfessionalExperiences: restored.autoFetchedProfessionalExperiences || new Set(),
         autoFetchedProfessionalExperienceMarks: restored.autoFetchedProfessionalExperienceMarks || new Map(),
         initialXPDelta: restored.initialXPDelta ?? 0,
