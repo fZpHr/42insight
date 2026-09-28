@@ -31,6 +31,7 @@ export async function GET(
     // Keyed by campus as well: which of a student's coalitions is the relevant
     // one depends on who is looking.
     const result = await cached(
+      api,
       `coalitions:v2:${campus}:${login}`,
       CACHE_TTL,
       async () => {

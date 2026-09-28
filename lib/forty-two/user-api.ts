@@ -210,6 +210,8 @@ const reserveSlot = async (keyId: string): Promise<void> => {
  * multi-page walk stays inside the per-application rate limit.
  */
 export class UserApi {
+  readonly source = "live" as const;
+
   constructor(
     private readonly token: string,
     /** The 42 application being metered, which is what quota is counted per. */

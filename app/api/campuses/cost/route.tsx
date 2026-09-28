@@ -34,7 +34,7 @@ export async function GET() {
   if (!api) return keyRequiredResponse();
 
   try {
-    const cost = await cachedOnce("global-cost", CACHE_TTL, async () => {
+    const cost = await cachedOnce(api, "global-cost", CACHE_TTL, async () => {
       const [campuses, students] = await Promise.all([
         listCampuses(api),
         countCursusStudents(null, api),

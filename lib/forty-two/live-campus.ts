@@ -114,20 +114,34 @@ interface CampusDirectory {
 /** The full campus list barely ever changes, so a day's cache is cheap. */
 const CAMPUS_DIRECTORY_TTL_MS = 24 * 60 * 60 * 1000;
 
-let directory: CampusDirectory | null = null;
+/**
+ * One directory per source, because the two number their campuses
+ * differently: Nice is 36 in the demo network, and 36 at 42 is Adelaide. A
+ * single directory, filled by whoever asked first after a start, sent the
+ * other side to the wrong campus for a day -- Nice's rankings listing
+ * Adelaide's students.
+ */
+const directories = new Map<FortyTwoApi["source"], CampusDirectory>();
 
 const loadDirectory = async (api: FortyTwoApi): Promise<CampusDirectory> => {
-  if (directory && directory.expiresAt > Date.now()) return directory;
+  const known = directories.get(api.source);
+  if (known && known.expiresAt > Date.now()) return known;
 
-  const seen = new Map<string, CampusInfo>([
-    ...Object.entries(CAMPUS_IDS).map(
-      ([name, id]) => [name, { id, name }] as [string, CampusInfo],
-    ),
-    ...Object.entries(UNLISTED_CAMPUSES).map(
-      ([name, entry]) =>
-        [name, { id: entry.id, name, closed: entry.closed }] as [string, CampusInfo],
-    ),
-  ]);
+  // The seed is 42's own ids, so only the live directory starts from it. The
+  // demo network lists every campus it has, under numbers of its own.
+  const seen = new Map<string, CampusInfo>(
+    api.source === "live"
+      ? [
+          ...Object.entries(CAMPUS_IDS).map(
+            ([name, id]) => [name, { id, name }] as [string, CampusInfo],
+          ),
+          ...Object.entries(UNLISTED_CAMPUSES).map(
+            ([name, entry]) =>
+              [name, { id: entry.id, name, closed: entry.closed }] as [string, CampusInfo],
+          ),
+        ]
+      : [],
+  );
 
   try {
     const rows = await api.fetchAllPages(`/campus`, { maxPages: 3 });
@@ -147,11 +161,12 @@ const loadDirectory = async (api: FortyTwoApi): Promise<CampusDirectory> => {
 
   const list = [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
 
-  directory = {
+  const directory = {
     byName: new Map(list.map((campus) => [campus.name, campus.id])),
     list,
     expiresAt: Date.now() + CAMPUS_DIRECTORY_TTL_MS,
   };
+  directories.set(api.source, directory);
   return directory;
 };
 
@@ -295,7 +310,7 @@ const groupMemberIds = async (
   api: FortyTwoApi,
 ): Promise<Set<number>> => {
   try {
-    return await cachedOnce(`group-members:${groupId}`, MARKED_ACCOUNTS_TTL, async () => {
+    return await cachedOnce(api, `group-members:${groupId}`, MARKED_ACCOUNTS_TTL, async () => {
       const rows = await api.fetchAllPages(`/groups/${groupId}/groups_users`, {
         maxPages: 12,
       });
@@ -372,7 +387,7 @@ const getCampusRoster = async (
   const campusId = await resolveCampusId(campusName, api);
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
-  return cachedOnce(studentsCacheKey(campusName), STUDENTS_TTL, async () => {
+  return cachedOnce(api, studentsCacheKey(campusName), STUDENTS_TTL, async () => {
     const [cursusUsers, work, marked] = await Promise.all([
       api.fetchAllPages(
         `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
@@ -533,7 +548,7 @@ interface CursusInfo {
 }
 
 const listCursus = async (api: FortyTwoApi): Promise<Map<number, CursusInfo>> =>
-  cachedOnce("cursus-directory", CURSUS_TTL, async () => {
+  cachedOnce(api, "cursus-directory", CURSUS_TTL, async () => {
     const rows = await api.fetchAllPages(`/cursus`, { maxPages: 2 });
 
     return new Map(
@@ -587,6 +602,7 @@ export const listPoolPromotions = async (
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
   return cachedOnce(
+    api,
     `pool-promotions:v2:${campusName}:${year}`,
     PROMOTIONS_TTL,
     async () => {
@@ -841,7 +857,7 @@ export const getPoolUsers = async (
 
   const cacheKey = `pool:${campusName}:${month}:${year}:${cursusId}`;
 
-  return cachedOnce(cacheKey, POOL_TTL, async () => {
+  return cachedOnce(api, cacheKey, POOL_TTL, async () => {
     const users = await api.fetchAllPages(
       `/campus/${campusId}/users` +
         `?filter[pool_month]=${encodeURIComponent(month)}` +

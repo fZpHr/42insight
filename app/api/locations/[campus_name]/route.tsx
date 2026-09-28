@@ -37,6 +37,7 @@ export async function GET(
 
   try {
     const locations = await cached(
+      api,
       `locations:v1:${campus_name}`,
       CACHE_TTL,
       () =>

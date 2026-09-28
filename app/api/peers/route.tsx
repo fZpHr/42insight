@@ -70,6 +70,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await cachedOnce(
+      api,
       `${CACHE_KEY}:${requested ?? "all"}:${requestedProject ?? "all"}`,
       CACHE_TTL,
       async () => {

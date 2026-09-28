@@ -40,7 +40,7 @@ export async function GET(
 
   try {
     return NextResponse.json(
-      await cachedOnce(`cluster-plan:${campus_name}`, CACHE_TTL, () =>
+      await cachedOnce(api, `cluster-plan:${campus_name}`, CACHE_TTL, () =>
         resolveFloorPlan(campusId, api),
       ),
     );

@@ -62,6 +62,7 @@ export async function GET(request: Request) {
 
   try {
     const results = await cachedOnce(
+      api,
       `current-exam:${campusName}`,
       CACHE_TTL,
       async () => {
