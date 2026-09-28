@@ -3,7 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { getApi } from "@/lib/forty-two/api";
 import { keyRequiredResponse } from "@/lib/forty-two/user-api";
-import { getEnrichedCampusStudents } from "@/lib/forty-two/live-campus";
+import {
+  getEnrichedCampusStudents,
+  RosterPendingError,
+  rosterPendingResponse,
+} from "@/lib/forty-two/live-campus";
 import { primaryCampusName } from "@/lib/forty-two/campus-scope";
 
 // A cold campus walk runs ten seconds or so, past Vercel's default function
@@ -47,6 +51,7 @@ export async function GET(
 
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   } catch (error: any) {
+    if (error instanceof RosterPendingError) return rosterPendingResponse(error);
 
     console.error("Error fetching user", error.message);
     return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });

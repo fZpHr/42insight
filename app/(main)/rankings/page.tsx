@@ -77,7 +77,7 @@ import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
 import { CorrectionIndexBuilder } from "@/components/CorrectionIndexBuilder";
-import { fetchJson, isKeyRequired } from "@/lib/api-client";
+import { fetchJson, isKeyRequired, type Pending } from "@/lib/api-client";
 import {
   readCorrectionIndex,
   withCorrections,
@@ -208,10 +208,19 @@ const fetchCampusStudents = (
   campus: string,
   /** 42's own accounts -- staff, test, external -- instead of the students. */
   fortyTwoAccounts = false,
+  /** How far a campus too big for one request has been read. */
+  onPending?: (progress: Pending) => void,
 ): Promise<Student[]> =>
   fetchJson<Student[]>(
     `/api/campus/${campus}/students${fortyTwoAccounts ? "?accounts=42" : ""}`,
+    { onPending },
   );
+
+/** " -- 3,200 of 8,402 read from 42", or nothing before 42 has said. */
+const readingNote = (progress: Pending | null): string =>
+  progress && progress.total > 0
+    ? ` -- ${progress.loaded.toLocaleString()} of ${progress.total.toLocaleString()} read from 42`
+    : "";
 
 type SortDirection = "asc" | "desc";
 
@@ -295,6 +304,8 @@ export default function Rankings() {
     total: number;
     campus: string;
   } | null>(null);
+  /** Within one campus: how much of it 42 has sent, while that takes a while. */
+  const [readProgress, setReadProgress] = useState<Pending | null>(null);
 
   const selectedCampus = globalMode ? "Global" : pickedCampus;
 
@@ -402,6 +413,7 @@ export default function Rankings() {
     queryFn: async () => {
       const campus = selectedCampus || user?.campus;
       if (!campus) return [];
+      setReadProgress(null);
 
       if (cursus === "piscine") {
         const pool = await fetchPoolStudents(campus, {
@@ -431,12 +443,14 @@ export default function Rankings() {
             total: campuses.length,
             campus: school.name,
           });
+          setReadProgress(null);
 
           try {
             all.push(
               ...((await fetchCampusStudents(
                 school.name,
                 showFortyTwoAccounts,
+                setReadProgress,
               )) ?? []),
             );
           } catch (error) {
@@ -468,7 +482,11 @@ export default function Rankings() {
           accountFilter,
         );
       } else {
-        const response = await fetchCampusStudents(campus, showFortyTwoAccounts);
+        const response = await fetchCampusStudents(
+          campus,
+          showFortyTwoAccounts,
+          setReadProgress,
+        );
         if (!response || response.length === 0) {
           toast.error(
             showFortyTwoAccounts
@@ -1102,9 +1120,9 @@ export default function Rankings() {
     return (
       <LoadingScreen
         message={
-          globalProgress
+          (globalProgress
             ? `Loading ${globalProgress.campus} (${globalProgress.done + 1} of ${globalProgress.total} campuses)`
-            : "Loading rankings..."
+            : "Loading rankings...") + readingNote(readProgress)
         }
       />
     );

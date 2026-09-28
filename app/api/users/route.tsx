@@ -7,7 +7,11 @@ import {
   campusForRequest,
   campusRequiredResponse,
 } from "@/lib/forty-two/campus-scope";
-import { getEnrichedCampusStudents } from "@/lib/forty-two/live-campus";
+import {
+  getEnrichedCampusStudents,
+  RosterPendingError,
+  rosterPendingResponse,
+} from "@/lib/forty-two/live-campus";
 
 // One campus is a paginated walk paced at two requests a second, roughly ten
 // seconds cold, past Vercel's default function timeout.
@@ -31,6 +35,8 @@ export async function GET(request: Request) {
   try {
     return NextResponse.json(await getEnrichedCampusStudents(campus, api));
   } catch (error: any) {
+    if (error instanceof RosterPendingError) return rosterPendingResponse(error);
+
     console.error("[users] failed to build:", error.message);
     return NextResponse.json(
       { error: "Failed to fetch students" },

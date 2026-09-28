@@ -1,5 +1,7 @@
+import { NextResponse } from "next/server";
 import type { Student } from "@/types";
 import type { FortyTwoApi } from "@/lib/forty-two/api";
+import { MissingUserKeyError } from "@/lib/forty-two/user-api";
 import { PARTIAL_TTL, cachedOnce } from "@/lib/memory-cache";
 import {
   WORK_APPRENTICESHIP,
@@ -264,11 +266,12 @@ const studentsCacheKey = (campus: string) => `students:${campus}`;
  *
  * The default of forty silently cut Paris in half: 8402 students in the
  * 42cursus is 85 pages, and forty of them is 4000 with nothing to say the rest
- * existed. Ninety-five is what fits in the route's minute at the 600ms pacing,
- * and covers every campus 42 has -- Paris is the only one past forty, and the
- * next largest, Madrid, is twenty-six.
+ * existed. This used to be ninety-five, what fitted in one route's minute; the
+ * walk now outlives the request (see RosterWalk), so it is only a guard against
+ * one that never ends -- twice Paris. The next largest, Madrid, is twenty-six.
  */
-const ROSTER_MAX_PAGES = 95;
+const ROSTER_MAX_PAGES = 200;
+const ROSTER_PAGE_SIZE = 100;
 
 
 const daysUntil = (date: string | null): number => {
@@ -425,37 +428,315 @@ const toStudent = (cursusUser: any, campusName: string): Student => {
 };
 
 /**
+ * One cursus_users row, cut down to what the roster keeps: the student as
+ * every page reads them, and the three fields that say whether they are one.
+ */
+interface RosterRow {
+  student: Student;
+  user: { id: number; "staff?"?: boolean; kind?: string };
+}
+
+interface RosterPage {
+  rows: RosterRow[];
+  /** What 42 sent, before rows without a user were dropped. */
+  size: number;
+}
+
+/**
+ * A campus's page walk, kept between requests.
+ *
+ * Paris is 85 pages. At 600ms a request that is 51 seconds on its own, and
+ * the build also reads the two marked-account groups (fifteen pages) and the
+ * work status on the same key: over a minute in all. The routes are cut off
+ * at sixty seconds, the walk died with the request, and the reload started
+ * again from page one -- Paris never loaded at all.
+ *
+ * So the pages outlive the request that asked for them. A route waits on the
+ * walk for ROSTER_WAIT_MS, then answers 202 with how far it got; the browser
+ * asks again, and that request joins the same walk -- still running, or
+ * resumed from the pages already in -- instead of starting over. Kept as long
+ * as the roster itself would be.
+ */
+interface RosterWalk {
+  pages: Map<number, Promise<RosterPage>>;
+  /** Rows landed per page, for the progress a 202 reports. */
+  landed: Map<number, number>;
+  /** 42's X-Total for the campus, once the first page is in. */
+  total: number;
+  expiresAt: number;
+}
+
+const rosterWalks: Map<string, RosterWalk> = ((globalThis as any)
+  .__42insightRosterWalks ??= new Map<string, RosterWalk>());
+
+/** Per source, like the cache: the demo's Nice is not 42's. */
+const walkKey = (api: FortyTwoApi, campusName: string) =>
+  `${api.source}:${campusName}`;
+
+const walkFor = (api: FortyTwoApi, campusName: string): RosterWalk => {
+  const now = Date.now();
+  for (const [key, walk] of rosterWalks) {
+    if (walk.expiresAt <= now) rosterWalks.delete(key);
+  }
+
+  const key = walkKey(api, campusName);
+  let walk = rosterWalks.get(key);
+  if (!walk) {
+    walk = {
+      pages: new Map(),
+      landed: new Map(),
+      total: 0,
+      expiresAt: now + STUDENTS_TTL * 1000,
+    };
+    rosterWalks.set(key, walk);
+  }
+  return walk;
+};
+
+const rosterPage = (
+  walk: RosterWalk,
+  campusId: number,
+  campusName: string,
+  page: number,
+  api: FortyTwoApi,
+): Promise<RosterPage> => {
+  const known = walk.pages.get(page);
+  if (known) return known;
+
+  const pending = (async (): Promise<RosterPage> => {
+    // sort=id: the pages of one walk can be read minutes apart, and only a
+    // fixed order keeps a row from sliding onto a page already read.
+    const response = await api.fetch(
+      `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}` +
+        `&sort=id&page[size]=${ROSTER_PAGE_SIZE}&page[number]=${page}`,
+    );
+    if (response.status === 401) throw new MissingUserKeyError();
+    if (!response.ok) {
+      throw new Error(`42 API responded ${response.status} on page ${page}`);
+    }
+
+    const total = Number(response.headers.get("X-Total"));
+    if (total > 0) walk.total = total;
+
+    const body = await response.json();
+    const rows: any[] = Array.isArray(body) ? body : [];
+    walk.landed.set(page, rows.length);
+
+    return {
+      size: rows.length,
+      rows: rows
+        .filter((cursusUser) => cursusUser.user)
+        .map((cursusUser) => ({
+          student: toStudent(cursusUser, campusName),
+          user: {
+            id: cursusUser.user.id,
+            "staff?": cursusUser.user["staff?"],
+            kind: cursusUser.user.kind,
+          },
+        })),
+    };
+  })();
+
+  walk.pages.set(page, pending);
+  // A page that failed is asked again by the next build, not remembered.
+  pending.catch(() => {
+    if (walk.pages.get(page) === pending) walk.pages.delete(page);
+  });
+  return pending;
+};
+
+/**
+ * How many pages of one walk are asked for at once.
+ *
+ * One after another, each page waited on 42's answer before claiming its
+ * slot, so a walk went at the latency when that was over 600ms -- and a page
+ * of a hundred cursus_users takes 42 about three and a half seconds. Three in
+ * flight made Paris 109 seconds where the pacing allows 56. Six keep every
+ * slot used; the pacing, not this, still decides how fast 42 is asked.
+ */
+const WALK_CONCURRENCY = 6;
+
+const pagesInParallel = async (
+  from: number,
+  to: number,
+  readPage: (page: number) => Promise<RosterPage>,
+): Promise<RosterPage[]> => {
+  const pages: RosterPage[] = [];
+  let next = from;
+  let failed = false;
+
+  const worker = async () => {
+    while (!failed && next <= to) {
+      const page = next++;
+      try {
+        pages[page - from] = await readPage(page);
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: WALK_CONCURRENCY }, worker));
+  return pages;
+};
+
+const walkRoster = async (
+  campusName: string,
+  campusId: number,
+  api: FortyTwoApi,
+): Promise<RosterRow[]> => {
+  const walk = walkFor(api, campusName);
+  const read = (page: number) => rosterPage(walk, campusId, campusName, page, api);
+
+  const pages = [await read(1)];
+  const lastPage = Math.min(
+    ROSTER_MAX_PAGES,
+    Math.max(1, Math.ceil(walk.total / ROSTER_PAGE_SIZE)),
+  );
+  pages.push(...(await pagesInParallel(2, lastPage, read)));
+
+  // X-Total is from page one. A campus that grew since ends on a full page,
+  // and the rows past it are read the old way, until one comes up short.
+  let page = lastPage;
+  while (pages[pages.length - 1].size === ROSTER_PAGE_SIZE && page < ROSTER_MAX_PAGES) {
+    pages.push(await read(++page));
+  }
+  if (pages[pages.length - 1].size === ROSTER_PAGE_SIZE) {
+    console.warn(
+      `[live-campus] ${campusName} truncated at ${ROSTER_MAX_PAGES} pages ` +
+        `of ${walk.total} rows`,
+    );
+  }
+
+  // A row deleted mid-walk shifts the next one back onto a page already read.
+  const seen = new Set<number>();
+  return pages
+    .flatMap(({ rows }) => rows)
+    .filter(({ student }) => {
+      if (seen.has(student.id)) return false;
+      seen.add(student.id);
+      return true;
+    });
+};
+
+/**
+ * How long a route waits on a roster before answering that it is still being
+ * read. Well inside the routes' sixty seconds, whatever else they do after,
+ * and often enough for the browser to show the walk moving.
+ */
+export const ROSTER_WAIT_MS = 20_000;
+
+/** A roster not in yet. Routes answer it with rosterPendingResponse. */
+export class RosterPendingError extends Error {
+  constructor(
+    readonly campus: string,
+    readonly loaded: number,
+    readonly total: number,
+  ) {
+    super(`${campus} is still being read: ${loaded} of ${total}`);
+    this.name = "RosterPendingError";
+  }
+}
+
+/**
+ * 202, and how far the walk has got. lib/api-client.ts asks again on it, and
+ * the walk is still going when it does.
+ */
+export const rosterPendingResponse = (error: RosterPendingError) =>
+  NextResponse.json(
+    { pending: true, campus: error.campus, loaded: error.loaded, total: error.total },
+    { status: 202 },
+  );
+
+const pendingError = (api: FortyTwoApi, campusName: string) => {
+  const walk = rosterWalks.get(walkKey(api, campusName));
+  let loaded = 0;
+  for (const size of walk?.landed.values() ?? []) loaded += size;
+  return new RosterPendingError(campusName, loaded, walk?.total ?? 0);
+};
+
+/**
+ * The work, or `late()` thrown once `waitMs` has passed. The work goes on
+ * either way: it belongs to whoever asks next, not to this request.
+ */
+const withinWait = async <T>(
+  work: Promise<T>,
+  waitMs: number,
+  late: () => Error,
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(late()), Math.max(0, waitMs));
+  });
+
+  try {
+    return await Promise.race([work, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+/**
  * Everyone the campus lists, students and 42's own accounts alike, each
  * tagged with what it is. Kept whole in the cache so that showing the staff
  * and test accounts costs no second walk.
+ *
+ * Throws RosterPendingError when the walk takes longer than `waitMs`.
  */
 const getCampusRoster = async (
   campusName: string,
   api: FortyTwoApi,
+  waitMs: number,
 ): Promise<Student[]> => {
+  const startedAt = Date.now();
   const campusId = await resolveCampusId(campusName, api);
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
-  return cachedOnce(api, studentsCacheKey(campusName), STUDENTS_TTL, async (partial) => {
-    const [cursusUsers, work, marked] = await Promise.all([
-      api.fetchAllPages(
-        `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
-        { maxPages: ROSTER_MAX_PAGES },
-      ),
-      getWorkStatus(campusId, api, partial),
-      markedAccounts(api, partial),
-    ]);
+  const build = () =>
+    cachedOnce(api, studentsCacheKey(campusName), STUDENTS_TTL, async (partial) => {
+      let gap = false;
+      const noteGap = () => {
+        gap = true;
+        partial();
+      };
 
-    return cursusUsers
-      .filter((cursusUser) => cursusUser.user)
-      .map((cursusUser) => {
-        const student = toStudent(cursusUser, campusName);
-        student.work = work.get(student.id) ?? 0;
-        student.accountType = accountTypeOf(cursusUser.user, marked);
-        return student;
-      });
-  });
+      const [rows, work, marked] = await Promise.all([
+        walkRoster(campusName, campusId, api),
+        getWorkStatus(campusId, api, noteGap),
+        markedAccounts(api, noteGap),
+      ]);
+
+      // A roster missing a piece is kept a minute. Its pages are kept longer,
+      // so the rebuild re-reads the piece rather than the campus.
+      if (!gap) rosterWalks.delete(walkKey(api, campusName));
+
+      return rows.map(({ student, user }) => ({
+        ...student,
+        work: work.get(student.id) ?? 0,
+        accountType: accountTypeOf(user, marked),
+      }));
+    });
+
+  const late = () => pendingError(api, campusName);
+
+  try {
+    return await withinWait(build(), waitMs, late);
+  } catch (error) {
+    // A request that joined a walk can see it fail on another's behalf -- a
+    // page lost while the instance sat frozen between two requests. The pages
+    // that did land are kept, so one more build costs only what went missing.
+    if (error instanceof RosterPendingError || error instanceof MissingUserKeyError) {
+      throw error;
+    }
+    return withinWait(build(), waitMs - (Date.now() - startedAt), late);
+  }
 };
+
+export interface RosterWait {
+  /** How long to wait on a walk before throwing RosterPendingError. */
+  waitMs?: number;
+}
 
 /**
  * The campus as every page reads it: students only.
@@ -466,8 +747,9 @@ const getCampusRoster = async (
 export const getCampusStudents = async (
   campusName: string,
   api: FortyTwoApi,
+  { waitMs = ROSTER_WAIT_MS }: RosterWait = {},
 ): Promise<Student[]> =>
-  (await getCampusRoster(campusName, api)).filter(
+  (await getCampusRoster(campusName, api, waitMs)).filter(
     (student) => student.accountType === "student",
   );
 
@@ -475,17 +757,23 @@ export const getCampusStudents = async (
 export const getCampusOutsiders = async (
   campusName: string,
   api: FortyTwoApi,
+  { waitMs = ROSTER_WAIT_MS }: RosterWait = {},
 ): Promise<Student[]> =>
-  (await getCampusRoster(campusName, api)).filter(
+  (await getCampusRoster(campusName, api, waitMs)).filter(
     (student) => student.accountType !== "student",
   );
 
 /**
  * Who is on an internship or an apprenticeship, as a student id -> work code.
  *
- * Four pages for a whole campus, so it rides along with the campus build
+ * A few pages for most campuses, so it rides along with the campus build
  * rather than being a page of its own. A failure here costs the two sorts that
  * depend on it, not the rankings -- and says so, so it costs them a minute.
+ *
+ * Paris is seventeen: 1634 rows, apprenticeships counting one per company
+ * evaluation. The cap of eight kept 800 of them, half of Paris's interns and
+ * apprentices missing from those two sorts. The walk is no longer held to one
+ * request's minute, so the cap is the default forty.
  */
 const getWorkStatus = async (
   campusId: number,
@@ -498,7 +786,7 @@ const getWorkStatus = async (
     const rows = await api.fetchAllPages(
       `/projects_users?filter[campus]=${campusId}&filter[cursus]=${CURSUS_ID}` +
         `&filter[status]=in_progress&filter[project_id]=${WORK_PROJECT_IDS.join(",")}`,
-      { maxPages: 8 },
+      { maxPages: 40 },
     );
 
     for (const row of rows) {

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Student } from "@/types";
 import { Users, TrendingUp, CheckCircle, XCircle, Globe, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { fetchJson } from "@/lib/api-client";
 
 interface PiscineStatsProps {
   campus: string;
@@ -29,13 +30,7 @@ export function PiscineStats({ campus }: PiscineStatsProps) {
 
   const { data: students, isLoading, isSuccess, isFetching } = useQuery<Student[]>({
     queryKey: ["piscine-stats", campus],
-    queryFn: async () => {
-      const response = await fetch(`/api/campus/${campus}/students`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch students");
-      }
-      return response.json();
-    },
+    queryFn: () => fetchJson<Student[]>(`/api/campus/${campus}/students`),
     enabled: !!campus,
     staleTime: 1000 * 60 * 10, 
     refetchOnMount: 'always',

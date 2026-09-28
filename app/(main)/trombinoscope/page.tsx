@@ -28,15 +28,19 @@ import { useCampus } from "@/contexts/CampusContext";
 import { fetchPoolStudents, type Cursus } from "@/lib/pool-roster";
 import { PoolPromotionPicker } from "@/components/PoolPromotionPicker";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { fetchJson, isKeyRequired } from "@/lib/api-client";
+import { fetchJson, isKeyRequired, type Pending } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
 const INITIAL_LOAD = 20;
 const LOAD_MORE = 10;
 
-const fetchCampusStudents = (campus: string): Promise<Student[]> =>
-  fetchJson<Student[]>(`/api/campus/${campus}/students`);
+const fetchCampusStudents = (
+  campus: string,
+  /** How far a campus too big for one request has been read. */
+  onPending?: (progress: Pending) => void,
+): Promise<Student[]> =>
+  fetchJson<Student[]>(`/api/campus/${campus}/students`, { onPending });
 
 export default function Trombinoscope() {
     const { data: session, status } = useSession();
@@ -53,6 +57,7 @@ export default function Trombinoscope() {
   const [year, setYear] = useState<string>("all");
   const observerRef = useRef<HTMLDivElement>(null);
   const [showTimeoutError, setShowTimeoutError] = useState(false);
+  const [readProgress, setReadProgress] = useState<Pending | null>(null);
 
 
   useEffect(() => {
@@ -76,10 +81,12 @@ export default function Trombinoscope() {
       effectiveCampus,
       ...(cursus === "piscine" ? [poolYear, poolMonth] : []),
     ],
-    queryFn: () =>
-      cursus === "piscine"
+    queryFn: () => {
+      setReadProgress(null);
+      return cursus === "piscine"
         ? fetchPoolStudents(effectiveCampus, { month: poolMonth, year: poolYear })
-        : fetchCampusStudents(effectiveCampus),
+        : fetchCampusStudents(effectiveCampus, setReadProgress);
+    },
     enabled: !!effectiveCampus,
     staleTime: 10 * 60 * 1000,
   });
@@ -165,7 +172,13 @@ export default function Trombinoscope() {
   // `enabled`) ever displayed the real data.
   if (!effectiveCampus || ((isLoading || isFetching) && !isSuccess)) {
     return (
-      <LoadingScreen message="Loading trombinoscope..." />
+      <LoadingScreen
+        message={
+          readProgress && readProgress.total > 0
+            ? `Loading trombinoscope... ${readProgress.loaded.toLocaleString()} of ${readProgress.total.toLocaleString()} read from 42`
+            : "Loading trombinoscope..."
+        }
+      />
     );
   }
 

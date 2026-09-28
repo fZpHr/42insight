@@ -41,6 +41,7 @@ import { TransparentBadge } from "@/components/TransparentBadge";
 import { useSession, signOut } from "next-auth/react";
 import { isDemoEnabled } from "@/lib/demo-mode";
 import { fetchUserIntraInfo, getCampusRank } from "@/utils/fetchFunctions";
+import { fetchJson } from "@/lib/api-client";
 import { useFortyTwoStore } from '@/providers/forty-two-store-provider'
 import { Changelog } from "@/components/Changelog";
 import { CoalitionInfo } from "@/components/CoalitionInfo";
@@ -332,7 +333,9 @@ export default function Dashboard() {
 
   const { data: staffInfo, isFetching: staffFetching, refetch: refetchStaff } = useQuery({
     queryKey: ["staffInfo", effectiveCampus],
-    queryFn: () => fetch(`/api/staff?campus=${effectiveCampus}`).then((res) => res.json()),
+    // fetchJson for its 202s: the stats are the whole campus, which for Paris
+    // is read over several requests.
+    queryFn: () => fetchJson<any>(`/api/staff?campus=${effectiveCampus}`),
     enabled: !!user && !loading && (isStaff || isAdmin) && !!effectiveCampus,
     staleTime: 10 * 60 * 1000,
   });

@@ -7,12 +7,14 @@ import {
   resolveCampusId,
   getEnrichedCampusStudents,
   getCampusOutsiders,
+  RosterPendingError,
+  rosterPendingResponse,
 } from "@/lib/forty-two/live-campus";
 
 // A cold cache walks the whole campus in paginated 42 API calls, roughly ten
 // seconds per campus paced at two requests a second -- past Vercel's default
-// function timeout, which kills the request before the client ever sees a
-// response (and the visitor has to reload to hit the now-warm cache).
+// function timeout. Paris is over a minute, past even this; that one answers
+// 202 part way and is finished by the requests that follow.
 export const maxDuration = 60;
 
 export async function GET(
@@ -45,6 +47,7 @@ export async function GET(
 
     return NextResponse.json(await getEnrichedCampusStudents(campus_name, api));
   } catch (error: any) {
+    if (error instanceof RosterPendingError) return rosterPendingResponse(error);
 
     console.error(`[campus] failed to build ${campus_name}:`, error.message);
     return NextResponse.json(

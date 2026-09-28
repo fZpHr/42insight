@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { computeLogtime } from "@/lib/forty-two/logtime";
-import { getCampusStudents } from "@/lib/forty-two/live-campus";
+import {
+  getCampusStudents,
+  RosterPendingError,
+  rosterPendingResponse,
+} from "@/lib/forty-two/live-campus";
 import {
   getUserApi,
   keyRequiredResponse,
@@ -99,6 +103,9 @@ export async function POST(
     });
   } catch (error: any) {
     if (error instanceof MissingUserKeyError) return keyRequiredResponse();
+    // The campus the chunk is cut from is still being read: the builder asks
+    // again with the same offset.
+    if (error instanceof RosterPendingError) return rosterPendingResponse(error);
 
     console.error(
       `[byok] logtime chunk failed for ${campus_name}:`,
