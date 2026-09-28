@@ -204,6 +204,9 @@ const CORRECTION_RATIOS_ENABLED = true;
 /** What the route accepts at once, and about a screenful. */
 const CORRECTION_BATCH = 30;
 
+/** How many campuses Global reads at once. */
+const GLOBAL_CONCURRENCY = 3;
+
 const fetchCampusStudents = (
   campus: string,
   /** 42's own accounts -- staff, test, external -- instead of the students. */
@@ -435,32 +438,55 @@ export default function Rankings() {
         // goes campus by campus, through the same cached route the picker uses:
         // a campus already opened costs nothing here, and a load interrupted
         // halfway resumes rather than starts over.
-        const all: Student[] = [];
+        //
+        // A few campuses at a time. One after another, a campus spent most of
+        // its time waiting on 42's answers rather than on the pacing: twelve
+        // minutes for the network, where the pacing allows about half that.
+        // The server paces every request on the key, so this asks 42 no
+        // faster; it only keeps the slots filled.
+        const rosters: Student[][] = [];
+        const reading = new Set<string>();
+        let next = 0;
+        let done = 0;
+        let missingKey: unknown = null;
 
-        for (const [index, school] of campuses.entries()) {
+        const report = () =>
           setGlobalProgress({
-            done: index,
+            done,
             total: campuses.length,
-            campus: school.name,
+            campus: [...reading].join(", "),
           });
-          setReadProgress(null);
 
-          try {
-            all.push(
-              ...((await fetchCampusStudents(
-                school.name,
-                showFortyTwoAccounts,
-                setReadProgress,
-              )) ?? []),
-            );
-          } catch (error) {
-            // A missing key is the same answer 54 times over, so stop and let
-            // the page ask for one. Anything else is one campus that will not
-            // answer, which should not cost the other 53.
-            if (isKeyRequired(error)) throw error;
+        const readCampuses = async () => {
+          while (next < campuses.length && !missingKey) {
+            const index = next++;
+            const school = campuses[index];
+            reading.add(school.name);
+            report();
+
+            try {
+              rosters[index] =
+                (await fetchCampusStudents(school.name, showFortyTwoAccounts)) ?? [];
+            } catch (error) {
+              // A missing key is the same answer 54 times over, so stop and
+              // let the page ask for one. Anything else is one campus that
+              // will not answer, which should not cost the other 53.
+              if (isKeyRequired(error)) missingKey = error;
+            } finally {
+              reading.delete(school.name);
+              done++;
+              report();
+            }
           }
-        }
+        };
 
+        await Promise.all(
+          Array.from({ length: GLOBAL_CONCURRENCY }, readCampuses),
+        );
+        if (missingKey) throw missingKey;
+
+        // In the campus order, whichever finished first.
+        const all = rosters.flat();
         setGlobalProgress(null);
 
         if (all.length === 0) {
@@ -1120,9 +1146,10 @@ export default function Rankings() {
     return (
       <LoadingScreen
         message={
-          (globalProgress
-            ? `Loading ${globalProgress.campus} (${globalProgress.done + 1} of ${globalProgress.total} campuses)`
-            : "Loading rankings...") + readingNote(readProgress)
+          globalProgress
+            ? `Loading Global: ${globalProgress.done} of ${globalProgress.total} campuses read` +
+              (globalProgress.campus ? ` (${globalProgress.campus})` : "")
+            : "Loading rankings..." + readingNote(readProgress)
         }
       />
     );
