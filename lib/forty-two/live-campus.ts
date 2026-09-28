@@ -271,7 +271,7 @@ const studentsCacheKey = (campus: string) => `students:${campus}`;
  * one that never ends -- twice Paris. The next largest, Madrid, is twenty-six.
  */
 const ROSTER_MAX_PAGES = 200;
-const ROSTER_PAGE_SIZE = 100;
+const PAGE_SIZE = 100;
 
 
 const daysUntil = (date: string | null): number => {
@@ -493,6 +493,28 @@ const walkFor = (api: FortyTwoApi, campusName: string): RosterWalk => {
   return walk;
 };
 
+/** One page of a collection, and 42's X-Total for all of it (0 if unsaid). */
+const readPage = async (
+  api: FortyTwoApi,
+  path: string,
+  page: number,
+): Promise<{ rows: any[]; total: number }> => {
+  const separator = path.includes("?") ? "&" : "?";
+  const response = await api.fetch(
+    `${path}${separator}page[size]=${PAGE_SIZE}&page[number]=${page}`,
+  );
+  if (response.status === 401) throw new MissingUserKeyError();
+  if (!response.ok) {
+    throw new Error(`42 API responded ${response.status} on page ${page}`);
+  }
+
+  const body = await response.json();
+  return {
+    rows: Array.isArray(body) ? body : [],
+    total: Number(response.headers.get("X-Total")) || 0,
+  };
+};
+
 const rosterPage = (
   walk: RosterWalk,
   campusId: number,
@@ -503,23 +525,14 @@ const rosterPage = (
   const known = walk.pages.get(page);
   if (known) return known;
 
-  const pending = (async (): Promise<RosterPage> => {
-    // sort=id: the pages of one walk can be read minutes apart, and only a
-    // fixed order keeps a row from sliding onto a page already read.
-    const response = await api.fetch(
-      `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}` +
-        `&sort=id&page[size]=${ROSTER_PAGE_SIZE}&page[number]=${page}`,
-    );
-    if (response.status === 401) throw new MissingUserKeyError();
-    if (!response.ok) {
-      throw new Error(`42 API responded ${response.status} on page ${page}`);
-    }
-
-    const total = Number(response.headers.get("X-Total"));
+  // sort=id: the pages of one walk can be read minutes apart, and only a
+  // fixed order keeps a row from sliding onto a page already read.
+  const pending = readPage(
+    api,
+    `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}&sort=id`,
+    page,
+  ).then(({ rows, total }): RosterPage => {
     if (total > 0) walk.total = total;
-
-    const body = await response.json();
-    const rows: any[] = Array.isArray(body) ? body : [];
     walk.landed.set(page, rows.length);
 
     return {
@@ -535,7 +548,7 @@ const rosterPage = (
           },
         })),
     };
-  })();
+  });
 
   walk.pages.set(page, pending);
   // A page that failed is asked again by the next build, not remembered.
@@ -556,12 +569,12 @@ const rosterPage = (
  */
 const WALK_CONCURRENCY = 6;
 
-const pagesInParallel = async (
+const pagesInParallel = async <T>(
   from: number,
   to: number,
-  readPage: (page: number) => Promise<RosterPage>,
-): Promise<RosterPage[]> => {
-  const pages: RosterPage[] = [];
+  read: (page: number) => Promise<T>,
+): Promise<T[]> => {
+  const pages: T[] = [];
   let next = from;
   let failed = false;
 
@@ -569,7 +582,7 @@ const pagesInParallel = async (
     while (!failed && next <= to) {
       const page = next++;
       try {
-        pages[page - from] = await readPage(page);
+        pages[page - from] = await read(page);
       } catch (error) {
         failed = true;
         throw error;
@@ -581,33 +594,46 @@ const pagesInParallel = async (
   return pages;
 };
 
+/**
+ * Every page of a collection: the first alone, for 42's X-Total; the rest
+ * WALK_CONCURRENCY at a time; then one by one while the last comes back full,
+ * since the collection can have grown since the first was read.
+ */
+const walkPages = async <T extends { size: number }>(
+  what: string,
+  read: (page: number) => Promise<T>,
+  total: () => number,
+  maxPages: number,
+): Promise<T[]> => {
+  const pages = [await read(1)];
+  const lastPage = Math.min(maxPages, Math.max(1, Math.ceil(total() / PAGE_SIZE)));
+  pages.push(...(await pagesInParallel(2, lastPage, read)));
+
+  let page = lastPage;
+  while (pages[pages.length - 1].size === PAGE_SIZE && page < maxPages) {
+    pages.push(await read(++page));
+  }
+  if (pages[pages.length - 1].size === PAGE_SIZE) {
+    console.warn(
+      `[live-campus] ${what} truncated at ${maxPages} pages of ${total()} rows`,
+    );
+  }
+
+  return pages;
+};
+
 const walkRoster = async (
   campusName: string,
   campusId: number,
   api: FortyTwoApi,
 ): Promise<RosterRow[]> => {
   const walk = walkFor(api, campusName);
-  const read = (page: number) => rosterPage(walk, campusId, campusName, page, api);
-
-  const pages = [await read(1)];
-  const lastPage = Math.min(
+  const pages = await walkPages(
+    `${campusName}'s roster`,
+    (page) => rosterPage(walk, campusId, campusName, page, api),
+    () => walk.total,
     ROSTER_MAX_PAGES,
-    Math.max(1, Math.ceil(walk.total / ROSTER_PAGE_SIZE)),
   );
-  pages.push(...(await pagesInParallel(2, lastPage, read)));
-
-  // X-Total is from page one. A campus that grew since ends on a full page,
-  // and the rows past it are read the old way, until one comes up short.
-  let page = lastPage;
-  while (pages[pages.length - 1].size === ROSTER_PAGE_SIZE && page < ROSTER_MAX_PAGES) {
-    pages.push(await read(++page));
-  }
-  if (pages[pages.length - 1].size === ROSTER_PAGE_SIZE) {
-    console.warn(
-      `[live-campus] ${campusName} truncated at ${ROSTER_MAX_PAGES} pages ` +
-        `of ${walk.total} rows`,
-    );
-  }
 
   // A row deleted mid-walk shifts the next one back onto a page already read.
   const seen = new Set<number>();
@@ -773,23 +799,36 @@ export const getCampusOutsiders = async (
  * Paris is seventeen: 1634 rows, apprenticeships counting one per company
  * evaluation. The cap of eight kept 800 of them, half of Paris's interns and
  * apprentices missing from those two sorts. The walk is no longer held to one
- * request's minute, so the cap is the default forty.
+ * request's minute, so the cap is forty -- and the pages are read like the
+ * roster's, several at a time, since one after another a campus with many
+ * more of them than of students spent longer here than on its roster.
  */
+const WORK_MAX_PAGES = 40;
+
 const getWorkStatus = async (
   campusId: number,
   api: FortyTwoApi,
   partial: () => void,
 ): Promise<Map<number, number>> => {
   const work = new Map<number, number>();
+  const path =
+    `/projects_users?filter[campus]=${campusId}&filter[cursus]=${CURSUS_ID}` +
+    `&filter[status]=in_progress&filter[project_id]=${WORK_PROJECT_IDS.join(",")}`;
+  let total = 0;
 
   try {
-    const rows = await api.fetchAllPages(
-      `/projects_users?filter[campus]=${campusId}&filter[cursus]=${CURSUS_ID}` +
-        `&filter[status]=in_progress&filter[project_id]=${WORK_PROJECT_IDS.join(",")}`,
-      { maxPages: 40 },
+    const pages = await walkPages(
+      `work status of campus ${campusId}`,
+      async (page) => {
+        const { rows, total: reported } = await readPage(api, path, page);
+        if (reported > 0) total = reported;
+        return { rows, size: rows.length };
+      },
+      () => total,
+      WORK_MAX_PAGES,
     );
 
-    for (const row of rows) {
+    for (const row of pages.flatMap((page) => page.rows)) {
       const kind = classifyWorkProject(row.project?.name ?? "");
       if (!kind || !row.user?.id) continue;
       // Apprenticeship wins: its company evaluations are separate projects, so
