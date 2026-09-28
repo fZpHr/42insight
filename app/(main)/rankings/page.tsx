@@ -77,7 +77,7 @@ import { useSession } from "next-auth/react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { LogtimeIndexBuilder } from "@/components/LogtimeIndexBuilder";
 import { CorrectionIndexBuilder } from "@/components/CorrectionIndexBuilder";
-import { fetchJson, isKeyRequired } from "@/lib/api-client";
+import { fetchJson, isKeyRequired, type Pending } from "@/lib/api-client";
 import {
   readCorrectionIndex,
   withCorrections,
@@ -204,14 +204,26 @@ const CORRECTION_RATIOS_ENABLED = true;
 /** What the route accepts at once, and about a screenful. */
 const CORRECTION_BATCH = 30;
 
+/** How many campuses Global reads at once. */
+const GLOBAL_CONCURRENCY = 3;
+
 const fetchCampusStudents = (
   campus: string,
   /** 42's own accounts -- staff, test, external -- instead of the students. */
   fortyTwoAccounts = false,
+  /** How far a campus too big for one request has been read. */
+  onPending?: (progress: Pending) => void,
 ): Promise<Student[]> =>
   fetchJson<Student[]>(
     `/api/campus/${campus}/students${fortyTwoAccounts ? "?accounts=42" : ""}`,
+    { onPending },
   );
+
+/** " -- 3,200 of 8,402 read from 42", or nothing before 42 has said. */
+const readingNote = (progress: Pending | null): string =>
+  progress && progress.total > 0
+    ? ` -- ${progress.loaded.toLocaleString()} of ${progress.total.toLocaleString()} read from 42`
+    : "";
 
 type SortDirection = "asc" | "desc";
 
@@ -295,6 +307,8 @@ export default function Rankings() {
     total: number;
     campus: string;
   } | null>(null);
+  /** Within one campus: how much of it 42 has sent, while that takes a while. */
+  const [readProgress, setReadProgress] = useState<Pending | null>(null);
 
   const selectedCampus = globalMode ? "Global" : pickedCampus;
 
@@ -402,6 +416,7 @@ export default function Rankings() {
     queryFn: async () => {
       const campus = selectedCampus || user?.campus;
       if (!campus) return [];
+      setReadProgress(null);
 
       if (cursus === "piscine") {
         const pool = await fetchPoolStudents(campus, {
@@ -423,30 +438,55 @@ export default function Rankings() {
         // goes campus by campus, through the same cached route the picker uses:
         // a campus already opened costs nothing here, and a load interrupted
         // halfway resumes rather than starts over.
-        const all: Student[] = [];
+        //
+        // A few campuses at a time. One after another, a campus spent most of
+        // its time waiting on 42's answers rather than on the pacing: twelve
+        // minutes for the network, where the pacing allows about half that.
+        // The server paces every request on the key, so this asks 42 no
+        // faster; it only keeps the slots filled.
+        const rosters: Student[][] = [];
+        const reading = new Set<string>();
+        let next = 0;
+        let done = 0;
+        let missingKey: unknown = null;
 
-        for (const [index, school] of campuses.entries()) {
+        const report = () =>
           setGlobalProgress({
-            done: index,
+            done,
             total: campuses.length,
-            campus: school.name,
+            campus: [...reading].join(", "),
           });
 
-          try {
-            all.push(
-              ...((await fetchCampusStudents(
-                school.name,
-                showFortyTwoAccounts,
-              )) ?? []),
-            );
-          } catch (error) {
-            // A missing key is the same answer 54 times over, so stop and let
-            // the page ask for one. Anything else is one campus that will not
-            // answer, which should not cost the other 53.
-            if (isKeyRequired(error)) throw error;
-          }
-        }
+        const readCampuses = async () => {
+          while (next < campuses.length && !missingKey) {
+            const index = next++;
+            const school = campuses[index];
+            reading.add(school.name);
+            report();
 
+            try {
+              rosters[index] =
+                (await fetchCampusStudents(school.name, showFortyTwoAccounts)) ?? [];
+            } catch (error) {
+              // A missing key is the same answer 54 times over, so stop and
+              // let the page ask for one. Anything else is one campus that
+              // will not answer, which should not cost the other 53.
+              if (isKeyRequired(error)) missingKey = error;
+            } finally {
+              reading.delete(school.name);
+              done++;
+              report();
+            }
+          }
+        };
+
+        await Promise.all(
+          Array.from({ length: GLOBAL_CONCURRENCY }, readCampuses),
+        );
+        if (missingKey) throw missingKey;
+
+        // In the campus order, whichever finished first.
+        const all = rosters.flat();
         setGlobalProgress(null);
 
         if (all.length === 0) {
@@ -468,7 +508,11 @@ export default function Rankings() {
           accountFilter,
         );
       } else {
-        const response = await fetchCampusStudents(campus, showFortyTwoAccounts);
+        const response = await fetchCampusStudents(
+          campus,
+          showFortyTwoAccounts,
+          setReadProgress,
+        );
         if (!response || response.length === 0) {
           toast.error(
             showFortyTwoAccounts
@@ -1103,8 +1147,9 @@ export default function Rankings() {
       <LoadingScreen
         message={
           globalProgress
-            ? `Loading ${globalProgress.campus} (${globalProgress.done + 1} of ${globalProgress.total} campuses)`
-            : "Loading rankings..."
+            ? `Loading Global: ${globalProgress.done} of ${globalProgress.total} campuses read` +
+              (globalProgress.campus ? ` (${globalProgress.campus})` : "")
+            : "Loading rankings..." + readingNote(readProgress)
         }
       />
     );

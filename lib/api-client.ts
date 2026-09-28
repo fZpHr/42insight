@@ -41,13 +41,42 @@ export const hasApiKey = (): boolean => {
     .some((entry) => entry.trim().startsWith(`${KEY_PRESENT_COOKIE}=`));
 };
 
-export const fetchJson = async <T>(url: string): Promise<T> => {
-  const response = await fetch(url);
+/**
+ * What a route answers, with a 202, while a campus it needs is still being
+ * read from 42. Paris takes over a minute, longer than a request may run, so
+ * the server keeps reading after answering and the next request joins in.
+ */
+export interface Pending {
+  pending: true;
+  campus: string;
+  /** Rows read so far, and 42's count of all of them (0 until it says). */
+  loaded: number;
+  total: number;
+}
 
-  if (response.status === 428) throw new KeyRequiredError();
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+/**
+ * How many 202s in a row a request sits through before giving up. Each is a
+ * server that waited twenty seconds, so this is five minutes -- Paris needs
+ * four or so.
+ */
+export const MAX_PENDING_ANSWERS = 15;
+
+export const fetchJson = async <T>(
+  url: string,
+  { onPending }: { onPending?: (progress: Pending) => void } = {},
+): Promise<T> => {
+  for (let answers = 1; ; answers++) {
+    const response = await fetch(url);
+
+    if (response.status === 428) throw new KeyRequiredError();
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status}`);
+    }
+    if (response.status !== 202) return response.json();
+
+    if (answers >= MAX_PENDING_ANSWERS) {
+      throw new Error("Request still pending after several minutes");
+    }
+    onPending?.(await response.json());
   }
-
-  return response.json();
 };

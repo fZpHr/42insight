@@ -8,6 +8,8 @@ import {
   resolvePoolPromotion,
   getCampusStudents,
   getPoolUsers,
+  RosterPendingError,
+  rosterPendingResponse,
 } from "@/lib/forty-two/live-campus";
 
 // A cold campus walk runs ten seconds or so, past Vercel's default function
@@ -88,6 +90,7 @@ export async function GET(request: Request) {
       inactiveStudents: totalStudents - activePoolUsers,
     });
   } catch (error: any) {
+    if (error instanceof RosterPendingError) return rosterPendingResponse(error);
 
     console.error("Error fetching campus stats:", error.message);
     return NextResponse.json(

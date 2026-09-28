@@ -7,6 +7,7 @@ import { Loader2, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { mergeCorrectionChunk, readCorrectionIndex } from "@/lib/corrections-store";
+import { MAX_PENDING_ANSWERS } from "@/lib/api-client";
 
 /**
  * Builds the campus correction ratios into this browser, with the visitor's key.
@@ -54,6 +55,7 @@ export function CorrectionIndexBuilder({ campus, onBuilt }: Props) {
 
     setProgress({ done: 0, total: 0 });
     let offset: number | null = 0;
+    let pendingAnswers = 0;
 
     try {
       while (offset !== null) {
@@ -69,6 +71,16 @@ export function CorrectionIndexBuilder({ campus, onBuilt }: Props) {
           toast.error("Your key is missing or expired. Connect it again.");
           router.push("/api-key");
           return;
+        }
+
+        // The campus the chunk is cut from is still being read from 42 --
+        // Paris takes over a minute. The same offset again joins that walk.
+        if (response.status === 202) {
+          if (++pendingAnswers >= MAX_PENDING_ANSWERS) {
+            toast.error("The campus is taking too long to load. Try again in a moment.");
+            return;
+          }
+          continue;
         }
 
         if (!response.ok) {

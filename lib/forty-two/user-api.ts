@@ -301,6 +301,7 @@ export class UserApi {
     const separator = path.includes("?") ? "&" : "?";
     const collected: any[] = [];
     let total = 0;
+    let stoppedAtCap = false;
 
     for (let page = 1; page <= maxPages; page++) {
       const response = await this.fetch(
@@ -323,12 +324,17 @@ export class UserApi {
       await onProgress?.(collected.length, total || collected.length);
 
       if (pageData.length < pageSize) break;
+      stoppedAtCap = page === maxPages;
     }
 
     // Stopping at maxPages looks exactly like running out of rows, which is
     // how Paris's rankings came to show 4000 of its 8402 students with nothing
     // to say they were half a campus. X-Total knows better, so say so.
-    if (total > 0 && collected.length < total) {
+    //
+    // Only when the walk did stop there, though: 42's X-Total can run a row or
+    // two over what it sends -- 14 of 15, 1632 of 1634 -- and a walk that ran
+    // dry on a short page was reported as truncated at a cap it never reached.
+    if (stoppedAtCap && total > collected.length) {
       console.warn(
         `[42 API] ${path} truncated: ${collected.length} of ${total} rows, ` +
           `stopped at maxPages=${maxPages}`,

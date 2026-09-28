@@ -1,4 +1,4 @@
-import { KeyRequiredError, isKeyRequired } from "@/lib/api-client";
+import { KeyRequiredError, fetchJson, isKeyRequired } from "@/lib/api-client";
 import { UserIntraInfo } from "@/types";
 
 export const fetchUserIntraInfo = async (
@@ -24,14 +24,9 @@ export const fetchUserIntraInfo = async (
 
 export const getCampusRank = async (campus: string, user_login: string): Promise<any> => {
     try {
-      const response = await fetch(`/api/users/${user_login}/rank`)
-      if (response.status === 428) {
-        throw new KeyRequiredError();
-      }
-      if (!response.ok) {
-        throw new Error("Failed to fetch campus rank");
-      }
-      const data = await response.json();
+      // fetchJson, for the 202s: a rank needs the whole campus, and Paris is
+      // read over several requests.
+      const data = await fetchJson<{ rank?: number }>(`/api/users/${user_login}/rank`);
       return data.rank || null;
     } catch (error) {
       if (isKeyRequired(error)) {

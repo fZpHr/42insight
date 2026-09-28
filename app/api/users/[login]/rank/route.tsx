@@ -8,6 +8,8 @@ import {
   resolvePoolPromotion,
   getCampusStudents,
   getPoolUsers,
+  RosterPendingError,
+  rosterPendingResponse,
 } from "@/lib/forty-two/live-campus";
 
 // A cold campus (or pool) walk runs ten seconds or so, past Vercel's default
@@ -88,6 +90,7 @@ export async function GET(
 
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   } catch (error: any) {
+    if (error instanceof RosterPendingError) return rosterPendingResponse(error);
 
     console.error("Error fetching rank", error.message);
     return NextResponse.json({ error: "Failed to fetch rank" }, { status: 500 });

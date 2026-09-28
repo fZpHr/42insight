@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getUserApi, keyRequiredResponse } from "@/lib/forty-two/user-api";
-import { getCampusStudents } from "@/lib/forty-two/live-campus";
+import {
+  getCampusStudents,
+  RosterPendingError,
+  rosterPendingResponse,
+} from "@/lib/forty-two/live-campus";
 import { getCorrectionRatio } from "@/lib/forty-two/corrections";
 
 /**
@@ -85,6 +89,10 @@ export async function POST(
       done,
     });
   } catch (error: any) {
+    // The campus the chunk is cut from is still being read: the builder asks
+    // again with the same offset.
+    if (error instanceof RosterPendingError) return rosterPendingResponse(error);
+
     console.error(`[corrections] chunk failed for ${campus_name}:`, error.message);
     return NextResponse.json(
       { error: "Failed to read corrections from the 42 API" },
