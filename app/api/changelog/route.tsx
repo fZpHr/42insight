@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { cached } from "@/lib/memory-cache";
+import { cached, type CacheSource } from "@/lib/memory-cache";
 
 /**
  * Recent commits, read straight from the repository's own public history.
@@ -14,6 +14,8 @@ import { cached } from "@/lib/memory-cache";
 
 const CACHE_TTL = 900;
 const REPO = process.env.GITHUB_REPO ?? "fZpHr/42insight";
+/** Not 42 data, so not a visitor's client: a source of its own. */
+const GITHUB: CacheSource = { source: "github" };
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -22,7 +24,7 @@ export async function GET() {
   }
 
   try {
-    const commits = await cached(`changelog:${REPO}`, CACHE_TTL, async () => {
+    const commits = await cached(GITHUB, `changelog:${REPO}`, CACHE_TTL, async () => {
       const response = await fetch(
         `https://api.github.com/repos/${REPO}/commits?per_page=10`,
         { headers: { Accept: "application/vnd.github+json" } },

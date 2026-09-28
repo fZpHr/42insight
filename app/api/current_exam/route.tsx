@@ -62,9 +62,10 @@ export async function GET(request: Request) {
 
   try {
     const results = await cachedOnce(
+      api,
       `current-exam:${campusName}`,
       CACHE_TTL,
-      async () => {
+      async (partial) => {
         const now = new Date();
         const from = new Date(now.getTime() - WINDOW_DAYS * 86_400_000);
         const to = new Date(now.getTime() + WINDOW_DAYS * 86_400_000);
@@ -86,9 +87,10 @@ export async function GET(request: Request) {
         if (projectIds.length === 0) return students;
 
         const photos = new Map<number, string>();
-        for (const student of await getCampusStudents(campusName, api).catch(
-          () => [],
-        )) {
+        for (const student of await getCampusStudents(campusName, api).catch(() => {
+          partial();
+          return [];
+        })) {
           photos.set(student.id, student.photoUrl);
         }
 

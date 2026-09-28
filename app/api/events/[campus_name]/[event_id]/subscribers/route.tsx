@@ -30,6 +30,7 @@ export async function GET(
 
   try {
     const subscribers = await cached(
+      api,
       `event-subscribers:v1:${event_id}`,
       CACHE_TTL,
       async () => {

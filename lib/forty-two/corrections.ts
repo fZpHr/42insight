@@ -64,7 +64,7 @@ export interface CorrectionRatio {
  * stale the way the file did.
  */
 const piscineProjectIds = async (api: FortyTwoApi): Promise<Set<number>> =>
-  cachedOnce("piscine-projects", PISCINE_PROJECTS_TTL, async () => {
+  cachedOnce(api, "piscine-projects", PISCINE_PROJECTS_TTL, async () => {
     const rows = await api.fetchAllPages(`/cursus/${POOL_CURSUS_ID}/projects`, {
       maxPages: 3,
     });
@@ -86,7 +86,7 @@ const piscineProjectIds = async (api: FortyTwoApi): Promise<Set<number>> =>
 const EXPERIENCE_PROJECT_IDS = [1638, 1644, 1662, 1873, 1857, 1865];
 
 const experienceProjectIds = async (api: FortyTwoApi): Promise<Set<number>> =>
-  cachedOnce("experience-projects", PISCINE_PROJECTS_TTL, async () => {
+  cachedOnce(api, "experience-projects", PISCINE_PROJECTS_TTL, async () => {
     const response = await api.fetch(
       `/projects?filter[id]=${EXPERIENCE_PROJECT_IDS.join(",")}&page[size]=100`,
     );
@@ -106,7 +106,7 @@ export const getCorrectionRatio = async (
   userId: number,
   api: FortyTwoApi,
 ): Promise<CorrectionRatio> =>
-  cachedOnce(`correction-ratio:v3:${userId}`, CACHE_TTL, async () => {
+  cachedOnce(api, `correction-ratio:v3:${userId}`, CACHE_TTL, async () => {
     const [piscine, experience, rows] = await Promise.all([
       piscineProjectIds(api),
       experienceProjectIds(api),

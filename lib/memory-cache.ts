@@ -24,6 +24,22 @@ interface Entry {
 }
 
 /**
+ * Whose data an entry is.
+ *
+ * Demo mode answers the same questions as 42, under the same keys --
+ * "students:Nice" either way -- with invented rows. In one namespace,
+ * whichever answer landed first was served to everyone for its whole TTL:
+ * made-up students in a real visitor's rankings, and real ones to a demo
+ * visitor who has no key at all. So every entry names its source, and two
+ * sources never share one. A 42 client is its own source (FortyTwoApi.source).
+ */
+export interface CacheSource {
+  readonly source: string;
+}
+
+const entryKey = (from: CacheSource, key: string) => `${from.source}:${key}`;
+
+/**
  * Held on globalThis so that a hot reload in development, and module
  * re-evaluation in general, does not silently start from an empty cache.
  */
@@ -39,7 +55,7 @@ const evictExpired = (now: number) => {
   }
 };
 
-export const cacheGet = <T>(key: string): T | null => {
+const cacheGet = <T>(key: string): T | null => {
   const entry = store.get(key);
   if (!entry) return null;
 
@@ -51,7 +67,7 @@ export const cacheGet = <T>(key: string): T | null => {
   return entry.value as T;
 };
 
-export const cacheSet = <T>(key: string, value: T, ttlSeconds: number): void => {
+const cacheSet = <T>(key: string, value: T, ttlSeconds: number): void => {
   const now = Date.now();
 
   if (store.size >= MAX_ENTRIES) {
@@ -66,24 +82,44 @@ export const cacheSet = <T>(key: string, value: T, ttlSeconds: number): void => 
   store.set(key, { value, expiresAt: now + ttlSeconds * 1000 });
 };
 
-export const cacheDelete = (key: string): void => {
-  store.delete(key);
-};
+/**
+ * How long a partial answer is kept, in seconds.
+ *
+ * A build that had to do without part of what it asked 42 for -- a lookup
+ * still refused after its retries, a page that never came -- says so through
+ * the `partial` callback it is handed, and is asked again this soon rather
+ * than a whole TTL later. It used to be kept like any other answer: one 429 on
+ * the test-account lookup put 42's test accounts in a campus's rankings for
+ * the next quarter of an hour.
+ */
+export const PARTIAL_TTL = 60;
+
+/** A build, and how it says the answer it returns is missing a piece. */
+type Build<T> = (partial: () => void) => Promise<T>;
+
+const keptFor = (ttlSeconds: number, isPartial: boolean) =>
+  isPartial ? Math.min(ttlSeconds, PARTIAL_TTL) : ttlSeconds;
 
 /**
  * Read-through cache. A build that throws is not cached, so a 42 API blip is
- * retried on the next request rather than remembered for the whole TTL.
+ * retried on the next request rather than remembered for the whole TTL; one
+ * that calls `partial` is kept for PARTIAL_TTL at most.
  */
 export const cached = async <T>(
+  from: CacheSource,
   key: string,
   ttlSeconds: number,
-  build: () => Promise<T>,
+  build: Build<T>,
 ): Promise<T> => {
-  const hit = cacheGet<T>(key);
+  const fullKey = entryKey(from, key);
+  const hit = cacheGet<T>(fullKey);
   if (hit !== null) return hit;
 
-  const value = await build();
-  cacheSet(key, value, ttlSeconds);
+  let isPartial = false;
+  const value = await build(() => {
+    isPartial = true;
+  });
+  cacheSet(fullKey, value, keptFor(ttlSeconds, isPartial));
   return value;
 };
 
@@ -98,25 +134,30 @@ const inFlight: Map<string, Promise<unknown>> = ((globalThis as any)
   .__42insightInFlight ??= new Map<string, Promise<unknown>>());
 
 export const cachedOnce = async <T>(
+  from: CacheSource,
   key: string,
   ttlSeconds: number,
-  build: () => Promise<T>,
+  build: Build<T>,
 ): Promise<T> => {
-  const hit = cacheGet<T>(key);
+  const fullKey = entryKey(from, key);
+  const hit = cacheGet<T>(fullKey);
   if (hit !== null) return hit;
 
-  const existing = inFlight.get(key) as Promise<T> | undefined;
+  const existing = inFlight.get(fullKey) as Promise<T> | undefined;
   if (existing) return existing;
 
-  const pending = build()
+  let isPartial = false;
+  const pending = build(() => {
+    isPartial = true;
+  })
     .then((value) => {
-      cacheSet(key, value, ttlSeconds);
+      cacheSet(fullKey, value, keptFor(ttlSeconds, isPartial));
       return value;
     })
     .finally(() => {
-      inFlight.delete(key);
+      inFlight.delete(fullKey);
     });
 
-  inFlight.set(key, pending);
+  inFlight.set(fullKey, pending);
   return pending;
 };

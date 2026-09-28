@@ -1,6 +1,6 @@
 import type { Student } from "@/types";
 import type { FortyTwoApi } from "@/lib/forty-two/api";
-import { cachedOnce } from "@/lib/memory-cache";
+import { PARTIAL_TTL, cachedOnce } from "@/lib/memory-cache";
 import {
   WORK_APPRENTICESHIP,
   WORK_PROJECT_IDS,
@@ -108,27 +108,59 @@ export interface CampusInfo {
 interface CampusDirectory {
   byName: Map<string, number>;
   list: CampusInfo[];
+  /** False when 42 would not list its campuses and this is the seed alone. */
+  complete: boolean;
   expiresAt: number;
 }
 
 /** The full campus list barely ever changes, so a day's cache is cheap. */
 const CAMPUS_DIRECTORY_TTL_MS = 24 * 60 * 60 * 1000;
 
-let directory: CampusDirectory | null = null;
+/**
+ * One directory per source, because the two number their campuses
+ * differently: Nice is 36 in the demo network, and 36 at 42 is Adelaide. A
+ * single directory, filled by whoever asked first after a start, sent the
+ * other side to the wrong campus for a day -- Nice's rankings listing
+ * Adelaide's students.
+ */
+const directories = new Map<FortyTwoApi["source"], CampusDirectory>();
+
+/** A cold page load asks from every route at once: one walk answers them all. */
+const directoryLoads = new Map<FortyTwoApi["source"], Promise<CampusDirectory>>();
 
 const loadDirectory = async (api: FortyTwoApi): Promise<CampusDirectory> => {
-  if (directory && directory.expiresAt > Date.now()) return directory;
+  const known = directories.get(api.source);
+  if (known && known.expiresAt > Date.now()) return known;
 
-  const seen = new Map<string, CampusInfo>([
-    ...Object.entries(CAMPUS_IDS).map(
-      ([name, id]) => [name, { id, name }] as [string, CampusInfo],
-    ),
-    ...Object.entries(UNLISTED_CAMPUSES).map(
-      ([name, entry]) =>
-        [name, { id: entry.id, name, closed: entry.closed }] as [string, CampusInfo],
-    ),
-  ]);
+  let pending = directoryLoads.get(api.source);
+  if (!pending) {
+    pending = buildDirectory(api, known).finally(() => directoryLoads.delete(api.source));
+    directoryLoads.set(api.source, pending);
+  }
+  return pending;
+};
 
+const buildDirectory = async (
+  api: FortyTwoApi,
+  previous: CampusDirectory | undefined,
+): Promise<CampusDirectory> => {
+  // The seed is 42's own ids, so only the live directory starts from it. The
+  // demo network lists every campus it has, under numbers of its own.
+  const seen = new Map<string, CampusInfo>(
+    api.source === "live"
+      ? [
+          ...Object.entries(CAMPUS_IDS).map(
+            ([name, id]) => [name, { id, name }] as [string, CampusInfo],
+          ),
+          ...Object.entries(UNLISTED_CAMPUSES).map(
+            ([name, entry]) =>
+              [name, { id: entry.id, name, closed: entry.closed }] as [string, CampusInfo],
+          ),
+        ]
+      : [],
+  );
+
+  let complete = true;
   try {
     const rows = await api.fetchAllPages(`/campus`, { maxPages: 3 });
     for (const row of rows) {
@@ -143,21 +175,44 @@ const loadDirectory = async (api: FortyTwoApi): Promise<CampusDirectory> => {
   } catch (error: any) {
     // The seed above still covers the two campuses this started on.
     console.error("[live-campus] fetching the campus directory failed:", error.message);
+    complete = false;
   }
 
-  const list = [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+  // Either way a failure is asked again in a minute, not a day: the seed
+  // alone is five campuses, and it used to stand in for the other fifty for
+  // twenty-four hours after a single 429. Yesterday's list, when there is
+  // one, is still the list in the meantime.
+  const retryAt = Date.now() + PARTIAL_TTL * 1000;
+  let directory: CampusDirectory;
 
-  directory = {
-    byName: new Map(list.map((campus) => [campus.name, campus.id])),
-    list,
-    expiresAt: Date.now() + CAMPUS_DIRECTORY_TTL_MS,
-  };
+  if (!complete && previous) {
+    directory = { ...previous, expiresAt: retryAt };
+  } else {
+    const list = [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+    directory = {
+      byName: new Map(list.map((campus) => [campus.name, campus.id])),
+      list,
+      complete,
+      expiresAt: complete ? Date.now() + CAMPUS_DIRECTORY_TTL_MS : retryAt,
+    };
+  }
+
+  directories.set(api.source, directory);
   return directory;
 };
 
-/** Every campus 42 has, id and name, cached for a day. */
-export const listCampuses = async (api: FortyTwoApi): Promise<CampusInfo[]> =>
-  (await loadDirectory(api)).list;
+/**
+ * Every campus 42 has, id and name, cached for a day.
+ *
+ * Throws while 42 will not list them. The seed is enough to resolve a name,
+ * but a picker, a price or a page built on five campuses would be cached as if
+ * they were the network.
+ */
+export const listCampuses = async (api: FortyTwoApi): Promise<CampusInfo[]> => {
+  const directory = await loadDirectory(api);
+  if (!directory.complete) throw new Error("42 did not list its campuses");
+  return directory.list;
+};
 
 /** A campus's id from its name, or null when 42 has no such campus. */
 export const resolveCampusId = async (
@@ -289,13 +344,18 @@ interface MarkedAccounts {
  * leaderboard until it expired, with nothing to say why. Letting the failure
  * out of the builder leaves the cache empty instead, so the next request
  * tries again, and the empty set answers this one request only.
+ *
+ * Only half of that held: the roster built on the empty set was itself cached
+ * for a quarter of an hour. So the caller is told too (`partial`), and what it
+ * builds with the gap is kept a minute.
  */
 const groupMemberIds = async (
   groupId: number,
   api: FortyTwoApi,
+  partial: () => void,
 ): Promise<Set<number>> => {
   try {
-    return await cachedOnce(`group-members:${groupId}`, MARKED_ACCOUNTS_TTL, async () => {
+    return await cachedOnce(api, `group-members:${groupId}`, MARKED_ACCOUNTS_TTL, async () => {
       const rows = await api.fetchAllPages(`/groups/${groupId}/groups_users`, {
         maxPages: 12,
       });
@@ -318,14 +378,18 @@ const groupMemberIds = async (
   } catch (error: any) {
     // A roster with a few of these in it beats no roster at all.
     console.error(`[live-campus] group ${groupId} failed:`, error.message);
+    partial();
     return new Set<number>();
   }
 };
 
-const markedAccounts = async (api: FortyTwoApi): Promise<MarkedAccounts> => {
+const markedAccounts = async (
+  api: FortyTwoApi,
+  partial: () => void,
+): Promise<MarkedAccounts> => {
   const [tests, staff] = await Promise.all([
-    groupMemberIds(TEST_ACCOUNT_GROUP_ID, api),
-    groupMemberIds(STAFF_GROUP_ID, api),
+    groupMemberIds(TEST_ACCOUNT_GROUP_ID, api, partial),
+    groupMemberIds(STAFF_GROUP_ID, api, partial),
   ]);
   return { tests, staff };
 };
@@ -372,14 +436,14 @@ const getCampusRoster = async (
   const campusId = await resolveCampusId(campusName, api);
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
-  return cachedOnce(studentsCacheKey(campusName), STUDENTS_TTL, async () => {
+  return cachedOnce(api, studentsCacheKey(campusName), STUDENTS_TTL, async (partial) => {
     const [cursusUsers, work, marked] = await Promise.all([
       api.fetchAllPages(
         `/cursus_users?filter[campus_id]=${campusId}&filter[cursus_id]=${CURSUS_ID}`,
         { maxPages: ROSTER_MAX_PAGES },
       ),
-      getWorkStatus(campusId, api),
-      markedAccounts(api),
+      getWorkStatus(campusId, api, partial),
+      markedAccounts(api, partial),
     ]);
 
     return cursusUsers
@@ -421,11 +485,12 @@ export const getCampusOutsiders = async (
  *
  * Four pages for a whole campus, so it rides along with the campus build
  * rather than being a page of its own. A failure here costs the two sorts that
- * depend on it, not the rankings.
+ * depend on it, not the rankings -- and says so, so it costs them a minute.
  */
 const getWorkStatus = async (
   campusId: number,
   api: FortyTwoApi,
+  partial: () => void,
 ): Promise<Map<number, number>> => {
   const work = new Map<number, number>();
 
@@ -446,6 +511,7 @@ const getWorkStatus = async (
     }
   } catch (error: any) {
     console.error("[live-campus] work status failed:", error.message);
+    partial();
   }
 
   return work;
@@ -533,7 +599,7 @@ interface CursusInfo {
 }
 
 const listCursus = async (api: FortyTwoApi): Promise<Map<number, CursusInfo>> =>
-  cachedOnce("cursus-directory", CURSUS_TTL, async () => {
+  cachedOnce(api, "cursus-directory", CURSUS_TTL, async () => {
     const rows = await api.fetchAllPages(`/cursus`, { maxPages: 2 });
 
     return new Map(
@@ -587,9 +653,10 @@ export const listPoolPromotions = async (
   if (!campusId) throw new Error(`Unknown campus: ${campusName}`);
 
   return cachedOnce(
+    api,
     `pool-promotions:v2:${campusName}:${year}`,
     PROMOTIONS_TTL,
-    async () => {
+    async (partial) => {
       const found: { month: string; count: number; samples: number[] }[] = [];
 
       for (const month of POOL_MONTHS) {
@@ -623,7 +690,7 @@ export const listPoolPromotions = async (
       }
 
       const [cursusBySample, directory] = await Promise.all([
-        getSampleCursus(found.flatMap((promotion) => promotion.samples), api),
+        getSampleCursus(found.flatMap((promotion) => promotion.samples), api, partial),
         listCursus(api),
       ]);
 
@@ -656,10 +723,14 @@ export const listPoolPromotions = async (
   );
 };
 
-/** Which cursus each sampled student is in, in one request. */
+/**
+ * Which cursus each sampled student is in, in one request. Without it every
+ * promotion reads as a C Piscine, so a failure makes the list partial.
+ */
 const getSampleCursus = async (
   ids: number[],
   api: FortyTwoApi,
+  partial: () => void,
 ): Promise<Map<number, { id: number; name: string }[]>> => {
   const bySample = new Map<number, { id: number; name: string }[]>();
   if (ids.length === 0) return bySample;
@@ -683,6 +754,7 @@ const getSampleCursus = async (
     }
   } catch (error: any) {
     console.error("[live-campus] classifying piscines failed:", error.message);
+    partial();
   }
 
   return bySample;
@@ -841,7 +913,7 @@ export const getPoolUsers = async (
 
   const cacheKey = `pool:${campusName}:${month}:${year}:${cursusId}`;
 
-  return cachedOnce(cacheKey, POOL_TTL, async () => {
+  return cachedOnce(api, cacheKey, POOL_TTL, async (partial) => {
     const users = await api.fetchAllPages(
       `/campus/${campusId}/users` +
         `?filter[pool_month]=${encodeURIComponent(month)}` +
@@ -851,7 +923,7 @@ export const getPoolUsers = async (
 
     // Belt and braces: the filter above is what makes the count agree with the
     // roster, and this makes a filter 42 might one day stop honouring harmless.
-    const marked = await markedAccounts(api);
+    const marked = await markedAccounts(api, partial);
     const pisciners = users.filter(
       (user) =>
         isStudentAccount(user) &&
@@ -864,6 +936,7 @@ export const getPoolUsers = async (
       pisciners.map((user) => user.id),
       cursusId,
       api,
+      partial,
     );
 
     return pisciners.map((user) => ({
@@ -944,12 +1017,13 @@ export const getPoolUsersAcross = async (
  *
  * A hundred ids to a request: filter[user_id] takes a comma list, and a
  * hundred of them is a URL of some 770 characters. A failure here costs the
- * level column, not the roster.
+ * level column, not the roster -- for a minute, since it says so.
  */
 const getPoolLevels = async (
   ids: number[],
   cursusId: number,
   api: FortyTwoApi,
+  partial: () => void,
 ): Promise<Map<number, number>> => {
   const levels = new Map<number, number>();
   const CHUNK = 100;
@@ -969,6 +1043,7 @@ const getPoolLevels = async (
       }
     } catch (error: any) {
       console.error("[live-campus] pool levels failed:", error.message);
+      partial();
     }
   }
 

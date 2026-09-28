@@ -22,7 +22,7 @@ export const campusCoalitionIds = async (
   campusName: string,
   api: FortyTwoApi,
 ): Promise<Set<number>> =>
-  cachedOnce(`coalitions:campus:${campusName}`, COALITIONS_TTL, async () => {
+  cachedOnce(api, `coalitions:campus:${campusName}`, COALITIONS_TTL, async () => {
     const campusId = await resolveCampusId(campusName, api);
     if (!campusId) return new Set<number>();
 

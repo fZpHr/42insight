@@ -231,6 +231,11 @@ const route = (path: string, params: URLSearchParams): Response => {
  * drops into getApi() without anything downstream noticing.
  */
 export const demoApi = (): FortyTwoApi => ({
+  // The one thing it does not hide: the server cache files its answers
+  // separately, so invented rows never reach a real visitor, nor real ones a
+  // demo.
+  source: "demo",
+
   async fetch(path: string): Promise<Response> {
     const [pathname, query = ""] = path.split("?");
     return route(pathname, new URLSearchParams(query));

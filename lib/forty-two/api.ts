@@ -19,6 +19,11 @@ import { demoApi } from "@/lib/forty-two/demo/api";
 
 /** What the 42 API clients answer to. */
 export interface FortyTwoApi {
+  /**
+   * Where the answers come from: 42 itself, or the network demo mode makes
+   * up. The server cache keeps the two apart on it (lib/memory-cache.ts).
+   */
+  readonly source: "live" | "demo";
   fetch(path: string, init?: RequestInit): Promise<Response>;
   fetchAllPages(
     path: string,

@@ -138,7 +138,7 @@ async function freshClaims(login: string): Promise<ProfileClaims | null> {
   const api = await getApi();
   if (!api) return null;
 
-  return cachedOnce(`session-claims:v1:${login}`, CLAIMS_TTL, async () => {
+  return cachedOnce(api, `session-claims:v1:${login}`, CLAIMS_TTL, async () => {
     const response = await api.fetch(`/users/${encodeURIComponent(login)}`);
     if (!response.ok) {
       throw new Error(`42 API responded ${response.status}`);

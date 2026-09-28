@@ -206,10 +206,39 @@ const reserveSlot = async (keyId: string): Promise<void> => {
 };
 
 /**
+ * A 429 from the per-second limit is waited out and asked again.
+ *
+ * The pacing above keeps one server under 42's two requests a second, but not
+ * two servers on the same key: every serverless instance paces on its own, and
+ * so does a dev server beside production. 42 answers the excess with "429 Too
+ * Many Requests (Spam Rate Limit Exceeded)" and Retry-After: 1, and giving up
+ * on it cost campus walks their test-account filter and their internship
+ * column. A longer Retry-After is the hourly budget, where waiting would mean
+ * the rest of the hour, so that 429 goes straight back to the caller.
+ */
+const RATE_LIMIT_RETRIES = 4;
+const MAX_RATE_LIMIT_WAIT_MS = 5_000;
+
+/** How long 42 asked for, or null when it is not worth waiting for. */
+const rateLimitWait = (response: Response, attempt: number): number | null => {
+  const asked = Number(response.headers.get("retry-after"));
+  // Without the header: 1s, 2s, 4s.
+  const wait = asked > 0 ? asked * 1000 : 1000 * 2 ** attempt;
+  return wait <= MAX_RATE_LIMIT_WAIT_MS ? wait : null;
+};
+
+/** Holds back every request on the key, not only the one that was refused. */
+const holdKey = (keyId: string, ms: number): void => {
+  nextSlotAt.set(keyId, Math.max(nextSlotAt.get(keyId) ?? 0, Date.now() + ms));
+};
+
+/**
  * A 42 API client bound to one visitor's key, pacing its own requests so a
  * multi-page walk stays inside the per-application rate limit.
  */
 export class UserApi {
+  readonly source = "live" as const;
+
   constructor(
     private readonly token: string,
     /** The 42 application being metered, which is what quota is counted per. */
@@ -217,21 +246,37 @@ export class UserApi {
   ) {}
 
   async fetch(path: string, init: RequestInit = {}): Promise<Response> {
-    await reserveSlot(this.keyId);
-    recordRequest(this.keyId);
+    for (let attempt = 0; ; attempt++) {
+      await reserveSlot(this.keyId);
+      recordRequest(this.keyId);
 
-    const startedAt = Date.now();
-    const response = await fetch(`https://api.intra.42.fr/v2${path}`, {
-      ...init,
-      headers: {
-        ...init.headers,
-        Authorization: `Bearer ${this.token}`,
-      },
-    });
+      const startedAt = Date.now();
+      const response = await fetch(`https://api.intra.42.fr/v2${path}`, {
+        ...init,
+        headers: {
+          ...init.headers,
+          Authorization: `Bearer ${this.token}`,
+        },
+      });
 
-    recordHeaders(this.keyId, response);
-    recordCall(this.keyId, path, response.status, Date.now() - startedAt);
-    return response;
+      recordHeaders(this.keyId, response);
+      recordCall(this.keyId, path, response.status, Date.now() - startedAt);
+
+      const wait =
+        response.status === 429 && attempt < RATE_LIMIT_RETRIES
+          ? rateLimitWait(response, attempt)
+          : null;
+      if (wait === null) return response;
+
+      // A little jitter, so two servers refused in the same second do not
+      // come back in the same second too.
+      holdKey(this.keyId, wait + Math.random() * 250);
+      // Read, not cancelled. Next's fetch hands back one half of a tee() and
+      // keeps the other for its own dedupe, and cancelling half a tee waits
+      // for the other half -- which here meant forever, and a campus walk
+      // that never finished. The body is one line of text.
+      await response.arrayBuffer().catch(() => {});
+    }
   }
 
   /**

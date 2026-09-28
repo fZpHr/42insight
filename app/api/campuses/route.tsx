@@ -20,7 +20,7 @@ export async function GET() {
   if (!api) return keyRequiredResponse();
 
   try {
-    const campuses = await cachedOnce("campuses", CACHE_TTL, () => listCampuses(api));
+    const campuses = await cachedOnce(api, "campuses", CACHE_TTL, () => listCampuses(api));
     return NextResponse.json(campuses);
   } catch (error: any) {
     console.error("[campuses] failed:", error.message);
