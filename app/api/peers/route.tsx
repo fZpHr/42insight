@@ -48,7 +48,18 @@ export async function GET(request: Request) {
   // anyway, so walking the others threw away half of a very expensive fetch.
   const { searchParams } = new URL(request.url);
   const requested = searchParams.get("campus");
-  const allCampuses = await listCampuses(api);
+  // Refused while 42 will not list its campuses: a 502 like any other failure
+  // here, rather than an unhandled 500.
+  const allCampuses = await listCampuses(api).catch((error: Error) => {
+    console.error("[peers] campus list failed:", error.message);
+    return null;
+  });
+  if (!allCampuses) {
+    return NextResponse.json(
+      { error: "Failed to fetch peers from the 42 API" },
+      { status: 502 },
+    );
+  }
   const campuses = allCampuses
     .filter((campus) => !requested || campus.name === requested)
     .map((campus): [string, number] => [campus.name, campus.id]);
@@ -73,12 +84,16 @@ export async function GET(request: Request) {
       api,
       `${CACHE_KEY}:${requested ?? "all"}:${requestedProject ?? "all"}`,
       CACHE_TTL,
-      async () => {
+      async (partial) => {
     const projects = new Map<number, Project>();
     const photos = new Map<number, string>();
 
     for (const [campusName, campusId] of campuses) {
-      const students = await getCampusStudents(campusName, api).catch(() => []);
+      // Without the roster the peers still stand, only without their photos.
+      const students = await getCampusStudents(campusName, api).catch(() => {
+        partial();
+        return [];
+      });
       for (const student of students) photos.set(student.id, student.photoUrl);
 
       // filter[campus], not filter[campus_id]: the latter is not a filterable

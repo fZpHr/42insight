@@ -34,7 +34,7 @@ export async function GET(
       api,
       `coalitions:v2:${campus}:${login}`,
       CACHE_TTL,
-      async () => {
+      async (partial) => {
         const userResponse = await api.fetch(`/users/${encodeURIComponent(login)}`);
         if (!userResponse.ok) {
           throw new Error(`42 API responded ${userResponse.status}`);
@@ -59,8 +59,9 @@ export async function GET(
           campusCoalitions = await campusCoalitionIds(campus, api);
         } catch (error: any) {
           // Falling through to the last coalition is what this did before the
-          // campus was asked about at all.
+          // campus was asked about at all -- a guess, so kept for a minute.
           console.error(`[coalitions] campus ${campus}:`, error.message);
+          partial();
         }
 
         const selected =

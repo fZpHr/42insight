@@ -83,21 +83,43 @@ const cacheSet = <T>(key: string, value: T, ttlSeconds: number): void => {
 };
 
 /**
+ * How long a partial answer is kept, in seconds.
+ *
+ * A build that had to do without part of what it asked 42 for -- a lookup
+ * still refused after its retries, a page that never came -- says so through
+ * the `partial` callback it is handed, and is asked again this soon rather
+ * than a whole TTL later. It used to be kept like any other answer: one 429 on
+ * the test-account lookup put 42's test accounts in a campus's rankings for
+ * the next quarter of an hour.
+ */
+export const PARTIAL_TTL = 60;
+
+/** A build, and how it says the answer it returns is missing a piece. */
+type Build<T> = (partial: () => void) => Promise<T>;
+
+const keptFor = (ttlSeconds: number, isPartial: boolean) =>
+  isPartial ? Math.min(ttlSeconds, PARTIAL_TTL) : ttlSeconds;
+
+/**
  * Read-through cache. A build that throws is not cached, so a 42 API blip is
- * retried on the next request rather than remembered for the whole TTL.
+ * retried on the next request rather than remembered for the whole TTL; one
+ * that calls `partial` is kept for PARTIAL_TTL at most.
  */
 export const cached = async <T>(
   from: CacheSource,
   key: string,
   ttlSeconds: number,
-  build: () => Promise<T>,
+  build: Build<T>,
 ): Promise<T> => {
   const fullKey = entryKey(from, key);
   const hit = cacheGet<T>(fullKey);
   if (hit !== null) return hit;
 
-  const value = await build();
-  cacheSet(fullKey, value, ttlSeconds);
+  let isPartial = false;
+  const value = await build(() => {
+    isPartial = true;
+  });
+  cacheSet(fullKey, value, keptFor(ttlSeconds, isPartial));
   return value;
 };
 
@@ -115,7 +137,7 @@ export const cachedOnce = async <T>(
   from: CacheSource,
   key: string,
   ttlSeconds: number,
-  build: () => Promise<T>,
+  build: Build<T>,
 ): Promise<T> => {
   const fullKey = entryKey(from, key);
   const hit = cacheGet<T>(fullKey);
@@ -124,9 +146,12 @@ export const cachedOnce = async <T>(
   const existing = inFlight.get(fullKey) as Promise<T> | undefined;
   if (existing) return existing;
 
-  const pending = build()
+  let isPartial = false;
+  const pending = build(() => {
+    isPartial = true;
+  })
     .then((value) => {
-      cacheSet(fullKey, value, ttlSeconds);
+      cacheSet(fullKey, value, keptFor(ttlSeconds, isPartial));
       return value;
     })
     .finally(() => {
