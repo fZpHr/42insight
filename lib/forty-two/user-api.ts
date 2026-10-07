@@ -163,6 +163,16 @@ export const exchangeForToken = async (
   });
 
   if (!response.ok) {
+    // Why 42 refused, which the caller otherwise folds into a generic
+    // "rejected credentials". A 401 means the secret is wrong; a 429 or an
+    // HTML body means 42 is throttling or blocking this egress IP -- the
+    // usual cause when the same key works locally but not from a cloud host.
+    const detail = await response.text().catch(() => "");
+    console.error(
+      `[42 oauth] token exchange refused: ${response.status} ${response.statusText} ` +
+        `retry-after=${response.headers.get("retry-after") ?? "-"} ` +
+        `body=${detail.slice(0, 200)}`,
+    );
     tokenCache.delete(id);
     return null;
   }
