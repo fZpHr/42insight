@@ -170,6 +170,10 @@ export default function ApiKeyPage() {
 
         <CardContent className="space-y-5">
           <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-100">
+              <p className="font-medium">{t.hostingNoticeTitle}</p>
+              <p className="mt-1">{t.hostingNotice}</p>
+            </div>
             <p>{t.why}</p>
             <p>{t.whyAutonomy}</p>
             <p>{t.whyPrivacy}</p>
