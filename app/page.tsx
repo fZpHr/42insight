@@ -904,6 +904,19 @@ export default function Home() {
             <p className="text-xs text-muted-foreground">{t.formSubtitle}</p>
           </div>
 
+          <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+            <p className="font-medium">{tKey.hostingNoticeTitle}</p>
+            <p className="mt-1 text-amber-100/80">{tKey.hostingNotice}</p>
+            <a
+              href="https://github.com/fZpHr/42insight"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex text-amber-200 underline underline-offset-2 hover:text-white"
+            >
+              {tKey.hostingLink}
+            </a>
+          </div>
+
           <button
             type="button"
             onClick={() => setShowGuide((shown) => !shown)}

@@ -20,6 +20,10 @@ export const copy = {
     titleConnected: "Your 42 API key",
     titleConnect: "Connect your 42 API key",
     subtitle: "42Insight reads everything live from the 42 API, on your key.",
+    hostingNoticeTitle: "Important: the public site may be blocked by 42",
+    hostingNotice:
+      "42 has probably blocked or challenged the site's public IP because of the number of API calls made by its users. The hosted version may therefore no longer work reliably. To keep using 42Insight, host your own copy from the open-source repository.",
+    hostingLink: "Host your own copy",
     why:
       "I am trying to make the site run on its own, with no external resources. No database, no background jobs. Everything is read live from the 42 API, which is why it now needs your key.",
     whyAutonomy:
@@ -93,6 +97,10 @@ export const copy = {
     titleConnect: "Connectez votre clé API 42",
     subtitle:
       "42Insight lit tout en direct depuis l'API 42, avec votre clé.",
+    hostingNoticeTitle: "Important : l'IP du site public est peut-être bloquée par 42",
+    hostingNotice:
+      "42 a probablement bloqué ou mis en challenge l'IP publique du site à cause du nombre d'appels API effectués par ses utilisateurs. La version hébergée peut donc ne plus fonctionner correctement. Pour continuer à utiliser 42Insight, hébergez votre propre copie depuis le dépôt open source.",
+    hostingLink: "Héberger votre propre copie",
     why:
       "J'essaie de rendre le site autonome, sans ressource externe, ni base de données, ni tâche de fond à faire tourner. Tout est lu en direct depuis l'API 42, et c'est pour ça qu'il faut maintenant votre clé.",
     whyAutonomy:
