@@ -28,6 +28,7 @@ import { isKeyRequired, KeyRequiredError } from "@/lib/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { avatarSrc } from "@/lib/avatar";
 
 interface HostUser {
   id: number;
@@ -237,10 +238,9 @@ export default function ClusterMap() {
                           >
                             {student ? (
                               <img
-                                src={
-                                  student.user.image.versions.medium ||
-                                  "/placeholder.svg"
-                                }
+                                src={avatarSrc(
+                                  student.user.image.versions.medium,
+                                )}
                                 alt={student.user.login}
                                 className="object-cover w-full h-full transition-transform duration-300 hover:scale-125"
                               />
@@ -281,9 +281,9 @@ export default function ClusterMap() {
                                         onClick={() => window.open(`https://profile.intra.42.fr/users/${user.name}`, "_blank")}
                                       >
                                         <Avatar className="h-12 w-12">
-                                          <AvatarImage 
-                                            src={user.photoUrl} 
-                                            alt={user.name} 
+                                          <AvatarImage
+                                            src={avatarSrc(user.photoUrl)}
+                                            alt={user.name}
                                             className="h-full w-full object-cover" 
                                           />
                                           <AvatarFallback className="text-xs">
@@ -520,7 +520,7 @@ export default function ClusterMap() {
                 >
                   <Avatar className="h-8 w-8 shrink-0">
                     <AvatarImage
-                      src={student.user.image?.versions?.small}
+                      src={avatarSrc(student.user.image?.versions?.small)}
                       alt={student.user.login}
                     />
                     <AvatarFallback className="text-xs">

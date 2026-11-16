@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import { avatarSrc } from "@/lib/avatar";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardTitle } from "@/components/ui/card";
 import {
@@ -264,7 +265,7 @@ export default function PeersPage() {
                                                 >
                                                     <img
                                                         className="h-20 w-20 rounded-lg object-cover"
-                                                        src={subscriber.photoUrl || undefined}
+                                                        src={subscriber.photoUrl ? avatarSrc(subscriber.photoUrl) : undefined}
                                                         alt={subscriber.login}
                                                     />
                                                     <div className="flex flex-col items-center text-center">

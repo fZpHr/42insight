@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { avatarSrc } from "@/lib/avatar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -587,7 +588,7 @@ export default function Dashboard() {
         <Avatar className="h-20 w-20 ring-2 ring-border">
           <AvatarImage
             className="h-full w-full object-cover"
-            src={user?.image || userIntraInfo?.image?.link}
+            src={avatarSrc(user?.image || userIntraInfo?.image?.link)}
             alt={`${user?.name}'s avatar`}
           />
           <AvatarFallback className="text-lg font-semibold">

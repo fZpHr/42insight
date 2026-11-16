@@ -241,6 +241,13 @@ export const demoApi = (): FortyTwoApi => ({
     return route(pathname, new URLSearchParams(query));
   },
 
+  // Demo faces are inlined data: URLs, so the pages never send one here, but a
+  // demo session can still call /api/avatar by hand. It is fetched plainly,
+  // without a token the demo network does not have.
+  async fetchAsset(url: string): Promise<Response> {
+    return fetch(url, { redirect: "error" });
+  },
+
   async fetchAllPages(path, options = {}) {
     const pageSize = options.pageSize ?? 100;
     const maxPages = options.maxPages ?? 40;

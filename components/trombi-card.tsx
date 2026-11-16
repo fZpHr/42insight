@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { PoolUser, Student } from "@/types"
 import React from "react";
+import { avatarSrc } from "@/lib/avatar";
 
 interface StudentCardProps {
     student: Student
@@ -60,7 +61,7 @@ export function StudentCard({ student, poolUser, showingName, isPool, isGame }: 
             <CardContent className="p-0">
                 <div className="relative aspect-square">
                     <img
-                        src={student.photoUrl}
+                        src={avatarSrc(student.photoUrl)}
                         alt={`${student.name}'s photo`}
                         className="object-cover w-full h-full"
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}

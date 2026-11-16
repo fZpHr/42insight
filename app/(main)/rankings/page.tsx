@@ -1,5 +1,6 @@
 "use client";
 import { toast } from "sonner";
+import { avatarSrc } from "@/lib/avatar";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -1945,7 +1946,7 @@ export default function Rankings() {
                     >
                       <Avatar className="h-12 w-12 flex-shrink-0 sm:block">
                         <AvatarImage
-                          src={student.photoUrl || "/placeholder.svg"}
+                          src={student.photoUrl ? avatarSrc(student.photoUrl) : "/placeholder.svg"}
                           alt={student.name}
                           className="object-cover"
                         />
@@ -2568,7 +2569,7 @@ export default function Rankings() {
           {selectedPhoto && (
             <div className="w-full">
               <img
-                src={selectedPhoto}
+                src={avatarSrc(selectedPhoto)}
                 alt={selectedName || "Avatar"}
                 className="w-full h-auto max-h-[90vh] object-contain rounded-md"
               />

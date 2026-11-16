@@ -62,6 +62,23 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Pictures relayed from 42's CDN are served from this origin, and an
+        // SVG opened directly would otherwise run its scripts as this site.
+        // Listed after the rule above so this policy replaces that one here.
+        source: "/api/avatar",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'none'",
+              "style-src 'unsafe-inline'",
+              "frame-ancestors 'none'",
+              "sandbox",
+            ].join("; "),
+          },
+        ],
+      },
     ];
   },
 };
