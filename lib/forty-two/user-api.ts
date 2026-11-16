@@ -139,9 +139,18 @@ const fingerprint = (credentials: Credentials): string =>
     .update(`${credentials.clientId}:${credentials.clientSecret}`)
     .digest("hex");
 
+/** The exchange under way for each key, so simultaneous callers share one. */
+const tokenExchanges: Map<string, Promise<string | null>> = ((globalThis as any)
+  .__42insightTokenExchanges ??= new Map<string, Promise<string | null>>());
+
 /**
  * Exchanges credentials for an access token, reusing the cached one until it is
  * close enough to expiry to be worth replacing.
+ *
+ * A page of avatars arrives as hundreds of requests at once, and with no token
+ * in the cache every one of them used to ask 42 for its own. The first 429 then
+ * read as "no key" and left that picture broken, so they now wait on one
+ * exchange instead.
  */
 export const exchangeForToken = async (
   credentials: Credentials,
@@ -152,15 +161,42 @@ export const exchangeForToken = async (
   // A minute of headroom, so a token cannot lapse mid page walk.
   if (cached && cached.expiresAt - 60_000 > Date.now()) return cached.token;
 
-  const response = await fetch("https://api.intra.42.fr/oauth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: credentials.clientId,
-      client_secret: credentials.clientSecret,
-    }),
+  const underWay = tokenExchanges.get(id);
+  if (underWay) return underWay;
+
+  const exchange = requestToken(credentials, id).finally(() => {
+    tokenExchanges.delete(id);
   });
+  tokenExchanges.set(id, exchange);
+  return exchange;
+};
+
+const requestToken = async (
+  credentials: Credentials,
+  id: string,
+): Promise<string | null> => {
+  let response: Response;
+
+  for (let attempt = 0; ; attempt++) {
+    response = await fetch("https://api.intra.42.fr/oauth/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: credentials.clientId,
+        client_secret: credentials.clientSecret,
+      }),
+    });
+
+    const wait =
+      response.status === 429 && attempt < RATE_LIMIT_RETRIES
+        ? rateLimitWait(response, attempt)
+        : null;
+    if (wait === null) break;
+
+    await response.arrayBuffer().catch(() => {});
+    await sleep(wait + Math.random() * 250);
+  }
 
   if (!response.ok) {
     // Why 42 refused, which the caller otherwise folds into a generic
@@ -287,6 +323,23 @@ export class UserApi {
       // that never finished. The body is one line of text.
       await response.arrayBuffer().catch(() => {});
     }
+  }
+
+  /**
+   * Fetches a 42-hosted asset (a profile picture) on this key's token.
+   *
+   * cdn.intra.42.fr now answers anonymous requests with 403, so the browser
+   * cannot load an avatar straight from its URL any more. The bearer the API
+   * runs on unlocks it, but it must stay off the page, so the fetch happens
+   * here and /api/avatar streams the bytes. It is not the metered /v2 API, so
+   * it is neither paced nor counted against the hourly budget.
+   */
+  async fetchAsset(url: string): Promise<Response> {
+    // A redirect would land on a host /api/avatar never checked.
+    return fetch(url, {
+      headers: { Authorization: `Bearer ${this.token}` },
+      redirect: "error",
+    });
   }
 
   /**

@@ -1,6 +1,7 @@
 "use client";
 
 import type * as React from "react";
+import { avatarSrc } from "@/lib/avatar";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -587,7 +588,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <div>
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-gray-800 to-black text-sidebar-primary-foreground">
                     <img
-                      src={user?.image || "/placeholder-user.jpg"}
+                      src={user?.image ? avatarSrc(user.image) : "/placeholder-user.jpg"}
                       alt="User Avatar"
                       className="h-8 w-8 rounded-lg object-cover"
                     />

@@ -25,6 +25,14 @@ export interface FortyTwoApi {
    */
   readonly source: "live" | "demo";
   fetch(path: string, init?: RequestInit): Promise<Response>;
+  /**
+   * Fetches a 42-hosted asset by its absolute URL -- a profile picture on the
+   * CDN. The CDN began refusing anonymous requests with 403, so the browser
+   * can no longer load an avatar straight from its URL; the same key the API
+   * runs on unlocks it, and /api/avatar streams the bytes back so the token
+   * never reaches the page.
+   */
+  fetchAsset(url: string): Promise<Response>;
   fetchAllPages(
     path: string,
     options?: {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { avatarSrc } from "@/lib/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Coalition } from "@/types";
@@ -77,7 +78,7 @@ export function CoalitionInfo({ login }: CoalitionInfoProps) {
           >
             {coalition.image_url ? (
               <img
-                src={coalition.image_url}
+                src={avatarSrc(coalition.image_url)}
                 alt={coalition.name}
                 className="h-full w-full object-contain"
               />

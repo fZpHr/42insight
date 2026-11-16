@@ -1,6 +1,7 @@
 "use client";
 import { toast } from "sonner";
 import { fetchJson } from "@/lib/api-client";
+import { avatarSrc } from "@/lib/avatar";
 import { useQuery } from "@tanstack/react-query";
 import { useCampus } from "@/contexts/CampusContext";
 import {
@@ -416,7 +417,7 @@ export default function Piscine() {
                     </div>
                     <Avatar className="h-12 w-12 flex-shrink-0">
                       <AvatarImage
-                        src={student.photoUrl || "/placeholder.svg"}
+                        src={student.photoUrl ? avatarSrc(student.photoUrl) : "/placeholder.svg"}
                         alt={student.name}
                         className="object-cover"
                       />

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { avatarSrc } from "@/lib/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -317,7 +318,7 @@ export default function ExamTracker() {
                                                     <TableCell className="font-medium">
                                                         <div className="flex items-center space-x-3">
                                                             <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
-                                                                <AvatarImage src={student.photo} alt={student.name} style={{ objectFit: 'cover' }} />
+                                                                <AvatarImage src={avatarSrc(student.photo)} alt={student.name} style={{ objectFit: 'cover' }} />
                                                                 <AvatarFallback className="text-xs sm:text-sm">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                                             </Avatar>
                                                             <div className="min-w-0">

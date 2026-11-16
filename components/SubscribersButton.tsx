@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { avatarSrc } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -91,7 +92,7 @@ export function SubscribersButton({
                     <li key={subscriber.id} className="text-sm">
                       <div className="flex items-center space-x-3 ">
                         <img
-                          src={subscriber.user.image.versions.medium}
+                          src={avatarSrc(subscriber.user.image.versions.medium)}
                           alt={subscriber.user.displayname}
                           className="w-8 h-8 rounded-full object-cover"
                         />
