@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { primaryCampusName } from "@/lib/forty-two/campus-scope";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Trophy,
   Users,
@@ -32,7 +32,11 @@ import {
   ChevronDown,
   RefreshCw,
 } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IntraProfile } from "@/components/IntraProfile";
 import {
   Tooltip,
   TooltipContent,
@@ -302,7 +306,7 @@ export function SkillBar({
 /** 42cursus: the cursus this whole site reports on. */
 const MAIN_CURSUS_ID = 21;
 
-export default function Dashboard() {
+function InsightDashboard() {
   const { data: session, status } = useSession();
   const user = session?.user;
   const isStaff = session?.user?.role?.includes("staff");
@@ -950,5 +954,202 @@ export default function Dashboard() {
         </>
       )}
     </div>
+  );
+}
+
+interface LoginSuggestion {
+  login: string;
+  displayname: string;
+  image: string | null;
+  location: string | null;
+}
+
+/** How many logins /api/users/search answers at most. */
+const SEARCH_LIMIT = 8;
+
+/** 42 logins: lowercase letters, digits and dashes, nothing a URL could misread. */
+const LOGIN_PATTERN = /^[a-z0-9_-]{1,32}$/i;
+
+/**
+ * Two ways to read a profile: this site's own dashboard, and a copy of the
+ * intra profile page that can show any student. Which one is on screen, and
+ * whose profile the intra view shows, live in the URL (?view=intra&login=)
+ * so a looked-up student can be linked to and survives a reload.
+ */
+function DashboardSwitcher() {
+  const queryClient = useQueryClient();
+  const params = useSearchParams();
+  const { data: session } = useSession();
+  const ownLogin = session?.user?.login ?? "";
+
+  const view = params.get("view") === "intra" ? "intra" : "insight";
+  const searched = params.get("login") ?? "";
+  const login = LOGIN_PATTERN.test(searched) ? searched.toLowerCase() : ownLogin;
+  const [query, setQuery] = useState(searched);
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(-1);
+  const [prefix, setPrefix] = useState("");
+
+  useEffect(() => setQuery(searched), [searched]);
+
+  // Asked for once typing pauses, so a login typed quickly is one request
+  // rather than one per letter.
+  useEffect(() => {
+    const timer = setTimeout(() => setPrefix(query.trim().toLowerCase()), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const { data: suggestions = [], isFetching: searching } = useQuery<LoginSuggestion[]>({
+    queryKey: ["loginSearch", prefix],
+    queryFn: async ({ signal }) => {
+      // A shorter prefix that came back with fewer than a full page already
+      // holds every login this one can match: narrow it here instead of
+      // asking 42 again ("kir" after "ki" costs nothing once "ki" was short).
+      for (let length = prefix.length - 1; length >= 2; length--) {
+        const shorter = queryClient.getQueryData<LoginSuggestion[]>(["loginSearch", prefix.slice(0, length)]);
+        if (shorter && shorter.length < SEARCH_LIMIT) {
+          return shorter.filter((suggestion) => suggestion.login.startsWith(prefix));
+        }
+      }
+      const response = await fetch(`/api/users/search?q=${encodeURIComponent(prefix)}`, { signal });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: open && prefix.length >= 2 && LOGIN_PATTERN.test(prefix),
+    staleTime: 10 * 60 * 1000,
+    // While the new answer is on its way, keep what still matches from the
+    // last one on screen rather than flashing an empty list.
+    placeholderData: (previous) =>
+      previous?.filter((suggestion) => suggestion.login.startsWith(prefix)),
+  });
+
+  useEffect(() => setHighlighted(-1), [suggestions]);
+  const showSuggestions = open && prefix.length >= 2 && (suggestions.length > 0 || searching);
+
+  const go = (next: { view: "intra" | "insight"; login?: string }) => {
+    const search = new URLSearchParams();
+    if (next.view === "intra") search.set("view", "intra");
+    if (next.view === "intra" && next.login && next.login !== ownLogin) search.set("login", next.login);
+    const qs = search.toString();
+    // The view lives entirely on this client page, so the URL is updated in
+    // place: router.push would ask the server for a fresh RSC payload (and
+    // rerun the layout's data loading) on every search and tab switch.
+    window.history.pushState(null, "", qs ? `/dashboard?${qs}` : "/dashboard");
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const wanted = suggestions[highlighted]?.login ?? query.trim().toLowerCase();
+    // Searching is what the intra view is for, so a search always lands there.
+    if (LOGIN_PATTERN.test(wanted)) pick(wanted);
+  };
+
+  const pick = (wanted: string) => {
+    setQuery(wanted);
+    setOpen(false);
+    go({ view: "intra", login: wanted });
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHighlighted((i) => (i + 1) % suggestions.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlighted((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    } else if (event.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="container mx-auto flex flex-col gap-3 px-6 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <Tabs value={view} onValueChange={(value) => go({ view: value as "intra" | "insight", login: searched })}>
+          <TabsList>
+            <TabsTrigger value="insight">42insight</TabsTrigger>
+            <TabsTrigger value="intra">Intra</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <form onSubmit={submit} className="relative flex w-full gap-2 sm:w-80">
+          <Input
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setOpen(false)}
+            onKeyDown={onKeyDown}
+            placeholder="Search a student by login…"
+            aria-label="Student login"
+            aria-autocomplete="list"
+            aria-expanded={showSuggestions}
+            autoCapitalize="none"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {showSuggestions && (
+            <ul
+              role="listbox"
+              className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+            >
+              {suggestions.length === 0 && (
+                <li className="px-2 py-1.5 text-sm text-muted-foreground">Searching…</li>
+              )}
+              {suggestions.map((suggestion, i) => (
+                <li
+                  key={suggestion.login}
+                  role="option"
+                  aria-selected={i === highlighted}
+                  // mousedown, not click: the input's blur would close the
+                  // list before a click landed.
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    pick(suggestion.login);
+                  }}
+                  onMouseEnter={() => setHighlighted(i)}
+                  className={`flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm ${
+                    i === highlighted ? "bg-accent text-accent-foreground" : ""
+                  }`}
+                >
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage className="object-cover" src={avatarSrc(suggestion.image)} alt="" />
+                    <AvatarFallback className="text-[10px]">
+                      {suggestion.login.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium">{suggestion.login}</span>
+                  <span className="truncate text-muted-foreground">{suggestion.displayname}</span>
+                  {suggestion.location && (
+                    <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-emerald-400" title={suggestion.location} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button type="submit" variant="secondary" disabled={!LOGIN_PATTERN.test(query.trim())}>
+            Search
+          </Button>
+        </form>
+      </div>
+
+      {view === "intra" ? (
+        <div className="container mx-auto p-6">
+          {login ? <IntraProfile key={login} login={login} /> : <Skeleton className="h-64 w-full rounded-xl" />}
+        </div>
+      ) : (
+        <InsightDashboard />
+      )}
+    </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense>
+      <DashboardSwitcher />
+    </Suspense>
   );
 }
