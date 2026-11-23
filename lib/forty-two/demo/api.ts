@@ -100,6 +100,25 @@ const route = (path: string, params: URLSearchParams): Response => {
 
   /* ------------------------------------------------------------------ users */
   if (path === "/users") {
+    // The intra view's login search: a prefix, asked for as a range.
+    const range = params.get("range[login]");
+    if (range) {
+      const [from, to] = range.split(",");
+      // Through the login index, which answers one student per login however
+      // many campus rosters the same name turns up in.
+      const logins = new Set(
+        demoEveryone()
+          .map((student) => student.login)
+          .filter((login) => login >= from && login <= to),
+      );
+      const rows = [...logins]
+        .sort()
+        .map((login) => demoStudentByLogin(login))
+        .filter((student): student is DemoStudent => Boolean(student))
+        .map((student) => demoUserSummary(student));
+      return paged(rows, params);
+    }
+
     const ids = idsFrom(params.get("filter[id]"));
     const rows = ids
       .map((id) => demoStudentById(id))
@@ -135,8 +154,10 @@ const route = (path: string, params: URLSearchParams): Response => {
         return paged(campus ? demoEvents(campus).slice(0, 2) : [], params);
       }
       case "scale_teams/as_corrector":
+      case "scale_teams":
       case "locations_stats":
       case "coalitions":
+      case "coalitions_users":
         return paged([], params);
       default:
         return notFound();
@@ -149,6 +170,34 @@ const route = (path: string, params: URLSearchParams): Response => {
   // in-progress rows on the core path, which is how it knows who to put you
   // in touch with. Both filter by campus rather than by roster, so the rows
   // come from the campus the id belongs to, and then by status and project.
+  // One row, for the intra view's project dialog. Demo rows are numbered
+  // student id * 100 + position, and every demo project is done solo.
+  const projectsUser = path.match(/^\/projects_users\/(\d+)$/);
+  if (projectsUser) {
+    const id = Number(projectsUser[1]);
+    const student = demoStudentById(Math.floor(id / 100));
+    const row = student && demoUserPayload(student).projects_users.find((r: any) => r.id === id);
+    if (!student || !row) return notFound();
+    return json({
+      ...row,
+      teams: [
+        {
+          id: row.current_team_id,
+          name: `${student.login}'s team`,
+          final_mark: row.final_mark,
+          status: row.status === "finished" ? "finished" : "in_progress",
+          "validated?": row["validated?"],
+          created_at: row.created_at,
+          closed_at: row.marked_at,
+          users: [{ id: student.id, login: student.login, leader: true }],
+        },
+      ],
+    });
+  }
+
+  // Nobody evaluates anybody in a world with no corrections to replay.
+  if (path === "/scale_teams") return paged([], params);
+
   if (path === "/projects_users") {
     const campus = demoCampusById(Number(params.get("filter[campus]")));
     if (!campus) return paged([], params);
